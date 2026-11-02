@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vexa"
-version = "0.1.0a2"
+version = "0.2.0a1"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"
 license = "MIT AND AGPL-3.0-only"

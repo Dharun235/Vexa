@@ -92,7 +92,9 @@ def test_api_success_and_errors(monkeypatch, image, fake_vision):
     )
     assert response.json()["error"]["line"] == 1
     response = client.post(
-        "/execute", data={"source": "show image"}, files={"image": ("bad.png", b"not an image")}
+        "/execute",
+        data={"source": 'load "image.jpg"'},
+        files={"image": ("bad.png", b"not an image")},
     )
     assert response.status_code == 400
     assert response.json()["error"]["kind"] == "upload"

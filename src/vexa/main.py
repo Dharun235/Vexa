@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 
 from vexa import __version__
 from vexa.ast_nodes import VexaError
-from vexa.interpreter import execute
+from vexa.interpreter import execute_commands
+from vexa.validation import check_source
 from vexa.vision import MAX_UPLOAD, Vision, decode_image
 
 app = FastAPI(title="Vexa", version=__version__)
@@ -21,7 +22,8 @@ def health():
 
 
 def run_program(source, data):
-    return execute(source, decode_image(data), vision)
+    commands = check_source(source)
+    return execute_commands(commands, decode_image(data), vision)
 
 
 @app.post("/execute")

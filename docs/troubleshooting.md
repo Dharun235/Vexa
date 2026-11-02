@@ -5,7 +5,7 @@
 An error in your program stops execution. A terminal message such as:
 
 ```text
-demo.vexa:3: runtime: Run detect before counting or drawing objects.
+demo.vexa:3:1: runtime: Run detect before counting or drawing objects.
 ```
 
 means the command on line 3 needs an earlier `detect` command.
@@ -39,7 +39,7 @@ means the command on line 3 needs an earlier `detect` command.
 | `2` | Invalid terminal arguments or a file/encoding error |
 | `3` | An unexpected application failure |
 
-`vexa check` checks syntax, not whether an image or model exists or the command order will succeed. A program can pass `check` and still fail during execution.
+`vexa check` checks syntax and command ordering, but does not read images, check supported model labels, or run inference. A program can pass `check` and still fail during execution.
 
 ## Report a reproducible bug
 
@@ -53,3 +53,7 @@ Open a [GitHub issue](https://github.com/Dharun235/Vexa/issues) with:
 For an unexpected failure, rerun with `vexa --debug run ...` and include the relevant diagnostic output. Review it before posting: paths and your program's printed text can contain personal information. Do not post private images or credentials.
 
 Maintainers reproduce the issue, add a focused regression test, and fix the behaviour and relevant docs on a feature branch. User-visible fixes are recorded in the [changelog](../CHANGELOG.md).
+
+## In the interactive console
+
+An error is shown with the current input line, column, and caret. Correct the command and continue; there is no need to restart. Use `:reset` followed by `load "image.jpg"` to start a fresh image pass, or `:help` to list controls. Ctrl+D or `:quit` exits cleanly. If saving an image fails, fix the output path permissions and try `show image` again.

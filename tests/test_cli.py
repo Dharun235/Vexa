@@ -18,7 +18,7 @@ def program(tmp_path, image):
 
 def test_check_needs_no_image_or_model(program, capsys):
     assert main(["check", str(program[0])]) == 0
-    assert "Syntax OK: 5" in capsys.readouterr().out
+    assert "Check OK: 5" in capsys.readouterr().out
 
 
 def test_run_saves_image_and_small_json(program, tmp_path, monkeypatch, fake_vision, capsys):
@@ -52,7 +52,8 @@ def test_syntax_error_shows_file_line_and_no_traceback(tmp_path, capsys):
     source.write_text('load "x"\ndraw circles')
     assert main(["check", str(source)]) == 1
     error = capsys.readouterr().err
-    assert f"{source}:2: syntax:" in error
+    assert f"{source}:2:6: syntax:" in error
+    assert "draw circles" in error and "^" in error
     assert "Traceback" not in error
 
 

@@ -11,26 +11,30 @@ Vexa is an **interpreted domain-specific language**. Its purpose is to describe 
     ↓
 Lark lexer and parser → syntax error, if invalid
     ↓
-command nodes: kind, argument, source line
+command nodes: kind, argument, source line and column
     ↓
-interpreter → command-order error, if invalid
+shared validator → command-order error, if invalid
+    ↓
+session interpreter
     ↓
 image operations and ONNX CPU inference
     ↓
 logs, counts, detections, and an optional image
 ```
 
-The terminal, browser, and API all use this same path. They do not have separate language implementations.
+The terminal, REPL, browser, and API all use this same path. They do not have separate language implementations.
 
 | Component | Responsibility | Source |
 | --- | --- | --- |
 | Grammar | Defines command syntax and tokens | [grammar.lark](../src/vexa/grammar.lark) |
 | Lexer and parser | Lark recognises tokens and checks their structure; `parse` converts the parse tree to command nodes | [parser.py](../src/vexa/parser.py) |
 | Command nodes | An immutable `Command` stores the keyword form, argument, and original line number; this is the small AST | [ast_nodes.py](../src/vexa/ast_nodes.py) |
-| Interpreter | Executes nodes in order and keeps image, detections, counts, logs, and output state for one run | [interpreter.py](../src/vexa/interpreter.py) |
+| Shared validator | Checks command ordering without image I/O or inference | [validation.py](../src/vexa/validation.py) |
+| Session interpreter | Executes nodes and keeps image, detections, counts, and output state; reused across REPL inputs | [interpreter.py](../src/vexa/interpreter.py) |
 | Vision runtime | Decodes images, prepares model input, runs ONNX on CPU, filters boxes, and draws results | [vision.py](../src/vexa/vision.py) |
 | Model management | Chooses the model path and validates/copies a model into user storage | [model.py](../src/vexa/model.py) |
 | Terminal runner | Reads files, presents errors, and writes PNG/JSON outputs | [cli.py](../src/vexa/cli.py) |
+| REPL | Reads one command at a time and reuses one session and model | [repl.py](../src/vexa/repl.py) |
 | Local API | Accepts source and an uploaded image; returns results or an error | [main.py](../src/vexa/main.py) |
 | Playground | Editor, uploader, Run button, and results | [frontend/src](../frontend/src/) |
 
@@ -52,12 +56,16 @@ The standard installation includes FastAPI and Uvicorn, so `vexa serve` works im
 | --- | --- |
 | Installation | Unsupported Python/platform, unavailable dependency wheel |
 | Parsing | Misspelled command, missing quote, invalid string escape |
-| Execution | `draw boxes` before `detect`, or image commands before `load` |
+| Shared preflight | `draw boxes` before `detect`, or image commands before `load` |
 | Input/model runtime | Missing file, invalid image, missing or unsupported ONNX model |
 | Output | Destination cannot be written |
 
-`vexa check` covers parsing. `vexa run` covers the complete path. Errors stop the run and include the command's source line when available. The API returns structured errors; the terminal returns an exit status. See [troubleshooting](troubleshooting.md).
+`vexa check` covers parsing and predictable command-order errors. `vexa run` covers the complete path. Errors stop the run and include the command's source line when available. The API returns structured errors with line and column; the terminal returns an exit status. See [troubleshooting](troubleshooting.md).
 
 ## Keeping the runtime small
 
 One ONNX session is created lazily per runner/server process. Inference uses CPU only, two intra-op threads, and one inter-op thread. The local server serialises inference, and each request owns its language state. `count` and `draw` reuse detections; they do not load another model or run inference again.
+
+## Session and validation boundary
+
+`check_source` combines parsing with shared validation. `Session.execute` also validates submissions against the current session state before changing it; this protects programmatic and REPL callers. File/API preflight occurs before image decoding; the lightweight session check uses the same rules rather than duplicating them. Batch runners create a fresh session per request, while the REPL retains one until reset or exit. Model failures can leave earlier successful runtime commands in place, but a rejected syntax/order submission does not alter session state.

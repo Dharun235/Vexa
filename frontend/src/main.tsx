@@ -43,7 +43,7 @@ type Result = {
   image: string | null;
   detections: unknown[];
 };
-type Failure = { message: string; line?: number };
+type Failure = { message: string; line?: number; column?: number };
 function App() {
   const [source, setSource] = useState(program("person"));
   const [file, setFile] = useState<File>();
@@ -242,7 +242,7 @@ function App() {
                 <div className="error">
                   <strong>
                     {error.line
-                      ? `Line ${error.line}`
+                      ? `Line ${error.line}${error.column ? `, column ${error.column}` : ""}`
                       : "Something needs your attention"}
                   </strong>
                   <p>{error.message}</p>

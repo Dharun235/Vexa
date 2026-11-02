@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.1.0a2 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.2.0a1 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -82,7 +82,7 @@ Repeated counts for a label overwrite that label's value in the counts dictionar
 
 A second `load` resets the working image to the original uploaded photo and clears detections, counts, and output snapshot. It cannot load a second file. Every API execution / click of Run has independent state.
 
-An error stops execution. The API returns a structured error rather than partial results. The whole source is parsed before execution, so a syntax error prevents any commands from running.
+An error stops execution. The API returns a structured error rather than partial results. The whole source is parsed and checked for command-order errors before execution, so those errors prevent any commands from running. This preflight does not require inference.
 
 ## Supported object labels
 
@@ -130,13 +130,18 @@ Syntax, runtime, upload, and vision errors use HTTP 400 with this shape:
   "error": {
     "kind": "runtime",
     "message": "Run detect before counting or drawing objects.",
-    "line": 2
+    "line": 2,
+    "column": 1
   }
 }
 ```
 
-`line` is one-based and can be null for failures not associated with a command, such as invalid image data. Missing API form fields return FastAPI's HTTP 422 validation response instead. See [troubleshooting](troubleshooting.md) for fixes.
+`line` and `column` are one-based and can be null for failures not associated with a command, such as invalid image data. Missing API form fields return FastAPI's HTTP 422 validation response instead. See [troubleshooting](troubleshooting.md) for fixes.
 
 ## Compatibility
 
-This is the language reference for package 0.1.0a2. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+This is the language reference for package 0.2.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+
+## Interactive sessions
+
+`vexa repl --image FILE` runs these same commands with persistent state. Each entry is validated against that state; `load` and `:reset` clear detections/counts, while retaining the original supplied photo and the model instance. Error positions refer to the current input, not a saved program. `:help`, `:reset`, and `:quit` are console controls, not additions to this grammar. `show image` saves the snapshot to the console's output path. See the [interactive walkthrough](getting-started.md#work-interactively-in-the-terminal).

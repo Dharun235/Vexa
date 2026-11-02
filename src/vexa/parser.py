@@ -19,7 +19,10 @@ def parse(source: str) -> list[Command]:
         tree = _PARSER.parse(source)
     except UnexpectedInput as exc:
         raise VexaError(
-            "Invalid command. Try: detect person, draw boxes, or show image.", exc.line, "syntax"
+            "Invalid command. Try: detect person, draw boxes, or show image.",
+            exc.line,
+            "syntax",
+            column=exc.column,
         ) from exc
     commands = []
     for node in tree.children:
@@ -35,8 +38,9 @@ def parse(source: str) -> list[Command]:
                     "Invalid string escape. Use a JSON-style quoted string.",
                     node.meta.line,
                     "syntax",
+                    column=node.meta.column,
                 ) from exc
-        commands.append(Command(str(node.data), argument, node.meta.line))
+        commands.append(Command(str(node.data), argument, node.meta.line, node.meta.column))
     if not commands:
         raise VexaError("Program contains no commands.", kind="syntax")
     return commands

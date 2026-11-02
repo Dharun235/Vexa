@@ -10,7 +10,7 @@ from pathlib import Path
 from vexa import __version__
 from vexa.ast_nodes import VexaError
 from vexa.model import install_model, model_path
-from vexa.parser import parse
+from vexa.validation import check_source
 
 
 def read_source(path: Path) -> str:
@@ -23,7 +23,9 @@ def arguments():
     parser.add_argument("--version", action="version", version=f"Vexa {__version__}")
     parser.add_argument("--debug", action="store_true", help="Show details for unexpected errors")
     commands = parser.add_subparsers(dest="command", required=True)
-    check = commands.add_parser("check", help="Check a program's syntax without a model or image")
+    check = commands.add_parser(
+        "check", help="Check syntax and command ordering without a model or image"
+    )
     check.add_argument("program", type=Path)
     run = commands.add_parser("run", help="Run a .vexa file on an image using CPU inference")
     run.add_argument("program", type=Path)
@@ -33,6 +35,10 @@ def arguments():
     run.add_argument(
         "--json", type=Path, dest="json_output", help="Also save logs, counts and boxes as JSON"
     )
+    repl = commands.add_parser("repl", help="Start an interactive image session")
+    repl.add_argument("--image", required=True, type=Path)
+    repl.add_argument("--model", type=Path)
+    repl.add_argument("--output", type=Path, default=Path("vexa-output.png"))
     serve = commands.add_parser("serve", help="Start the local browser playground")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--model", type=Path)
@@ -44,27 +50,45 @@ def arguments():
     return parser
 
 
+def protect_inputs(inputs, outputs):
+    source_paths = {path.resolve() for path in inputs}
+    destinations = [path.resolve() for path in outputs]
+    if source_paths.intersection(destinations) or len(set(destinations)) != len(destinations):
+        raise VexaError(
+            "Output paths must differ from the inputs and from each other.", kind="input"
+        )
+
+
+def save_image(data_url, path):
+    path.write_bytes(base64.b64decode(data_url.split(",", 1)[1]))
+
+
+def print_error(error, source="", filename="<repl>"):
+    location = f"{filename}:{error.line}" if error.line else filename
+    if error.column:
+        location += f":{error.column}"
+    print(f"{location}: {error.kind}: {error.message}", file=sys.stderr)
+    lines = source.splitlines()
+    if error.line and 0 < error.line <= len(lines):
+        excerpt = lines[error.line - 1].expandtabs(4)
+        column = len(lines[error.line - 1][: max(0, (error.column or 1) - 1)].expandtabs(4))
+        print(f"  {excerpt}\n  {' ' * column}^", file=sys.stderr)
+
+
 def run_file(args):
     from vexa.interpreter import execute_commands
     from vexa.vision import MAX_UPLOAD, Vision, decode_image
 
-    commands = parse(
-        read_source(args.program)
-    )  # Report syntax errors before opening an image or initializing the model.
+    commands = check_source(read_source(args.program))
     with args.image.open("rb") as stream:
         image = decode_image(stream.read(MAX_UPLOAD + 1))
-    inputs = {args.program.resolve(), args.image.resolve()}
     outputs = [args.output] + ([args.json_output] if args.json_output else [])
-    resolved_outputs = [path.resolve() for path in outputs]
-    if inputs.intersection(resolved_outputs) or len(set(resolved_outputs)) != len(resolved_outputs):
-        raise VexaError(
-            "Output paths must differ from the inputs and from each other.", kind="input"
-        )
+    protect_inputs([args.program, args.image], outputs)
     result = execute_commands(commands, image, Vision(args.model))
     image_data = result.pop("image")
     result["image_path"] = None
     if image_data:
-        args.output.write_bytes(base64.b64decode(image_data.split(",", 1)[1]))
+        save_image(image_data, args.output)
         result["image_path"] = str(args.output)
     if args.json_output:
         args.json_output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
@@ -105,12 +129,14 @@ def main(argv=None):
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.CRITICAL)
     try:
         if args.command == "check":
-            commands = parse(read_source(args.program))
-            print(
-                f"Syntax OK: {len(commands)} command(s). Image and command ordering are checked at runtime."
-            )
+            commands = check_source(read_source(args.program))
+            print(f"Check OK: {len(commands)} command(s). Syntax and command ordering are valid.")
         elif args.command == "run":
             run_file(args)
+        elif args.command == "repl":
+            from vexa.repl import run_repl
+
+            run_repl(args)
         elif args.command == "serve":
             serve(args)
         elif args.model_action == "path":
@@ -119,10 +145,12 @@ def main(argv=None):
             print(f"Installed model: {install_model(args.file)}")
         return 0
     except VexaError as exc:
-        location = (
-            f"{args.program}:{exc.line}: " if getattr(args, "program", None) and exc.line else ""
-        )
-        print(f"{location}{exc.kind}: {exc.message}", file=sys.stderr)
+        filename = str(getattr(args, "program", "<input>"))
+        try:
+            source = read_source(args.program) if getattr(args, "program", None) else ""
+        except (OSError, UnicodeError):
+            source = ""
+        print_error(exc, source, filename)
         return 1
     except (OSError, UnicodeError) as exc:
         print(f"File error: {exc}", file=sys.stderr)

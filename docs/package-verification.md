@@ -1,6 +1,6 @@
 # Package verification
 
-**Package:** Vexa 0.1.0a2 · **Date:** 2 November 2026
+**Package:** Vexa 0.2.0a1 · **Date:** 2 November 2026
 
 ## One-install package
 
@@ -10,11 +10,12 @@ The model selection order is: explicit `--model`, `VEXA_MODEL_PATH`, an existing
 
 ## Checks
 
-- 42 tests cover the commands, API, CLI, real CPU inference, package model selection, and release checksums.
+- 50 tests cover the commands, API, CLI, real CPU inference, package model selection, persistent REPL state/recovery/reset, shared preflight, and release checksums.
 - Ruff and the frontend production build pass.
 - Clean-wheel and source-archive checks verify that the model, grammar, web assets, and both licenses are included.
 - A fresh environment is tested outside the repository with no user-model cache and no model argument. It runs the included model and saves an annotated PNG plus counts.
-- The standard installation provides both `vexa run` and `vexa serve`; it does not contain PyTorch or Ultralytics.
+- A real terminal REPL run verified command-order and syntax error recovery, persistent counts, image saving, reset, and clean exit.
+- The standard installation provides `vexa run`, `vexa repl`, and `vexa serve`; it does not contain PyTorch or Ultralytics.
 
 ## Platform coverage
 

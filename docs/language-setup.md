@@ -1,6 +1,6 @@
 # Language execution and a practical setup for Vexa
 
-Research checked 2 November 2026. This compares established tooling with Vexa 0.1.0a2. The recommendations below are a proposal; they are not newly implemented features.
+Historical research checked 2 November 2026. Shared validation and the REPL proposed below were subsequently implemented in package 0.2.0a1; see [the current guide](getting-started.md#work-interactively-in-the-terminal). This compares established tooling with Vexa 0.1.0a2. The recommendations below are a proposal; they are not newly implemented features.
 
 ## Start with three separate ideas
 
