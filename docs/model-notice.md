@@ -17,3 +17,9 @@ Runtime compatibility is intentionally narrow for this alpha: one float32 input 
 OCR is provided by the pinned `rapidocr==3.10.0` dependency. Its wheel includes `PP-OCRv6_det_small.onnx`, `PP-OCRv6_rec_small.onnx`, and `ch_ppocr_mobile_v2.0_cls_mobile.onnx`. They are not copied into Vexa's wheel or downloaded on first use. Vexa uses explicit local paths and does not call RapidOCR's font-based visualization.
 
 RapidOCR code and the included PaddleOCR-derived models are Apache-2.0 licensed, with distinct upstream ownership. The dependency includes its complete license and `MODEL_LICENSES.md` attribution notice. See the [RapidOCR source and model notice](https://github.com/RapidAI/RapidOCR/blob/v3.10.0/python/MODEL_LICENSES.md) and [usage documentation](https://rapidai.github.io/RapidOCRDocs/main/en/install_usage/rapidocr/usage/). This is separate from the bundled YOLO model's AGPL terms.
+
+## Segmentation models
+
+The wheel and source archive bundle EfficientSAM ViT-T's encoder and decoder from the [official ONNX release](https://github.com/labelmeai/efficient-sam/releases/tag/onnx-models-20231225), without retraining. SHA-256 hashes and provenance are recorded in `vexa/data/NOTICE.md` and `scripts/setup-segmentation.py`. These models are Apache-2.0 licensed; the complete license is `LICENSE-SEGMENTATION`.
+
+Vexa's preprocessing and prompt decoding adapt [Osam's EfficientSAM implementation](https://github.com/wkentaro/osam/tree/748ac296612b2a1f86cd56a107ece705547d7d9c/osam/_models/efficientsam), copyright 2024 Kentaro Wada, MIT licensed (`LICENSE-THIRD-PARTY`). The selected pair totals 41,365,489 bytes. SAM2 benchmark weights are not shipped. Runtime does not depend on Osam, PyTorch, or a download service.

@@ -10,3 +10,14 @@ Export settings: float32, CPU, opset 17, 640x640, no simplification or embedded 
 SHA-256: 7b6c0aa273a2851fc7264ec5e94d53ebcfb1c7dce7f50cd7c6e236f039e885a6
 
 The complete upstream license is included in the distribution as LICENSE-MODEL. Keep this notice and the license when redistributing the model.
+
+
+# EfficientSAM segmentation model and adapter
+
+EfficientSAM ViT-T encoder and decoder are bundled without retraining, under Apache-2.0 (LICENSE-SEGMENTATION). Official ONNX weights: https://github.com/labelmeai/efficient-sam/releases/tag/onnx-models-20231225
+
+Encoder SHA-256: 7a73ee65aa2c37237c89b4b18e73082f757ffb173899609c5d97a2bbd4ebb02d
+Decoder SHA-256: e1afe46232c3bfa3470a6a81c7d3181836a94ea89528aff4e0f2d2c611989efd
+
+Preprocessing and box-prompt decoding in vexa/segmentation.py are adapted from Kentaro Wada's Osam at commit 748ac296612b2a1f86cd56a107ece705547d7d9c: https://github.com/wkentaro/osam/tree/748ac296612b2a1f86cd56a107ece705547d7d9c/osam/_models/efficientsam
+Copyright (c) 2024 Kentaro Wada. Full MIT notice: LICENSE-THIRD-PARTY. Vexa adds CPU thread limits, bounded image analysis, one-image embedding caching, cropped mask storage, and language integration.

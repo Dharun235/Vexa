@@ -4,7 +4,7 @@ from vexa.ast_nodes import VexaError
 from vexa.parser import parse
 
 
-def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False):
+def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False, segmented=False):
     for command in commands:
         kind = command.kind
         if command.confidence is not None and not 0 <= command.confidence <= 1:
@@ -14,13 +14,13 @@ def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False)
         if kind == "find_text" and not command.argument.strip():
             raise VexaError("Search text cannot be empty.", command.line, column=command.column)
         if kind == "load":
-            loaded, detected, ocr_done = True, False, False
+            loaded, detected, ocr_done, segmented = True, False, False, False
         elif kind != "print_text":
             if not loaded:
                 raise VexaError(
                     'Load your image first: load "image.jpg"', command.line, column=command.column
                 )
-            if kind in {"count", "print_count", "draw"} and not detected:
+            if kind in {"count", "print_count", "draw", "segment"} and not detected:
                 raise VexaError(
                     "Run detect before counting or drawing objects.",
                     command.line,
@@ -30,10 +30,19 @@ def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False)
                 raise VexaError(
                     "Run ocr before using text results.", command.line, column=command.column
                 )
+            if kind in {"count_masks", "draw_masks"} and not segmented:
+                raise VexaError(
+                    "Run segment detections before using masks.",
+                    command.line,
+                    column=command.column,
+                )
+            if kind == "segment":
+                segmented = True
             if kind == "ocr":
                 ocr_done = True
             if kind == "detect":
                 detected = True
+                segmented = False
 
 
 def check_source(source):

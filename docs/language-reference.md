@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.5.0a1 — language 0.3.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.6.0a1 — language 0.4.** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -11,6 +11,9 @@ load "filename"
 detect label [confidence NUMBER]
 count label
 draw boxes
+segment detections
+count masks
+draw masks
 ocr
 print text
 count text
@@ -62,7 +65,7 @@ show image
 | `draw text` | `load`, then `ocr` | Draws numbered quadrilateral outlines for recognized text regions. No font or word rendering. |
 | `show image` | `load` | Encodes the current working image into the output snapshot. Does not run inference or draw anything. |
 
-These forms share one parser and validator. `text` is reserved in the `print text`, `count text`, and `draw text` forms; `print "text"` remains a literal string. `help` and `exit` are terminal-console controls, not language keywords.
+These forms share one parser and validator. `masks` is reserved in `count masks`, `print masks` and `draw masks`. `text` is reserved in the `print text`, `count text`, and `draw text` forms; `print "text"` remains a literal string. `help` and `exit` are terminal-console controls, not language keywords.
 
 ### Counts refer to the latest detection selection
 
@@ -90,11 +93,11 @@ Repeated counts for a label overwrite that label's value in the counts dictionar
 
 `show image` captures the image at that point. Drawing afterwards does not update that snapshot: call `show image` again. If there are several `show image` commands, only the latest snapshot is returned. `show image` can display the loaded image without any detection.
 
-`detect` replaces detections and clears object counts, but preserves existing drawn pixels and the previous output snapshot. To begin another clean detection pass, reload the image first. Detection after drawing operates on the image containing those drawn boxes.
+`detect` replaces detections and clears object counts and masks, but preserves existing drawn pixels and the previous output snapshot. To begin another clean detection pass, reload the image first. Detection after drawing operates on the image containing those drawn boxes.
 
 OCR results remain separate from object detections. A new `ocr` replaces the text selection without changing object detections or object counts. `print text`, `count text`, and `draw text` reuse results without running OCR again. Object `count all` still counts only detected objects.
 
-A second `load` resets the working image to the original supplied photo and clears all detections, OCR results, text matches, scanned codes, image inspection, blur assessment, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
+A second `load` resets the working image to the original supplied photo and clears all masks, detections, OCR results, text matches, scanned codes, image inspection, blur assessment, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
 
 An error stops execution. The terminal reports an error and an exit status. The whole source is parsed and checked for command-order errors before execution, so those errors prevent any commands from running. This preflight does not require inference.
 
@@ -134,6 +137,7 @@ The result contains:
 | `text` | OCR lines joined with newlines; empty when no OCR results exist |
 | `text_regions` | Array of `text`, `confidence`, and four-point `box` coordinates in source-image pixels |
 | `text_matches` | Latest `find text` matches, using the same fields as `text_regions` |
+| `masks` | Latest nonempty masks: `label`, mask-bounds `box`, `area_pixels`, `image_percent`. Binary arrays stay internal. |
 | `codes` | Latest decoded codes: `text`, `format`, four-point `box` |
 | `image_info` | Latest inspection: width, height, channels, color order, dtype; null until requested |
 | `blur` | Latest detail score, threshold, assessment, and analysis dimensions; null until requested |
@@ -155,7 +159,7 @@ Image/model failures without a source location still have an explanatory message
 
 ## Compatibility
 
-This is the language reference for package 0.5.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+This is the language reference for package 0.6.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Interactive sessions
 
@@ -178,3 +182,22 @@ OCR uses the current working image, including any drawn overlays. Use `load` aga
 | `check blur` | `load` | Computes grayscale Laplacian variance; lower means less detail. Analysis scales images down to a maximum side of 1024 pixels. Scores below 100 are labelled possibly blurry. This is a heuristic: texture, contrast and resolution affect it, and a blank image also scores low. |
 
 These queries do not draw or modify pixels. Each invocation replaces its own previous result. `ocr` clears prior search matches; `load` and `:reset` clear all query results. All commands operate on the working image, including existing drawn overlays. Code decoding needs no OCR, YOLO, external service, or model download. Small, damaged or obscured codes may not decode; an empty result does not prove that an image contains no codes.
+
+## Segmentation
+
+```vexa
+load "dog-bicycle.jpg"
+detect dog
+segment detections
+count masks
+draw masks
+show image
+```
+
+`segment detections` uses each current detection box as an EfficientSAM ViT-T prompt. It computes one image embedding and reuses it across boxes and repeated calls on identical pixels. There is no direct text-to-mask command: object labels come from the detector. The model pair is bundled, runs offline on two CPU threads, and loads only when needed. The chosen model and its tradeoffs are documented in [the local benchmark](segmentation-benchmark.md).
+
+`count masks` (or `print masks`) counts nonempty predicted masks, which can differ from the number of detections. `draw masks` overlays their filled regions and outlines without changing the mask selection. The JSON summary reports each mask's pixel area, percentage of the whole image, and mask bounds `[x1, y1, x2, y2]` with exclusive right/bottom edges. Masks can overlap, so their percentages must not be summed as unique coverage. Empty detections return zero masks without loading a segmentation model.
+
+A successful `detect` clears prior masks and their count; `load`/`:reset` clear masks and the embedding but retain loaded model sessions. A failed segmentation retains the previous successful masks. All prompts use current working-image pixels, including overlays. Draw after segmentation for a clean result; drawing changes pixels, so another segmentation recomputes the embedding.
+
+Limits: 32 detections per segmentation command; analyze at most a 1024-pixel image side; resize masks back to source-image coordinates. Binary masks are stored as cropped regions with a combined 64 MiB limit. Use fewer detections, higher confidence, or a smaller image if a limit is reached. Model memory is additional: this is a CPU feature, but not a low-memory guarantee. The benchmark worker peaked around 1.13 GiB. Small objects, fine boundaries and overlapping people can be inaccurate; pixel area is an image-space measurement, not physical size.

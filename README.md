@@ -15,7 +15,7 @@ show image
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.5.0a1/vexa-0.5.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.6.0a1/vexa-0.6.0a1-py3-none-any.whl
 ```
 
 The package includes the interpreter and object-detection model; its pinned OCR dependency includes the OCR models. No separate model setup is needed. After installation, detection works offline.
@@ -31,6 +31,8 @@ vexa repl --image street.jpg
 
 The REPL retains the image and detections between commands. Use `help`, `help ocr`, `:reset`, or `exit` (the colon shortcuts still work). `show image` saves a PNG; it does not open a browser or desktop viewer.
 
+Segmentation: `detect dog`, `segment detections`, `count masks`, `draw masks`, then `show image`. Models are included and load on demand. See [the CPU model comparison](docs/segmentation-benchmark.md).
+
 Try `vexa help scan` for QR/barcode reading, `vexa help find` for OCR search, and `vexa help check` for blur scoring. `inspect image` reports decoded image properties; `detect person confidence 0.7` selects stronger detections.
 
 ## Documentation
@@ -43,7 +45,7 @@ Try `vexa help scan` for QR/barcode reading, `vexa help find` for OCR search, an
 
 See [examples](examples/), [changelog](CHANGELOG.md), and [package verification](docs/package-verification.md). This is a terminal-only alpha with Python 3.12 and a bundled model; no GPU, Node.js, or PyTorch is needed by installed users. Platform coverage is described in the verification notes.
 
-Vexa source is [MIT licensed](LICENSE). The bundled YOLO model carries [its upstream terms](docs/model-notice.md), included as [LICENSE-MODEL](LICENSE-MODEL).
+Vexa source is [MIT licensed](LICENSE). The bundled YOLO model carries [its upstream terms](docs/model-notice.md), included as [LICENSE-MODEL](LICENSE-MODEL). EfficientSAM weights use [Apache-2.0](LICENSE-SEGMENTATION); the adapted Osam routines retain [their MIT notice](LICENSE-THIRD-PARTY).
 
 ## Read text
 

@@ -1,25 +1,30 @@
-# Vexa 0.5.0a1 — image queries
+# Vexa 0.6.0a1 — CPU object segmentation
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.5.0a1/vexa-0.5.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.6.0a1/vexa-0.6.0a1-py3-none-any.whl
 ```
 
-Add `--force` to upgrade an existing installation.
+Add `--force` to upgrade an existing installation. Models are included: no extra download or GPU is required after installation.
 
-New commands:
+```vexa
+load "dog-bicycle.jpg"
+detect dog
+segment detections
+count masks
+draw masks
+show image
+```
 
-- `scan codes`: decode QR codes and barcodes on CPU with ZXing-C++; print content and format, retain positions. No links are opened.
-- `find text "TOTAL"`: search recognized OCR lines using case-insensitive literal matching; print matching text and positions. Run `ocr` first.
-- `detect person confidence 0.7`: apply a per-command confidence threshold before NMS. Default remains 0.25.
-- `inspect image`: report working-image dimensions, channels, color order and pixel type.
-- `check blur`: report a Laplacian detail score and rough assessment. Images are bounded to a 1024-pixel side for analysis; this heuristic is not a quality guarantee.
+Segmentation uses object detection boxes as prompts. `count masks` counts nonempty masks; `draw masks` overlays their pixels. Existing optional CLI JSON reports include each mask's label, pixel area, image percentage and bounds.
 
-All queries preserve image pixels. `load` and `:reset` clear their results. The existing optional CLI JSON report includes query results; no `save results` command was added.
+A local two-thread CPU comparison selected EfficientSAM ViT-T over SAM2.1 Tiny: 41 MB versus 155 MB of weights, about 20% faster encoding and 18% less peak process memory. SAM2 produced more complete masks on overlapping people. The chosen default prioritizes resources; it is not universally more accurate. See [the comparison and reproduction steps](https://github.com/Dharun235/Vexa/blob/v0.6.0a1/docs/segmentation-benchmark.md).
 
-Try `vexa run examples/codes.vexa --image examples/codes_sample.png` from a source checkout, or `help scan` in the REPL. Existing detection/OCR commands remain supported, offline after installation.
+Models load lazily, reuse the current image embedding, and run offline. Analysis is limited to a 1024-pixel side; masks return to source coordinates. Limit: 32 detections and 64 MiB cropped mask storage. Total model memory is additional: the benchmark worker peaked around 1.13 GiB.
 
-73 tests pass, including real QR/Code 128 decoding, confidence filtering, OCR, CLI/REPL and reset behavior. macOS Apple Silicon is runtime-verified; Windows/Linux still need runtime testing. See [Getting started](https://github.com/Dharun235/Vexa/blob/v0.5.0a1/docs/getting-started.md).
+85 tests pass, including real offline segmentation, embedding reuse, shared validation, state recovery, drawing and CLI/REPL behavior. macOS Apple Silicon is runtime-verified; other platforms still need runtime testing.
 
-Published from `codex/installable-language`; `main` is unchanged. Assets include a wheel, source archive and checksums. Earlier releases remain available.
+Migration: `masks` is reserved by `count masks` and `print masks`; use `count "masks"` for an object label or `print "masks"` for literal text. Existing commands remain supported. EfficientSAM weights are Apache-2.0; adapted Osam routines retain MIT attribution. All licenses and model notices ship in the distributions.
+
+Published from `codex/installable-language`; `main` is unchanged. Wheel, source archive and checksums are attached. Earlier releases remain available.

@@ -11,10 +11,11 @@ from vexa.vision import draw_boxes
 class Session:
     """State for one program or REPL; the input image and detector can be reused."""
 
-    def __init__(self, source_image, vision, reader=None):
+    def __init__(self, source_image, vision, reader=None, segmenter=None):
         self.source_image = source_image
         self.vision = vision
         self.reader = reader
+        self.segmenter = segmenter
         self.reset()
 
     def reset(self):
@@ -29,11 +30,19 @@ class Session:
         self.text_matches = []
         self.image_info = None
         self.blur = None
+        self.masks = []
+        self.segmented = False
+        if self.segmenter is not None:
+            self.segmenter.clear_image()
 
     def execute(self, commands):
         # Validate the entire submission before any image changes or inference.
         validate_commands(
-            commands, loaded=self.image is not None, detected=self.detected, ocr_done=self.ocr_done
+            commands,
+            loaded=self.image is not None,
+            detected=self.detected,
+            ocr_done=self.ocr_done,
+            segmented=self.segmented,
         )
         logs = []
         for command in commands:
@@ -55,8 +64,26 @@ class Session:
                     )
                     self.detections = detections
                     self.detected = True
+                    self.masks, self.segmented = [], False
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
                     logs.append(f"Detected {len(detections)} object(s) matching {target}.")
+                elif kind == "segment":
+                    if self.segmenter is None:
+                        from vexa.segmentation import Segmenter
+
+                        self.segmenter = Segmenter()
+                    masks = self.segmenter.segment(self.image, self.detections)
+                    self.masks, self.segmented = masks, True
+                    self.counts.pop("masks", None)
+                    logs.append(f"Segmented {len(masks)} object(s).")
+                elif kind == "count_masks":
+                    self.counts["masks"] = len(self.masks)
+                    logs.append(f"masks: {len(self.masks)}")
+                elif kind == "draw_masks":
+                    from vexa.segmentation import draw_masks
+
+                    self.image = draw_masks(self.image, self.masks)
+                    logs.append(f"Drew {len(self.masks)} mask(s).")
                 elif kind == "ocr":
                     if self.reader is None:
                         from vexa.ocr import TextReader
@@ -134,12 +161,13 @@ class Session:
             "codes": self.codes.copy(),
             "image_info": self.image_info,
             "blur": self.blur,
+            "masks": [item.summary(self.source_image.shape) for item in self.masks],
         }
 
 
-def execute(source, source_image, vision, reader=None):
-    return execute_commands(parse(source), source_image, vision, reader)
+def execute(source, source_image, vision, reader=None, segmenter=None):
+    return execute_commands(parse(source), source_image, vision, reader, segmenter)
 
 
-def execute_commands(commands, source_image, vision, reader=None):
-    return Session(source_image, vision, reader).execute(commands)
+def execute_commands(commands, source_image, vision, reader=None, segmenter=None):
+    return Session(source_image, vision, reader, segmenter).execute(commands)

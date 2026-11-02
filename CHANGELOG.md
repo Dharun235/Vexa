@@ -2,6 +2,16 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
+## 0.6.0a1 — box-prompted segmentation — 2026-11-02
+
+- Benchmark SAM2 Tiny and EfficientSAM ViT-T on this CPU with identical image/box prompts. Select EfficientSAM for smaller weights, faster encoding and lower measured memory; record SAM2's quality advantage on overlapping people.
+- Add `segment detections`, `count masks`, and `draw masks` to files and the REPL with shared ordering checks.
+- Bundle the selected ONNX pair for offline use without extra dependencies or setup. Load lazily, use two CPU threads, and cache one image embedding.
+- Keep cropped masks with bounded prompts/analysis/storage and return label, area, coverage and bounds in the existing JSON report.
+- Add focused state/reset/error tests, a real CPU/offline smoke test, model checksum setup, provenance and licenses.
+
+Migration: `masks` is reserved by `count masks` and `print masks`; `count "masks"` still requests an object label, and `print "masks"` prints literal text. Existing inference commands retain their defaults.
+
 ## 0.5.0a1 — image queries — 2026-11-02
 
 - Add `scan codes` for offline QR and barcode decoding with a small ZXing-C++ CPU dependency.

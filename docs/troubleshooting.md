@@ -62,3 +62,7 @@ Use `help` or `help ocr` inside the console, or `vexa help ocr` from the shell. 
 If text commands report `Run ocr before using text results`, run `ocr` after loading the image. Blank or unrecognized images return zero text lines. For unclear results, try a clean, upright image with larger, well-lit printed text and run OCR before drawing boxes. The reader can make mistakes, especially with handwriting and dense layouts.
 
 Missing OCR model files indicate an incomplete dependency installation: reinstall the standard Vexa package. The normal installation already includes them; do not install Tesseract or run a separate model downloader. Use `--debug` for an unexpected OCR failure.
+
+## Segmentation
+
+Run `detect label` before `segment detections`, then `count masks` or `draw masks`. Detecting again invalidates old masks. Zero detected objects gives zero masks. Segmentation uses more CPU and memory than detection; use a smaller image or fewer detections when limits are reached. Overlapping subjects or fine boundaries may need a stronger model; the current resource-first default is EfficientSAM. Installed releases include its models. If a source checkout reports missing weights, run `uv run python scripts/setup-segmentation.py`.

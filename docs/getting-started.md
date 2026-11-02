@@ -9,7 +9,7 @@ Vexa runs a plain text `.vexa` file against one image. Run a saved program or ex
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then install the alpha wheel:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.5.0a1/vexa-0.5.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.6.0a1/vexa-0.6.0a1-py3-none-any.whl
 vexa --version
 ```
 
@@ -145,3 +145,13 @@ count person
 These commands print results directly in the terminal. `find text` searches existing OCR results without running the engine again. Blur is a rough detail score, not a guaranteed quality verdict. Scanned links are displayed without opening them.
 
 Try `examples/codes.vexa` with `--image examples/codes_sample.png`: it contains one QR code and one Code 128 barcode. For text search, use `examples/ocr.vexa` and its OCR sample. Use `help scan`, `help find`, `help inspect`, `help check`, or `help detect` in the console for syntax.
+
+## Segment detected objects
+
+Run the included example:
+
+```sh
+vexa run examples/segment.vexa --image examples/dog-bicycle.jpg --output dog-mask.png
+```
+
+It detects the dog, generates a pixel mask, counts it, and saves an overlay. In the REPL, use `help segment`, then `detect dog`, `segment detections`, `count masks`, `draw masks`, and `show image` after loading your image. No model setup is needed for an installed release. Segmentation is heavier than detection and only loads its models when called. See [the model comparison](segmentation-benchmark.md) for measured resource use and limitations.

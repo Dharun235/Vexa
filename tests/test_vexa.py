@@ -69,8 +69,8 @@ def test_zero_counts_and_load_resets_state(image, fake_vision):
 
 
 @pytest.mark.parametrize("path", list(Path("examples").glob("*.vexa")))
-def test_examples(path, image, fake_vision, fake_reader):
-    assert execute(path.read_text(), image, fake_vision, fake_reader)["logs"]
+def test_examples(path, image, fake_vision, fake_reader, fake_segmenter):
+    assert execute(path.read_text(), image, fake_vision, fake_reader, fake_segmenter)["logs"]
 
 
 def test_load_alias_never_reads_a_path(image, fake_vision):

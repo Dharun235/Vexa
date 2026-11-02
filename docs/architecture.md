@@ -77,3 +77,5 @@ The session keeps its latest snapshot as PNG bytes. The terminal writes those by
 Image queries in `analysis.py` reuse OpenCV for inspection and bounded blur scoring; code scanning imports ZXing-C++ lazily. Text search reuses existing OCR regions. Detection confidence belongs to the command node and is validated before image I/O or inference, then applied before NMS. Query results remain session-local and clear on load/reset.
 
 The scanning adapter follows the [official ZXing-C++ Python API](https://github.com/zxing-cpp/zxing-cpp/blob/master/wrappers/python/README.md). Its installed dependency supplies its own Apache-2.0 license; no scanner models are bundled or downloaded.
+
+Segmentation uses `segmentation.py`: a lazy EfficientSAM encoder/decoder on CPU, one cached image embedding keyed by dimensions and pixels, box prompts from the detector, and cropped boolean mask state. Models are package resources; setup downloads belong only to the build/source workflow. Session reset drops embeddings and masks while keeping the loaded sessions. Result serialization emits summaries, never NumPy mask arrays.

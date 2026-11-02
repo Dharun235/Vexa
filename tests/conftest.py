@@ -41,3 +41,24 @@ def fake_reader():
             ]
 
     return Reader()
+
+
+@pytest.fixture
+def fake_segmenter():
+    from vexa.segmentation import Mask
+
+    class Segmenter:
+        clears = 0
+        calls = 0
+
+        def clear_image(self):
+            self.clears += 1
+
+        def segment(self, image, detections):
+            self.calls += 1
+            return [
+                Mask(item.label, (5, 10, 15, 20), np.ones((10, 10), dtype=bool))
+                for item in detections
+            ]
+
+    return Segmenter()

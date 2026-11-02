@@ -14,6 +14,7 @@ Start with [Getting started](getting-started.md). It takes you from installation
 - [Language setup research](language-setup.md): Python/C++/Rust execution, shell versus IDE workflows, and proposed Vexa tooling.
 - [Contributing](../CONTRIBUTING.md): branch workflow, tests, packaging, and publishing.
 - [Changelog](../CHANGELOG.md): user-visible changes.
+- [Segmentation comparison](segmentation-benchmark.md): local CPU measurements and why EfficientSAM was selected.
 - [Package verification](package-verification.md): what was tested and what remains unverified.
 
-The package is currently **0.5.0a1**. These pages describe that alpha. They are plain Markdown and work locally or on GitHub; no documentation server is needed.
+The package is currently **0.6.0a1**. These pages describe that alpha. They are plain Markdown and work locally or on GitHub; no documentation server is needed.

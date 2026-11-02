@@ -5,6 +5,7 @@ export UV_CACHE_DIR="$PWD/.uv-cache"
 export UV_PYTHON_INSTALL_DIR="$PWD/.uv-python"
 if [ ! -f src/vexa/data/yolo11n.onnx ]; then ./scripts/setup-model.sh; fi
 uv sync --locked
+uv run --locked python scripts/setup-segmentation.py
 uv run --locked pytest
 uv run --locked ruff check src tests scripts
 uv build --no-sources

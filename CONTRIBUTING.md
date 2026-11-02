@@ -26,6 +26,8 @@ If the bundled model is missing in a source checkout:
 
 The script exports YOLO11n in an isolated environment and copies the ONNX model into `src/vexa/data/`. PyTorch and Ultralytics never enter the normal runtime environment. Exact export dependencies are in `uv.lock`; retain [model provenance](docs/model-notice.md), both license files, and the model notice.
 
+Source segmentation weights can be restored with `uv run python scripts/setup-segmentation.py`. The release build verifies their checksums before packaging. Retain `LICENSE-SEGMENTATION`, `LICENSE-THIRD-PARTY`, and the data notice.
+
 ## Develop and verify
 
 ```sh
@@ -39,7 +41,7 @@ uv run ruff format --check src tests scripts
 
 `./scripts/dev.sh` is a convenience wrapper accepting the same CLI arguments. With no arguments, it prints help.
 
-Real-image smoke tests run when the bundled ONNX model exists, otherwise they skip. Unit and console tests reuse deterministic detector and OCR fixtures. Real OCR tests reject network downloads and check CPU providers. Fix bugs with focused regression tests. For command changes, update the reference and affected examples in the same commit. Runnable documentation blocks are labelled `vexa`; syntax templates and intentionally invalid programs use `text`.
+Real-image smoke tests run when the bundled ONNX model exists, otherwise they skip. Unit and console tests reuse deterministic detector and OCR fixtures. Real OCR and segmentation tests reject runtime downloads and check CPU providers. Fix bugs with focused regression tests. For command changes, update the reference and affected examples in the same commit. Runnable documentation blocks are labelled `vexa`; syntax templates and intentionally invalid programs use `text`.
 
 After verification, remove task-created temporary environments, output copies, old local distributions, and unused caches. Preserve active environments, user data/custom models, current release artifacts, and published history. Follow [AGENTS.md](AGENTS.md).
 
@@ -56,7 +58,7 @@ Push the feature branch and create a GitHub prerelease targeting the tested comm
 
 ```sh
 git push origin codex/installable-language
-gh release create v0.5.0a1 dist/vexa-0.5.0a1-py3-none-any.whl dist/vexa-0.5.0a1.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.5.0a1' --notes-file docs/release-notes.md
+gh release create v0.6.0a1 dist/vexa-0.6.0a1-py3-none-any.whl dist/vexa-0.6.0a1.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.6.0a1' --notes-file docs/release-notes.md
 ```
 
 Replace `COMMIT_SHA` with the tested commit. Verify the public installation and checksums. Do not reuse a version for different distributions. Package-index publishing is not configured; no PyPI release is implied.
