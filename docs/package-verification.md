@@ -26,7 +26,7 @@ The `py3-none-any` wheel tag applies to Vexa's Python code. ONNX Runtime, NumPy,
 
 ## Publishing
 
-The alpha is prepared for a GitHub prerelease from `codex/installable-language`, with a wheel, source archive, separate ONNX model, upstream license/notice, and checksums. It is not a PyPI release: package-index credentials are not configured. The release notes identify the exact assets and limits.
+The [GitHub prerelease](https://github.com/Dharun235/Vexa/releases/tag/v0.1.0a1) is published from feature-branch commit `2c2b8a4`, with a wheel, source archive, separate ONNX model, upstream license/notice, and checksums. The public wheel was installed as a user-level uv tool and run from outside the checkout. Its downloaded model produced four people on the street sample, and every downloaded asset matched `SHA256SUMS`. It is not a PyPI release: package-index credentials are not configured. The release notes identify the exact assets and limits.
 
 ## Known limits
 

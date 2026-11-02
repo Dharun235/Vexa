@@ -8,7 +8,22 @@ First installable alpha of the Vexa computer-vision language.
 - `vexa serve` opens the optional local playground, bundled in the wheel.
 - Six command keywords: `load`, `detect`, `count`, `draw`, `print`, `show`.
 
-Install the wheel with uv and Python 3.12, then install the separate ONNX model. See the branch's getting-started guide for the commands. No GPU, Node.js, or PyTorch is needed by installed users.
+## Install
+
+With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
+
+```sh
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.1.0a1/vexa-0.1.0a1-py3-none-any.whl
+```
+
+Download [yolo11n.onnx](https://github.com/Dharun235/Vexa/releases/download/v0.1.0a1/yolo11n.onnx), then run this from your downloads folder:
+
+```sh
+vexa model install yolo11n.onnx
+vexa --version
+```
+
+Continue with [your first program](https://github.com/Dharun235/Vexa/blob/codex/installable-language/docs/getting-started.md#3-save-your-first-program), or install the [optional playground](https://github.com/Dharun235/Vexa/blob/codex/installable-language/docs/getting-started.md#optional-use-the-browser-playground). No GPU, Node.js, or PyTorch is needed by installed users.
 
 This alpha has actual runtime verification on Apple Silicon macOS. Platform resolution checks and clean-install results are recorded in `docs/package-verification.md`. Other CPU/OS combinations are not yet runtime-certified. The wheel's portable Python tag does not make its native dependencies universal.
 
