@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export UV_CACHE_DIR="$PWD/.uv-cache"
+export UV_PYTHON_INSTALL_DIR="$PWD/.uv-python"
+export YOLO_CONFIG_DIR="$PWD/.uv-cache/yolo"
+export MPLCONFIGDIR="$PWD/.uv-cache/matplotlib"
+uv run --group export python scripts/export_model.py
+uv sync --locked

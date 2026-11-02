@@ -1,0 +1,6 @@
+load "image.jpg"
+detect all
+count all
+print "Here is what Vexa found."
+draw boxes
+show image

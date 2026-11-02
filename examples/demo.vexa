@@ -1,0 +1,6 @@
+# Count people in your uploaded photo
+load "street.jpg"
+detect person
+count person
+draw boxes
+show image
