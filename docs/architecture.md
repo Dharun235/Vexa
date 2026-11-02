@@ -22,7 +22,7 @@ image operations and ONNX CPU inference
 logs, counts, detections, and an optional image
 ```
 
-The terminal, REPL, browser, and API all use this same path. They do not have separate language implementations.
+File execution and the REPL use this same path. They do not have separate language implementations.
 
 | Component | Responsibility | Source |
 | --- | --- | --- |
@@ -35,8 +35,6 @@ The terminal, REPL, browser, and API all use this same path. They do not have se
 | Model management | Chooses the model path and validates/copies a model into user storage | [model.py](../src/vexa/model.py) |
 | Terminal runner | Reads files, presents errors, and writes PNG/JSON outputs | [cli.py](../src/vexa/cli.py) |
 | REPL | Reads one command at a time and reuses one session and model | [repl.py](../src/vexa/repl.py) |
-| Local API | Accepts source and an uploaded image; returns results or an error | [main.py](../src/vexa/main.py) |
-| Playground | Editor, uploader, Run button, and results | [frontend/src](../frontend/src/) |
 
 ## Does it need a compiler?
 
@@ -46,9 +44,9 @@ ONNX is the model's portable computation format. ONNX Runtime optimises and exec
 
 ## What gets installed?
 
-The wheel contains the Python interpreter code, grammar, terminal entry point, built playground, and CPU model. Native dependencies provide image operations and CPU inference. The model is read directly from the package; first use needs no download or cache copy. An optional user-installed model can override it.
+The wheel contains the Vexa interpreter, grammar, terminal entry point, and CPU model. Native dependencies provide image operations and CPU inference. The model is read directly from the package; first use needs no download or cache copy. An optional user-installed model can override it.
 
-The standard installation includes FastAPI and Uvicorn, so `vexa serve` works immediately. PyTorch and Ultralytics are used only in an isolated developer environment to export the model; they are not needed by installed users.
+PyTorch and Ultralytics are used only in an isolated developer environment to export the model; they are not needed by installed users.
 
 ## What is checked, and when?
 
@@ -60,12 +58,16 @@ The standard installation includes FastAPI and Uvicorn, so `vexa serve` works im
 | Input/model runtime | Missing file, invalid image, missing or unsupported ONNX model |
 | Output | Destination cannot be written |
 
-`vexa check` covers parsing and predictable command-order errors. `vexa run` covers the complete path. Errors stop the run and include the command's source line when available. The API returns structured errors with line and column; the terminal returns an exit status. See [troubleshooting](troubleshooting.md).
+`vexa check` covers parsing and predictable command-order errors. `vexa run` covers the complete path. Errors stop the run and include the command's source line when available. The terminal shows source locations and returns an exit status. See [troubleshooting](troubleshooting.md).
 
 ## Keeping the runtime small
 
-One ONNX session is created lazily per runner/server process. Inference uses CPU only, two intra-op threads, and one inter-op thread. The local server serialises inference, and each request owns its language state. `count` and `draw` reuse detections; they do not load another model or run inference again.
+One ONNX session is created lazily per terminal process. Inference uses CPU only, two intra-op threads, and one inter-op thread. A file run owns its language state; the REPL reuses one session. `count` and `draw` reuse detections; they do not load another model or run inference again.
 
 ## Session and validation boundary
 
-`check_source` combines parsing with shared validation. `Session.execute` also validates submissions against the current session state before changing it; this protects programmatic and REPL callers. File/API preflight occurs before image decoding; the lightweight session check uses the same rules rather than duplicating them. Batch runners create a fresh session per request, while the REPL retains one until reset or exit. Model failures can leave earlier successful runtime commands in place, but a rejected syntax/order submission does not alter session state.
+`check_source` combines parsing with shared validation. `Session.execute` also validates submissions against the current session state before changing it; this protects programmatic and REPL callers. File preflight occurs before image decoding; the lightweight session check uses the same rules rather than duplicating them. File runners create a fresh session per program, while the REPL retains one until reset or exit. Model failures can leave earlier successful runtime commands in place, but a rejected syntax/order submission does not alter session state.
+
+## Image output
+
+The session keeps its latest snapshot as PNG bytes. The terminal writes those bytes directly to disk; no HTTP transport, base64 encoding, web assets, or browser process is involved. JSON reports contain an image path, counts, logs, and detections.

@@ -10,7 +10,7 @@ import numpy as np
 from vexa.ast_nodes import VexaError
 from vexa.model import model_path
 
-MAX_UPLOAD = 10 * 1024 * 1024
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,7 @@ class Vision:
             except Exception as exc:
                 logging.getLogger(__name__).exception("ONNX inference failed")
                 raise VexaError(
-                    "ONNX inference failed. Check the model and server logs.", kind="vision"
+                    "ONNX inference failed. Rerun with --debug for details.", kind="vision"
                 ) from exc
 
     def _decode(self, predictions, shape, target, scale, left, top):
@@ -125,18 +125,18 @@ class Vision:
 
 
 def decode_image(data: bytes):
-    if len(data) > MAX_UPLOAD:
-        raise VexaError("Image exceeds the 10 MB upload limit.", kind="upload")
+    if len(data) > MAX_IMAGE_BYTES:
+        raise VexaError("Image exceeds the 10 MB image size limit.", kind="image")
     if not data:
-        raise VexaError("Upload a non-empty image.", kind="upload")
+        raise VexaError("Provide a non-empty image.", kind="image")
     try:
         image = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
     except cv2.error as exc:
-        raise VexaError("Could not decode this image.", kind="upload") from exc
+        raise VexaError("Could not decode this image.", kind="image") from exc
     if image is None:
-        raise VexaError("Upload a valid JPEG, PNG, or WebP image.", kind="upload")
+        raise VexaError("Provide a valid JPEG, PNG, or WebP image.", kind="image")
     if image.shape[0] * image.shape[1] > 20_000_000:
-        raise VexaError("Image exceeds 20 megapixels. Resize it and try again.", kind="upload")
+        raise VexaError("Image exceeds 20 megapixels. Resize it and try again.", kind="image")
     return image
 
 

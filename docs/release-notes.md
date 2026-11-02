@@ -1,31 +1,25 @@
-# Vexa 0.2.0a2 — interactive sessions and shared checks
+# Vexa 0.3.0a1 — terminal only
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.2.0a2/vexa-0.2.0a2-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.3.0a1/vexa-0.3.0a1-py3-none-any.whl
 ```
 
-The package includes the language runner, browser playground, and pretrained CPU model. No separate model download or playground extra is needed. Detection works offline from the first run after installation.
+For an existing installation, add `--force` to upgrade.
 
 ```sh
 vexa check demo.vexa
 vexa run demo.vexa --image photo.jpg --output result.png
 vexa repl --image photo.jpg
-# Or open the browser playground:
-vexa serve
 ```
 
-In the console, enter Vexa commands one at a time. It retains the image, detections and model. Use `:help`, `:reset`, or `:quit`; Ctrl+D also exits. `show image` saves the result PNG. Errors allow you to correct the next entry without restarting.
+The browser playground, HTTP API, and `vexa serve` are removed. The package has no web-server dependencies or browser assets. Node.js is no longer needed for development or builds.
 
-The same validator now checks command ordering for file runs, the REPL, API and playground. `vexa check` performs those checks without an image or model. Terminal diagnostics include filename, line, column, and a source caret. API errors add a `column` field. Invalid program ordering is rejected before any batch command executes. All six language commands remain unchanged.
+File execution and REPL share the same parser, validator, and interpreter. The REPL retains its image, detections, and CPU model. Use `:help`, `:reset`, and `:quit`; `show image` saves a PNG. JSON reports remain available through `--json`.
 
-See [Getting started](https://github.com/Dharun235/Vexa/blob/v0.2.0a2/docs/getting-started.md) for a five-line program and examples. Users upgrading from an earlier alpha can repeat the installation command with `--force`. Existing user-installed models are preserved and continue to take precedence.
+One installation still includes the pretrained CPU model. Detection works offline after installation, with no GPU, PyTorch, or model setup required. macOS Apple Silicon is runtime-verified; Windows/Linux still need runtime testing.
 
-This alpha runs on CPU with Python 3.12. macOS Apple Silicon is runtime-verified; Linux and Windows have dependency-resolution checks but still need runtime testing. No GPU, Node.js, or PyTorch is needed by installed users.
+See [Getting started](https://github.com/Dharun235/Vexa/blob/v0.3.0a1/docs/getting-started.md). Vexa source is MIT licensed; the bundled model has upstream AGPL-3.0 terms, included in both distributions.
 
-Assets are an installable wheel, a source archive, and `SHA256SUMS`. Both distributions contain the model and built editor. Vexa source is MIT licensed; the bundled Ultralytics model carries AGPL-3.0 terms. Both license files and model provenance are included.
-
-Published from `codex/installable-language`; `main` is unchanged. This is a GitHub prerelease, not a PyPI publication.
-
-This revision replaces generated editor assets before packaging, removing an obsolete bundle retained in 0.2.0a1. Runtime behaviour is unchanged.
+Published from `codex/installable-language`; `main` is unchanged. The assets are a wheel, source archive, and `SHA256SUMS`. Earlier public releases remain versioned history.

@@ -1,7 +1,6 @@
 """Small terminal frontend for the shared Vexa parser and interpreter."""
 
 import argparse
-import base64
 import json
 import logging
 import sys
@@ -39,9 +38,6 @@ def arguments():
     repl.add_argument("--image", required=True, type=Path)
     repl.add_argument("--model", type=Path)
     repl.add_argument("--output", type=Path, default=Path("vexa-output.png"))
-    serve = commands.add_parser("serve", help="Start the local browser playground")
-    serve.add_argument("--port", type=int, default=8000)
-    serve.add_argument("--model", type=Path)
     model = commands.add_parser("model", help="Manage the model stored in your user data folder")
     actions = model.add_subparsers(dest="model_action", required=True)
     actions.add_parser("path", help="Print the model location")
@@ -59,8 +55,8 @@ def protect_inputs(inputs, outputs):
         )
 
 
-def save_image(data_url, path):
-    path.write_bytes(base64.b64decode(data_url.split(",", 1)[1]))
+def save_image(png_bytes, path):
+    path.write_bytes(png_bytes)
 
 
 def print_error(error, source="", filename="<repl>"):
@@ -77,11 +73,11 @@ def print_error(error, source="", filename="<repl>"):
 
 def run_file(args):
     from vexa.interpreter import execute_commands
-    from vexa.vision import MAX_UPLOAD, Vision, decode_image
+    from vexa.vision import MAX_IMAGE_BYTES, Vision, decode_image
 
     commands = check_source(read_source(args.program))
     with args.image.open("rb") as stream:
-        image = decode_image(stream.read(MAX_UPLOAD + 1))
+        image = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
     outputs = [args.output] + ([args.json_output] if args.json_output else [])
     protect_inputs([args.program, args.image], outputs)
     result = execute_commands(commands, image, Vision(args.model))
@@ -98,32 +94,6 @@ def run_file(args):
         print(f"Saved {args.output}")
 
 
-def serve(args):
-    from vexa.vision import Vision
-
-    try:
-        import uvicorn
-
-        from vexa.main import app
-    except ImportError as exc:
-        raise VexaError(
-            "Playground dependencies are missing. Reinstall Vexa.",
-            kind="installation",
-        ) from exc
-    if not Path(__file__).with_name("web").joinpath("index.html").is_file():
-        raise VexaError(
-            "This build has no playground assets. Use an official wheel or build the frontend first.",
-            kind="installation",
-        )
-    if args.model:
-        import vexa.main as api
-
-        api.vision = Vision(args.model)
-    if not 1 <= args.port <= 65535:
-        raise VexaError("Port must be between 1 and 65535.", kind="input")
-    uvicorn.run(app, host="127.0.0.1", port=args.port)
-
-
 def main(argv=None):
     args = arguments().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.CRITICAL)
@@ -137,8 +107,6 @@ def main(argv=None):
             from vexa.repl import run_repl
 
             run_repl(args)
-        elif args.command == "serve":
-            serve(args)
         elif args.model_action == "path":
             print(model_path())
         else:

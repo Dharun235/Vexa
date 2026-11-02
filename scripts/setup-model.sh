@@ -7,4 +7,5 @@ export YOLO_CONFIG_DIR="$PWD/.uv-cache/yolo"
 export MPLCONFIGDIR="$PWD/.uv-cache/matplotlib"
 uv run --isolated --only-group export python scripts/export_model.py
 uv sync --locked
-uv run --locked vexa model install models/yolo11n.onnx
+mkdir -p src/vexa/data
+cp models/yolo11n.onnx src/vexa/data/yolo11n.onnx

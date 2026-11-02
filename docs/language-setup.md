@@ -1,6 +1,6 @@
 # Language execution and a practical setup for Vexa
 
-Historical research checked 2 November 2026. Shared validation and the REPL proposed below were subsequently implemented in package 0.2.0a1; see [the current guide](getting-started.md#work-interactively-in-the-terminal). This compares established tooling with Vexa 0.1.0a2. The recommendations below are a proposal; they are not newly implemented features.
+Historical research checked 2 November 2026. Shared validation and the REPL proposed below were subsequently implemented in package 0.2.0a1; the browser and HTTP API were later removed in 0.3.0a1 to keep Vexa terminal-only. See [the current guide](getting-started.md#work-interactively-in-the-terminal). This compares established tooling with Vexa 0.1.0a2. The recommendations below are a proposal; they are not newly implemented features.
 
 ## Start with three separate ideas
 
@@ -52,9 +52,9 @@ These definitions follow the compiler stages above; the Vexa column is an assess
 | Editor or IDE | Edit a file, see errors, and press Run | Any editor plus its terminal works; dedicated Vexa integration is not implemented |
 | Interactive prompt / REPL | Type a command, see a result, keep the session alive | Not implemented; useful next for a visual learning language |
 | Inline command or standard input | Execute short snippets or pipe generated source into a runner | Not implemented; a small automation improvement after the baseline |
-| Browser playground | Edit, upload an image, run, and inspect results | **Available** through `vexa serve` |
+| Browser playground | Edit and run code in a web interface | Removed in 0.3.0a1; outside Vexa's terminal-only scope |
 | Notebook | Execute cells through a language kernel and display rich output | Not implemented; defer until session behaviour is stable |
-| Application API | Another program supplies code and input data | **Available** through the local HTTP API |
+| Application API | Another program supplies code and input data | The earlier HTTP API was removed in 0.3.0a1 |
 
 Python offers files, interactive mode, `-c`, `-m`, and standard input. That is a useful example of several entry points sharing an implementation, not a list Vexa must copy immediately. [Python command-line interfaces](https://docs.python.org/3/using/cmdline.html).
 
@@ -71,12 +71,11 @@ vexa --help
 vexa --version
 vexa check demo.vexa
 vexa run demo.vexa --image photo.jpg --output result.png
-vexa serve
 ```
 
 Next, improve diagnostics with filename, line, column, a short source excerpt, and a suggested fix. Extend `check` to catch predictable command-order mistakes before loading an image or model. It currently checks syntax only. A program's detection accuracy and file availability still require runtime checks.
 
-Use a shared validation function so the terminal, API, playground, and future editor integration agree. Do not run inference just to check source text.
+Use a shared validation function so the terminal, REPL, and future editor integration agree. Do not run inference just to check source text.
 
 ### 2. Add a small persistent REPL
 

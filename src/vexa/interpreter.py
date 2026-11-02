@@ -1,4 +1,3 @@
-import base64
 from dataclasses import asdict
 
 import cv2
@@ -55,8 +54,8 @@ class Session:
                     success, encoded = cv2.imencode(".png", self.image)
                     if not success:
                         raise VexaError("Could not encode the result image.")
-                    self.shown = "data:image/png;base64," + base64.b64encode(encoded).decode()
-                    logs.append("Displayed image.")
+                    self.shown = encoded.tobytes()
+                    logs.append("Prepared image output.")
             except VexaError as exc:
                 exc.line, exc.column = command.line, command.column
                 raise
@@ -68,9 +67,9 @@ class Session:
         }
 
 
-def execute(source, uploaded_image, vision):
-    return execute_commands(parse(source), uploaded_image, vision)
+def execute(source, source_image, vision):
+    return execute_commands(parse(source), source_image, vision)
 
 
-def execute_commands(commands, uploaded_image, vision):
-    return Session(uploaded_image, vision).execute(commands)
+def execute_commands(commands, source_image, vision):
+    return Session(source_image, vision).execute(commands)

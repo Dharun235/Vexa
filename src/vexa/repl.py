@@ -7,7 +7,7 @@ from vexa.ast_nodes import VexaError
 from vexa.cli import print_error, protect_inputs, save_image
 from vexa.interpreter import Session
 from vexa.parser import parse
-from vexa.vision import MAX_UPLOAD, Vision, decode_image
+from vexa.vision import MAX_IMAGE_BYTES, Vision, decode_image
 
 HELP = 'Use load "image.jpg", detect person, count person, draw boxes, show image.\n:help — help   :reset — clear session   :quit — exit'
 
@@ -20,7 +20,7 @@ def run_repl(args):
         pass
     protect_inputs([args.image], [args.output])
     with args.image.open("rb") as stream:
-        source_image = decode_image(stream.read(MAX_UPLOAD + 1))
+        source_image = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
     session = Session(source_image, Vision(args.model))
     print(f"Vexa {__version__} — {Path(args.image).name}. Type :help for commands; Ctrl+D exits.")
     while True:

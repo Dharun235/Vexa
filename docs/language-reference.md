@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.2.0a2 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.3.0a1 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -42,11 +42,11 @@ show image
 
 | Command | Requires | Effect |
 | --- | --- | --- |
-| `load "filename"` | An image supplied to this execution | Copies the uploaded source image into working state. Clears detections, counts, and the displayed snapshot. The quoted name is only an alias. |
+| `load "filename"` | An image supplied to this execution | Copies the supplied source image into working state. Clears detections, counts, and the displayed snapshot. The quoted name is only an alias. |
 | `detect label` | `load` | Runs CPU inference on the current working image. Replaces detections with matches for that label, or all recognised labels for `all`. Clears the counts dictionary. Does not draw boxes. |
 | `count label` | `load`, then `detect` | Counts matching detections from the latest detection command, stores the count under that label, and logs it. `all` counts all current detections. Does not change the image or run inference. |
 | `draw boxes` | `load`, then `detect` | Draws every current detection with its label and confidence on the working image. Does not change counts. |
-| `print "text"` | None | Appends literal text to the execution log. Does not require `load`, though the current API still requires an uploaded image for every request. |
+| `print "text"` | None | Appends literal text to the execution log. Does not require `load`; the terminal runner still requires an image argument. |
 | `print label` | `load`, then `detect` | Computes, stores, and logs a count just like `count label`. Unquoted, single-token labels only. |
 | `show image` | `load` | Encodes the current working image into the output snapshot. Does not run inference or draw anything. |
 
@@ -80,9 +80,9 @@ Repeated counts for a label overwrite that label's value in the counts dictionar
 
 `detect` replaces detections and clears counts, but preserves existing drawn pixels and the previous output snapshot. To begin another clean detection pass, reload the image first. Detection after drawing operates on the image containing those drawn boxes.
 
-A second `load` resets the working image to the original uploaded photo and clears detections, counts, and output snapshot. It cannot load a second file. Every API execution / click of Run has independent state.
+A second `load` resets the working image to the original supplied photo and clears detections, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
 
-An error stops execution. The API returns a structured error rather than partial results. The whole source is parsed and checked for command-order errors before execution, so those errors prevent any commands from running. This preflight does not require inference.
+An error stops execution. The terminal reports an error and an exit status. The whole source is parsed and checked for command-order errors before execution, so those errors prevent any commands from running. This preflight does not require inference.
 
 ## Supported object labels
 
@@ -106,9 +106,9 @@ This list was checked against the local model metadata. Replacing the model may 
 
 ## Inputs and outputs
 
-The terminal and playground share the command rules above. The terminal reads the image named by `--image`. Its optional JSON report uses `image_path` for the saved PNG; the API uses an embedded `image` data URL.
+The terminal reads one image from `--image`. Limits are 10 MB of encoded image bytes, 20 megapixels after decoding, and 20,000 source characters. JPEG, PNG, and WebP are supported inputs. There is no video, webcam, directory, or multi-image execution in this version.
 
-The local API accepts one uploaded image and one source string per execution. Limits are 10 MB of encoded image bytes, 20 megapixels after decoding, and 20,000 source characters. JPEG, PNG, and WebP are the intended playground formats. There is no video, webcam, directory, or multi-image execution in this version.
+The optional `--json FILE` report refers to the saved PNG instead of embedding a duplicate image.
 
 The result contains:
 
@@ -117,30 +117,25 @@ The result contains:
 | `logs` | Ordered array of execution messages and printed text |
 | `counts` | Object mapping counted labels to integer counts; empty if no counts were requested |
 | `detections` | Latest detection selection: `label`, `confidence` from 0 to 1, and `box` as `[x1, y1, x2, y2]` in original-image pixel coordinates |
-| `image` | Latest PNG data URL from `show image`, or null when no current snapshot exists |
+| `image_path` | Saved PNG path, or null when no current snapshot exists |
 
 The upper-left corner is the coordinate origin. Inference uses fixed 640×640 letterboxed input, confidence threshold 0.25, and class-aware non-maximum suppression with IoU threshold 0.45. Vexa 0.1 has no language command for changing these settings.
 
 ### Errors
 
-Syntax, runtime, upload, and vision errors use HTTP 400 with this shape:
+The terminal shows a filename (or `<repl>`), one-based line and column, message, source excerpt, and caret when available:
 
-```json
-{
-  "error": {
-    "kind": "runtime",
-    "message": "Run detect before counting or drawing objects.",
-    "line": 2,
-    "column": 1
-  }
-}
+```text
+demo.vexa:2:1: runtime: Run detect before counting or drawing objects.
+  count person
+  ^
 ```
 
-`line` and `column` are one-based and can be null for failures not associated with a command, such as invalid image data. Missing API form fields return FastAPI's HTTP 422 validation response instead. See [troubleshooting](troubleshooting.md) for fixes.
+Image/model failures without a source location still have an explanatory message. Exit statuses distinguish successful execution, Vexa errors, file/argument errors, and unexpected failures. See [troubleshooting](troubleshooting.md).
 
 ## Compatibility
 
-This is the language reference for package 0.2.0a2. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+This is the language reference for package 0.3.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Interactive sessions
 

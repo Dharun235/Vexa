@@ -2,6 +2,16 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. The project is an unreleased local prototype; version headings describe implementation state and do not imply a published package or Git tag.
 
+## 0.3.0a1 — terminal only — 2026-11-02
+
+- Remove the React/Monaco playground, HTTP API, `vexa serve`, and web-server dependencies.
+- Remove browser screenshots, walkthrough, generated assets, and Node.js build requirements.
+- Keep file execution, shared validation, persistent REPL, bundled CPU model, and PNG/JSON output.
+- Write PNG bytes directly instead of encoding internal image output as a web data URL.
+- Build and test packages entirely with uv/Python.
+
+Migration: use `vexa repl --image FILE` or `vexa run PROGRAM --image FILE` instead of `vexa serve`. Image failures now use the terminal-oriented `image` error kind.
+
 ## 0.2.0a2 — packaging cleanup — 2026-11-02
 
 - Replace generated web assets before packaging so obsolete editor bundles are not carried into the wheel. Runtime and language behaviour are unchanged.

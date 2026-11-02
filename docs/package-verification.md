@@ -1,31 +1,31 @@
 # Package verification
 
-**Package:** Vexa 0.2.0a2 · **Date:** 2 November 2026
+**Package:** Vexa 0.3.0a1 · **Date:** 2 November 2026
 
-## One-install package
+## Terminal-only package
 
-The wheel and source archive include the ONNX model, its license/notice, the language interpreter, terminal runner, built browser editor, and web-server dependencies. There is no separate model or playground installation. The model runs directly from package resources; first inference needs no network or user-cache copy.
+The wheel and source archive contain the parser, shared validator, session interpreter, CLI, REPL, CPU model, and both licenses. There is no browser implementation, HTTP API, generated web bundle, or Node.js build step. FastAPI, Uvicorn, multipart handling, and HTTP test-client dependencies have been removed.
 
-The model selection order is: explicit `--model`, `VEXA_MODEL_PATH`, an existing user-installed model, then the bundled model. User overrides from 0.1.0a1 are preserved.
+The model is read directly from package resources. No separate model setup, first-run download, GPU, PyTorch, or Ultralytics runtime is required. An explicit model path or an existing user-installed model can still override the bundled model.
 
-## Checks
+## Verification
 
-- 50 tests cover the commands, API, CLI, real CPU inference, package model selection, persistent REPL state/recovery/reset, shared preflight, and release checksums.
-- Ruff and the frontend production build pass.
-- Clean-wheel and source-archive checks verify that the model, grammar, web assets, and both licenses are included.
-- A fresh environment is tested outside the repository with no user-model cache and no model argument. It runs the included model and saves an annotated PNG plus counts.
-- A real terminal REPL run verified command-order and syntax error recovery, persistent counts, image saving, reset, and clean exit.
-- The standard installation provides `vexa run`, `vexa repl`, and `vexa serve`; it does not contain PyTorch or Ultralytics.
+- 50 tests cover grammar, shared validation, command execution, model selection, real inference, PNG/JSON output, REPL persistence/recovery/reset, error locations, and release checksums.
+- Ruff and shell-script checks pass. The Python-only release build also rebuilds the wheel from its source archive.
+- A clean wheel installation outside the checkout verifies file execution, counts, saved PNG/JSON, and a persistent REPL with real CPU inference.
+- Distribution contents and dependency metadata are checked to exclude web code, assets, and web-server dependencies.
+- `vexa serve` is rejected; supported terminal commands are `check`, `run`, `repl`, and `model`.
+- Image snapshots are PNG bytes internally. The terminal writes them directly; JSON reports store a file path instead of a duplicate image.
 
 ## Platform coverage
 
 | Platform | Evidence | Status |
 | --- | --- | --- |
-| macOS, Apple Silicon, Python 3.12 | Clean install, CLI, bundled model, CPU inference, and playground checks | Runtime verified |
-| Linux x86-64, Python 3.12 | Binary dependency resolution in the initial alpha | Runtime unverified |
-| Windows x86-64, Python 3.12 | Binary dependency resolution in the initial alpha | Runtime unverified |
-| Other Python versions, 32-bit CPUs, mobile devices, other architectures | Not tested | No compatibility claim |
+| macOS, Apple Silicon, Python 3.12 | Clean install, file execution, REPL, and CPU inference | Runtime verified |
+| Linux x86-64, Python 3.12 | Binary dependency resolution in an earlier alpha | Runtime unverified |
+| Windows x86-64, Python 3.12 | Binary dependency resolution in an earlier alpha | Runtime unverified |
+| Other versions, 32-bit CPUs, mobile devices, other architectures | Not tested | No compatibility claim |
 
-The portable Python wheel tag does not make the native dependencies universal. This is a still-image alpha with a fixed YOLO11n model format; no GPU, model training, or native Vexa compiler is needed.
+The Python wheel tag does not make native dependencies universal. This remains a still-image alpha using fixed-format YOLO11n inference.
 
-Releases are hosted on GitHub from `codex/installable-language`. No PyPI publication or merge into `main` is implied. The test client has an upstream Starlette/httpx deprecation notice and Vite reports a large editor chunk; checks still pass.
+Releases are hosted on GitHub from `codex/installable-language`. Published history is preserved; no PyPI publication or merge into `main` is implied. The earlier browser implementation and its local artifacts are removed from the current version.

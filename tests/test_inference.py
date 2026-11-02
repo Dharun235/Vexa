@@ -4,9 +4,10 @@ from pathlib import Path
 
 import pytest
 
+from vexa import model
 from vexa.vision import Vision, decode_image
 
-MODEL_PATH = Path("models/yolo11n.onnx")
+MODEL_PATH = Path(model.__file__).with_name("data") / "yolo11n.onnx"
 pytestmark = pytest.mark.skipif(not MODEL_PATH.exists(), reason="Run scripts/setup-model.sh first")
 
 

@@ -2,14 +2,14 @@
 
 [Documentation home](README.md) · [Commands](language-reference.md)
 
-Vexa runs a plain text `.vexa` file against one image. Use the terminal runner for saved programs, or the browser playground for experimenting.
+Vexa runs a plain text `.vexa` file against one image. Run a saved program or experiment in the interactive terminal console.
 
 ## 1. Install Vexa
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then install the alpha wheel:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.2.0a2/vexa-0.2.0a2-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.3.0a1/vexa-0.3.0a1-py3-none-any.whl
 vexa --version
 ```
 
@@ -17,7 +17,7 @@ uv creates an isolated environment and manages Python 3.12. If your terminal can
 
 The alpha has been run on an Apple Silicon Mac. Linux and Windows need 64-bit Python 3.12 plus compatible NumPy, OpenCV, and ONNX Runtime wheels. See [tested platforms](package-verification.md) before assuming a device is supported. “CPU inference” does not mean every processor or operating system is supported.
 
-The package includes the CPU model and browser playground. There is no separate model download, model-install command, or playground extra to set up. Once installation finishes, detection can run offline from the first use. It does not use a GPU or send images to an inference service.
+The package includes the CPU model. There is no separate model download or model-install command to set up. Once installation finishes, detection can run offline from the first use. It does not use a GPU or send images to an inference service.
 
 ## 2. Save your first program
 
@@ -31,7 +31,7 @@ draw boxes
 show image
 ```
 
-This loads the supplied image, finds people, counts them, draws their boxes, and returns the picture. The name in `load` is an alias: the actual image comes from `--image` or the playground upload. It never opens an arbitrary path from inside the program.
+This loads the supplied image, finds people, counts them, draws their boxes, and returns the picture. The name in `load` is an alias: the actual image comes from `--image`. It never opens an arbitrary path from inside the program.
 
 ## 3. Run it
 
@@ -78,18 +78,6 @@ The image and detections stay available between commands. `show image` writes th
 
 A syntax or command-order error leaves the previous session intact so you can correct the next command. Earlier successful commands are retained after a runtime error. Resetting does not delete a previously saved output file. Command history is not saved to disk. Console controls such as `:quit` are not Vexa language commands and cannot be used in `.vexa` files.
 
-## Optional: use the browser playground
-
-The playground is already installed. Start it with:
-
-```sh
-vexa serve
-```
-
-Open **http://127.0.0.1:8000**, upload a photo, paste the five lines, and click **Run program**. Use **Execution log** to read each step and **Download image** to save the result. Press **Ctrl+C** in the server terminal to stop it. If port 8000 is occupied, use `vexa serve --port 8001`.
-
-The installed wheel includes the editor and its worker. Node.js is not needed. The browser editor does not automatically save `.vexa` source files: copy your program into a text editor to keep it.
-
 ## Try counting several objects
 
 Use `detect all` so that one inference can supply several counts:
@@ -108,7 +96,7 @@ Counting does not rerun detection. Each execution starts fresh. For the complete
 
 ## Already working from the repository?
 
-Use `./scripts/dev.sh` from the project root for the local playground. It creates the uv environment, exports a model if missing, and builds the frontend if needed. For the command-line runner, use `uv run vexa` in that checkout. Developers need Node.js for building the frontend; package users do not. Full setup and reload commands live in [CONTRIBUTING.md](../CONTRIBUTING.md).
+Use `uv run vexa` from the project root, or run `./scripts/dev.sh` with the same arguments. For example, `./scripts/dev.sh repl --image examples/street.jpg`. The wrapper syncs the environment and prepares the model if needed. See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup and checks.
 
 ## Advanced: use another model location
 

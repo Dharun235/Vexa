@@ -1,6 +1,6 @@
 # Vexa
 
-Vexa is a small language for finding and counting objects in images. It runs locally on CPU.
+Vexa is a small terminal language for finding and counting objects in images. It runs locally on CPU.
 
 ```vexa
 load "street.jpg"
@@ -10,17 +10,17 @@ draw boxes
 show image
 ```
 
-## Install and run
+## Install
 
-The current alpha is **0.2.0a2**. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.2.0a2/vexa-0.2.0a2-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.3.0a1/vexa-0.3.0a1-py3-none-any.whl
 ```
 
-One installation includes the terminal runner, browser playground, and CPU model. See [Getting started](docs/getting-started.md) for your first program.
+The package includes the interpreter and CPU model. No separate model setup is needed. After installation, detection works offline.
 
-After installing Vexa:
+## Run a file or start the console
 
 ```sh
 vexa check demo.vexa
@@ -28,18 +28,16 @@ vexa run demo.vexa --image street.jpg --output result.png
 vexa repl --image street.jpg
 ```
 
-No GPU, Node.js, PyTorch, or source checkout is needed to run the installed package. Python 3.12 is managed by uv. Model conversion is a separate developer task.
+The REPL retains the image and detections between commands. Use `:help`, `:reset`, or `:quit`. `show image` saves a PNG; it does not open a browser or desktop viewer.
 
 ## Documentation
 
-| You want to… | Read |
-| --- | --- |
-| Install Vexa and run your first program | [Getting started](docs/getting-started.md) |
-| Look up commands and object names | [Language reference](docs/language-reference.md) |
-| Fix an error or report a bug | [Troubleshooting](docs/troubleshooting.md) |
-| Understand the parser, interpreter, and runtime | [How Vexa works](docs/architecture.md) |
-| Develop, test, or publish a change | [Contributing](CONTRIBUTING.md) |
+- [Getting started](docs/getting-started.md): installation, file execution, and REPL.
+- [Language reference](docs/language-reference.md): six commands, object names, and execution rules.
+- [Troubleshooting](docs/troubleshooting.md): errors and bug reports.
+- [Architecture](docs/architecture.md): parser, shared validator, session, and CPU runtime.
+- [Contributing](CONTRIBUTING.md): development, tests, packaging, and releases.
 
-See [examples](examples/), [release changes](CHANGELOG.md), and [package verification](docs/package-verification.md). Vexa supports still images; it has no loops, variables, video input, or standalone native compiler yet. The REPL retains state between commands; file runs remain independent.
+See [examples](examples/), [changelog](CHANGELOG.md), and [package verification](docs/package-verification.md). This is a terminal-only alpha with Python 3.12 and a bundled model; no GPU, Node.js, or PyTorch is needed by installed users. Platform coverage is described in the verification notes.
 
-Vexa's source code is [MIT licensed](LICENSE). The bundled YOLO model has its own [upstream licensing terms](https://www.ultralytics.com/license); see [model provenance](docs/model-notice.md).
+Vexa source is [MIT licensed](LICENSE). The bundled YOLO model carries [its upstream terms](docs/model-notice.md), included as [LICENSE-MODEL](LICENSE-MODEL).

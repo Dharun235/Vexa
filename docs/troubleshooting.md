@@ -26,9 +26,6 @@ means the command on line 3 needs an earlier `detect` command.
 | No image output | Put `show image` after drawing. |
 | Invalid image / limit exceeded | Use a valid JPEG, PNG, or WebP up to 10 MB and 20 megapixels. |
 | File error | Check the file path, UTF-8 source encoding, destination folder, and write permissions. |
-| Playground dependencies are missing | Reinstall the standard Vexa wheel. |
-| Cannot reach the playground | Keep `vexa serve` running; check the port shown in its terminal. |
-| Port already in use | Use the existing instance or choose `vexa serve --port 8001`. |
 
 ## Terminal exit statuses
 
@@ -46,7 +43,7 @@ means the command on line 3 needs an earlier `detect` command.
 Open a [GitHub issue](https://github.com/Dharun235/Vexa/issues) with:
 
 1. The output of `vexa --version` and your operating system / CPU architecture.
-2. The exact terminal command or playground steps.
+2. The exact terminal command and REPL entries.
 3. A small `.vexa` program, expected result, and actual error or result.
 4. A shareable sample image if the problem depends on image content.
 

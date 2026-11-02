@@ -1,11 +1,9 @@
 import cv2
 import pytest
-from fastapi.testclient import TestClient
 
 from vexa.ast_nodes import VexaError
 from vexa.cli import main
 from vexa.interpreter import Session, execute
-from vexa.main import app
 from vexa.parser import parse
 from vexa.validation import check_source
 
@@ -35,18 +33,6 @@ def test_check_and_run_reject_order_before_image_io(tmp_path, capsys):
     ]:
         assert main(args) == 1
         assert "Run detect" in capsys.readouterr().err
-
-
-def test_api_uses_same_preflight_before_decoding():
-    response = TestClient(app).post(
-        "/execute",
-        data={"source": 'load "x"\ncount person'},
-        files={"image": ("invalid.png", b"not an image")},
-    )
-    assert response.status_code == 400
-    assert response.json()["error"]["line"] == 2
-    assert response.json()["error"]["column"] == 1
-    assert "Run detect" in response.json()["error"]["message"]
 
 
 def test_session_retains_state_and_rejects_bad_submission(image, fake_vision):

@@ -99,3 +99,10 @@ def test_missing_model_is_clear_error(program, tmp_path, capsys):
         == 1
     )
     assert "Model not found" in capsys.readouterr().err
+
+
+def test_browser_command_is_removed(capsys):
+    with pytest.raises(SystemExit) as error:
+        main(["serve"])
+    assert error.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err

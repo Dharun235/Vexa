@@ -22,11 +22,3 @@ class VexaError(Exception):
         self.line = line
         self.kind = kind
         self.column = column
-
-    def as_dict(self):
-        return {
-            "kind": self.kind,
-            "message": self.message,
-            "line": self.line,
-            "column": self.column,
-        }
