@@ -16,4 +16,4 @@ Start with [Getting started](getting-started.md). It takes you from installation
 - [Changelog](../CHANGELOG.md): user-visible changes.
 - [Package verification](package-verification.md): what was tested and what remains unverified.
 
-The package is currently **0.2.0a1**. These pages describe that alpha. They are plain Markdown and work locally or on GitHub; no documentation server is needed.
+The package is currently **0.2.0a2**. These pages describe that alpha. They are plain Markdown and work locally or on GitHub; no documentation server is needed.

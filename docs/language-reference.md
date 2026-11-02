@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.2.0a1 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.2.0a2 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -140,7 +140,7 @@ Syntax, runtime, upload, and vision errors use HTTP 400 with this shape:
 
 ## Compatibility
 
-This is the language reference for package 0.2.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+This is the language reference for package 0.2.0a2. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Interactive sessions
 

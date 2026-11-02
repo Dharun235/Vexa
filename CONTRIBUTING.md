@@ -77,7 +77,7 @@ The initial alpha uses a GitHub prerelease, so users can install the exact wheel
 
 ```sh
 git push -u origin codex/installable-language
-gh release create v0.2.0a1 dist/vexa-0.2.0a1-py3-none-any.whl dist/vexa-0.2.0a1.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.2.0a1' --notes-file docs/release-notes.md
+gh release create v0.2.0a2 dist/vexa-0.2.0a2-py3-none-any.whl dist/vexa-0.2.0a2.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.2.0a2' --notes-file docs/release-notes.md
 ```
 
 Replace `COMMIT_SHA` with the tested commit. The tag is a release snapshot; development remains on the feature branch. After publishing, download and install the hosted wheel again, check checksums, and rerun a sample image without a model argument or existing user-model cache. Do not reuse a version for different artifacts.

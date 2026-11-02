@@ -1,6 +1,6 @@
 # Package verification
 
-**Package:** Vexa 0.2.0a1 · **Date:** 2 November 2026
+**Package:** Vexa 0.2.0a2 · **Date:** 2 November 2026
 
 ## One-install package
 

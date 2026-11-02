@@ -7,6 +7,7 @@ uv sync --locked
 uv run --locked pytest
 uv run --locked ruff check src tests scripts
 (cd frontend && npm ci && npm run build)
+rm -rf src/vexa/web
 mkdir -p src/vexa/web
 cp -R frontend/dist/. src/vexa/web/
 if [ ! -f models/yolo11n.onnx ]; then ./scripts/setup-model.sh; fi

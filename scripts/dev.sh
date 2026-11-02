@@ -8,6 +8,7 @@ uv sync --locked
 if [ ! -f frontend/dist/index.html ]; then
   (cd frontend && npm ci && npm run build)
 fi
+rm -rf src/vexa/web
 mkdir -p src/vexa/web
 cp -R frontend/dist/. src/vexa/web/
 exec uv run --locked vexa serve --model models/yolo11n.onnx

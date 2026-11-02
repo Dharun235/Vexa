@@ -12,10 +12,10 @@ show image
 
 ## Install and run
 
-The current alpha is **0.2.0a1**. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
+The current alpha is **0.2.0a2**. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.2.0a1/vexa-0.2.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.2.0a2/vexa-0.2.0a2-py3-none-any.whl
 ```
 
 One installation includes the terminal runner, browser playground, and CPU model. See [Getting started](docs/getting-started.md) for your first program.

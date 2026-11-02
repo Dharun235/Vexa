@@ -2,6 +2,10 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. The project is an unreleased local prototype; version headings describe implementation state and do not imply a published package or Git tag.
 
+## 0.2.0a2 — packaging cleanup — 2026-11-02
+
+- Replace generated web assets before packaging so obsolete editor bundles are not carried into the wheel. Runtime and language behaviour are unchanged.
+
 ## 0.2.0a1 — interactive sessions and shared validation — 2026-11-02
 
 - Add `vexa repl --image FILE` with persistent image/detection state, model reuse, saved image output, reset/help/quit controls, and recovery after command errors.

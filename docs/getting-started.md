@@ -9,7 +9,7 @@ Vexa runs a plain text `.vexa` file against one image. Use the terminal runner f
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then install the alpha wheel:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.2.0a1/vexa-0.2.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.2.0a2/vexa-0.2.0a2-py3-none-any.whl
 vexa --version
 ```
 
