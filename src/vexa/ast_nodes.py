@@ -8,6 +8,9 @@ class Command:
     line: int
     column: int = 1
     confidence: float | None = None
+    body: tuple = ()  # commands inside an if or for each block
+    orelse: tuple = ()  # commands after else
+    condition: tuple | None = None  # (subject, label, operator, number) or ("contains", text)
 
 
 class VexaError(Exception):

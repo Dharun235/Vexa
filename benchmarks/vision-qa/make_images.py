@@ -61,5 +61,24 @@ if __name__ == "__main__":
     code_card(
         "manual_codes.png", [("https://example.com/manual/77", "QRCode"), ("PN-00918", "Code128")]
     )
+    labels = OUT.parent / "folders" / "labels"
+    labels.mkdir(parents=True, exist_ok=True)
+    cards = {
+        "label_01.png": ["PART 7731-B", "SERIAL SN77A12290", "QC PASS"],
+        "label_02.png": ["PART 7731-B", "SERIAL SN77A12291", "QC REJECT"],
+        "label_03.png": ["PART 4410-C", "SERIAL SN44C00817", "QC PASS"],
+        "label_04.png": ["PART 4410-C", "SERIAL SN44C00818", "QC REJECT"],
+    }
+    for name, lines in cards.items():
+        text_card(f"../folders/labels/{name}", lines)
+    codes = OUT.parent / "folders" / "codes"
+    codes.mkdir(exist_ok=True)
+    for name in ("manual_codes.png", "invoice.png"):
+        (codes / name).write_bytes((OUT / name).read_bytes())
+    (codes / "codes_sample.png").write_bytes((EXAMPLES / "codes_sample.png").read_bytes())
+    photos = OUT.parent / "folders" / "photos"
+    photos.mkdir(exist_ok=True)
+    for name in ("street.jpg", "football.jpg", "dog-bicycle.jpg"):
+        (photos / name).write_bytes((EXAMPLES / name).read_bytes())
     blurry = cv2.GaussianBlur(cv2.imread(str(EXAMPLES / "football.jpg")), (0, 0), 9)
     cv2.imwrite(str(OUT / "football_blurry.jpg"), blurry)

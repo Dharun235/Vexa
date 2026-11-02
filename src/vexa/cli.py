@@ -31,7 +31,7 @@ def arguments():
     check.add_argument("program", type=Path)
     run = commands.add_parser("run", help="Run a .vexa file on an image using CPU inference")
     run.add_argument("program", type=Path)
-    run.add_argument("--image", required=True, type=Path)
+    run.add_argument("--image", type=Path, help="Image for load (not needed for folder loops)")
     run.add_argument("--model", type=Path, help="Use this ONNX file instead of the installed model")
     run.add_argument("--output", type=Path, default=Path("vexa-output.png"), help="Output PNG path")
     run.add_argument(
@@ -45,7 +45,9 @@ def arguments():
         "ask", help="Answer a question about an image with a local model writing Vexa"
     )
     ask_command.add_argument("question")
-    ask_command.add_argument("--image", required=True, type=Path)
+    source = ask_command.add_mutually_exclusive_group(required=True)
+    source.add_argument("--image", type=Path)
+    source.add_argument("--folder", help="Ask about every image in this folder")
     ask_command.add_argument("--save", type=Path, help="Save the generated program to this file")
     bench = commands.add_parser("bench", help="Score vexa ask on benchmark tasks")
     bench.add_argument("--tasks", type=Path, default=Path("benchmarks/vision-qa/tasks.json"))
@@ -93,15 +95,23 @@ def print_error(error, source="", filename="<repl>"):
         print(f"  {excerpt}\n  {' ' * column}^", file=sys.stderr)
 
 
+def read_image(path):
+    from vexa.vision import MAX_IMAGE_BYTES, decode_image
+
+    if path is None:
+        return None
+    with path.open("rb") as stream:
+        return decode_image(stream.read(MAX_IMAGE_BYTES + 1))
+
+
 def run_file(args):
     from vexa.interpreter import execute_commands
-    from vexa.vision import MAX_IMAGE_BYTES, Vision, decode_image
+    from vexa.vision import Vision
 
     commands = check_source(read_source(args.program))
-    with args.image.open("rb") as stream:
-        image = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
+    image = read_image(args.image)
     outputs = [args.output] + ([args.json_output] if args.json_output else [])
-    protect_inputs([args.program, args.image], outputs)
+    protect_inputs([args.program] + ([args.image] if args.image else []), outputs)
     result = execute_commands(commands, image, Vision(args.model))
     image_data = result.pop("image")
     result["image_path"] = None
@@ -121,13 +131,15 @@ def run_file(args):
 def ask_file(args):
     from vexa.agent import OllamaClient, ask
     from vexa.interpreter import execute_commands
-    from vexa.vision import MAX_IMAGE_BYTES, Vision, decode_image
+    from vexa.vision import Vision
 
-    with args.image.open("rb") as stream:
-        image = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
+    image = read_image(args.image)
     vision = Vision()
+    question = args.question
+    if args.folder:
+        question += f'\nThe images are in the folder "{args.folder}"; use for each image in "{args.folder}".'
     result = ask(
-        args.question,
+        question,
         lambda commands: execute_commands(commands, image, vision),
         OllamaClient(args.llm, args.host),
     )

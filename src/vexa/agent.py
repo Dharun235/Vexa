@@ -44,7 +44,7 @@ One command per line, run top to bottom. Commands:
 {chr(10).join("- " + TOPICS[name] for name in _PROGRAM_TOPICS)}
 
 Rules:
-- Start with load "image.jpg". The real image is supplied separately.
+- For one image, start with load "image.jpg"; the real image is supplied separately.
 - detect the object the question asks about, then count that same label. Each detect replaces
   the previous detections. To count several kinds of object, use detect all, then one count per label.
 - These labels use the fast built-in detector; quote labels with spaces, e.g. detect "traffic light":
@@ -52,7 +52,9 @@ Rules:
   Any other object name also works with detect, e.g. detect "sunglasses" or detect "screw".
   Use the object name the question uses, e.g. detect "pickup truck" for a pickup truck.
 - Run ocr before print text or find text. Use scan codes for QR codes and barcodes.
-- There are no variables, conditions or loops. Do not draw or show anything unless asked.
+- For a folder, put the commands for one image inside for each … end (no load inside), record
+  what the question needs, and save csv after end when a table is asked for.
+- Indent block bodies by two spaces. Do not draw or show anything unless asked.
 - Reply with only the program in a ```vexa code block.
 
 Example question: How many dogs and cats are there?
@@ -67,6 +69,28 @@ Example question: What does the barcode say?
 ```vexa
 load "image.jpg"
 scan codes
+```
+
+Example question: For every photo in "parts/", record how many bolts it has; flag fewer than 4.
+```vexa
+for each image in "parts/"
+  detect "bolt"
+  record count "bolt"
+  if count "bolt" < 4
+    print "too few bolts"
+  end
+end
+save csv "bolts.csv"
+```
+
+Example question: Which photos in "shelf/" show a label saying EXPIRED?
+```vexa
+for each image in "shelf/"
+  ocr
+  if text contains "EXPIRED"
+    record count text
+  end
+end
 ```
 
 Example question: What is the invoice number?
@@ -84,7 +108,10 @@ The Vexa program
 produced this result:
 {result}
 
-Answer the question from this result only. Reply with one line:
+Answer the question from this result only. When it asks which images, name their files.
+"rows" has one entry per image: a missing or empty value means nothing was recorded or found
+for that image.
+Reply with one line:
 ANSWER: <short answer, e.g. a number, yes/no, or the exact text>"""
 
 
@@ -108,7 +135,7 @@ class OllamaClient:
             "messages": messages,
             "stream": False,
             "think": False,
-            "options": {"temperature": 0, "num_ctx": 8192},
+            "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 512},
         }
         request = urllib.request.Request(
             f"{self.host}/api/chat",
@@ -128,7 +155,7 @@ class OllamaClient:
 def extract_program(text):
     """The last fenced block, or the whole reply when the model skipped the fence."""
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    blocks = re.findall(r"```[a-zA-Z]*\n(.*?)```", text, flags=re.DOTALL)
+    blocks = re.findall(r"```[a-zA-Z]*\n(.*?)(?:```|$)", text, flags=re.DOTALL)
     return (blocks[-1] if blocks else text).strip() + "\n"
 
 
@@ -140,7 +167,7 @@ def describe_error(error, program):
 
 
 def summarise(result):
-    keep = ("logs", "counts", "text", "codes", "blur")
+    keep = ("rows", "logs", "counts", "text", "codes", "blur")
     return json.dumps({key: result[key] for key in keep if result.get(key)}, ensure_ascii=False)[
         :3000
     ]
@@ -162,6 +189,12 @@ def ask(question, run, client, max_attempts=3):
         messages.append({"role": "assistant", "content": f"```vexa\n{program}```"})
         try:
             commands = check_source(program)
+            if not any(c.kind in {"load", "for_each"} for c in commands):
+                raise VexaError(
+                    'The program never looks at the image. Start with load "image.jpg", then '
+                    "use ocr, detect or scan codes to find the answer.",
+                    1,
+                )
             result = run(commands)
         except VexaError as exc:
             error = describe_error(exc, program)

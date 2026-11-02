@@ -42,6 +42,7 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 | `feat/vexa-ask` | `vexa ask`, `vexa bench`, 26 benchmark tasks, baseline result |
 | `feat/lang-0.5` | Language and agent fixes driven by the baseline failures |
 | `feat/open-vocab` | M1: YOLO-World open-vocabulary detection, `vexa model download` |
+| `feat/lang-control` | M2: `if`/`else`, `for each image in`, `record`, `save csv`, folder benchmark tasks |
 
 Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
 
@@ -50,6 +51,7 @@ Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB
 | Language 0.4 (baseline) | 18/26 | 3/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 5.9 |
 | `feat/lang-0.5` | 22/26 | 7/9 | 9/9 | 4/4 | 2/2 | 0/2 | 96% | 5.5 |
 | `feat/open-vocab` | 23/26 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 5.8 |
+| `feat/lang-control` (32 tasks, + batch 6/6) | 29/32 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 7.9 |
 
 What the baseline showed: every program was valid, yet counting failed
 because valid programs were meaningless. `detect person` then `count bus`
@@ -62,6 +64,14 @@ does not know. The fixes:
   with an honest "cannot answer" instead of wasted retries.
 - Syntax errors show the usage of the command on that line, so the model
   repairs `print "x" + text` instead of repeating it.
+
+M2 added six folder tasks (counting per photo into a CSV, finding which
+labels say REJECT, reading every serial number, counting images with codes).
+They first scored 0/6 because the model put `load` inside loops and the
+repair hint pointed it the wrong way. Making `load` inside a loop reload that
+image, a loop example in the prompt, an answer prompt that explains rows, a
+check that rejects programs which never look at the image, and handling of
+unclosed code fences brought the suite to 6/6.
 
 The four remaining failures are detector limits: a missed tie, a pickup
 detected as a car, and sunglasses and trees, which are not COCO labels.
@@ -178,7 +188,7 @@ If (1) beats (3) on counting and inspection, that is the project's pitch.
 | Milestone | Done when |
 | --- | --- |
 | M1 Detector spike | Done: YOLO-World v2-S chosen, see open-vocabulary-benchmark.md |
-| M2 Language 0.5 | `if`, `for each`, `record`/`save csv`, open-vocabulary `detect`, validator and tests |
+| M2 Language 0.5 | Done except `measure`: `if`, `for each`, `record`/`save csv`, validator and tests |
 | M3 Agent | `vexa ask` answers the README example offline with repair loop and tests |
 | M4 Benchmark | Counting and reading suites, scores for the three configurations |
 | M5 Release | 0.7.0a1 wheel, README demo GIF, results table |

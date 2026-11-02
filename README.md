@@ -35,6 +35,21 @@ Segmentation: `detect dog`, `segment detections`, `count masks`, `draw masks`, t
 
 Try `vexa help scan` for QR/barcode reading, `vexa help find` for OCR search, and `vexa help check` for blur scoring. `inspect image` reports decoded image properties; `detect person confidence 0.7` selects stronger detections.
 
+## Check a whole folder
+
+```vexa
+for each image in "photos/"
+  detect person
+  record count person
+  if count person > 3
+    print "crowded"
+  end
+end
+save csv "people.csv"
+```
+
+`vexa run people.vexa` needs no `--image` when all image work is inside the loop.
+
 ## Ask in plain English
 
 A local model can write the program for you. Install [Ollama](https://ollama.com), then:

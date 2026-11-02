@@ -61,3 +61,25 @@ def test_ask_stops_when_object_is_not_detectable(image, fake_vision):
     result = ask("Is there a tree?", lambda c: execute_commands(c, image, fake_vision), client)
     assert result.attempts == 1 and result.program is None
     assert result.answer.startswith('Vexa cannot answer this: Unknown object "tree"')
+
+
+def test_score_rows_and_all_items():
+    rows = [
+        {"image": "a.jpg", "person": 2, "text": "SN1 | PASS"},
+        {"image": "b.jpg", "person": 0, "text": "SN2"},
+    ]
+    assert score({"type": "rows", "answer": {"a.jpg": 2, "b.jpg": 0}}, None, rows)
+    assert score({"type": "rows", "answer": {"a.jpg": "sn1", "b.jpg": "SN2"}}, None, rows)
+    assert not score({"type": "rows", "answer": {"a.jpg": 2, "c.jpg": 0}}, None, rows)
+    assert score({"type": "text_all", "answer": ["a.jpg", "b.jpg"]}, "a.jpg and b.jpg")
+    assert not score({"type": "text_all", "answer": ["a.jpg", "b.jpg"]}, "only a.jpg")
+
+
+def test_extract_program_from_an_unclosed_fence():
+    assert extract_program('Sure:\n```vexa\nload "x"\nocr\n') == 'load "x"\nocr\n'
+
+
+def test_ask_rejects_programs_that_ignore_the_image(image, fake_vision):
+    client = ScriptedClient(['```vexa\nprint "I cannot tell."\n```', PROGRAM, "ANSWER: 1"])
+    result = ask("How many people?", lambda c: execute_commands(c, image, fake_vision), client)
+    assert result.attempts == 2 and "never looks at the image" in result.errors[0]

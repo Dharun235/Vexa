@@ -6,6 +6,7 @@ the model wrote, its repairs and timings are saved so failures can be read.
 
 import json
 import re
+import tempfile
 import time
 from pathlib import Path
 
@@ -18,9 +19,13 @@ def _norm(text):
     return re.sub(r"[^a-z0-9.:/-]", "", str(text).casefold())
 
 
-def score(task, answer):
+def score(task, answer, rows=()):
+    if task["type"] == "rows":
+        return _rows_match(task["answer"], rows)
     if not answer:
         return False
+    if task["type"] == "text_all":
+        return all(_norm(item) in _norm(answer) for item in task["answer"])
     if task["type"] == "number":
         numbers = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", answer)]
         return bool(numbers) and numbers[0] in task["answer"]
@@ -29,28 +34,54 @@ def score(task, answer):
     return _norm(task["answer"]) in _norm(answer)
 
 
+def _rows_match(expected, rows):
+    """Some recorded column holds the expected value (number or text) for every image."""
+    by_image = {row.get("image"): row for row in rows}
+    if set(expected) - set(by_image):
+        return False
+    columns = {key for row in rows for key in row if key != "image"}
+    return any(
+        all(
+            _norm(want) in _norm(by_image[image].get(column, ""))
+            if isinstance(want, str)
+            else by_image[image].get(column) == want
+            for image, want in expected.items()
+        )
+        for column in columns
+    )
+
+
 def run_bench(tasks, client, root=Path("."), out=None, vision=None):
     vision = vision or Vision()
     rows, images, models = [], {}, {"reader": None, "segmenter": None}
     stream = out.open("w") if out else None
     for task in tasks:
-        if task["image"] not in images:
-            images[task["image"]] = decode_image(
-                (root / task["image"]).read_bytes()[: MAX_IMAGE_BYTES + 1]
+        question, image = task["question"], None
+        if "folder" in task:
+            folder = (root / task["folder"]).resolve()
+            question += (
+                f'\nThe images are in the folder "{folder}"; use for each image in "{folder}".'
             )
-        image = images[task["image"]]
+        else:
+            if task["image"] not in images:
+                images[task["image"]] = decode_image(
+                    (root / task["image"]).read_bytes()[: MAX_IMAGE_BYTES + 1]
+                )
+            image = images[task["image"]]
         started = time.monotonic()
-        result = ask(
-            task["question"],
-            lambda commands, image=image: _execute(commands, image, vision, models),
-            client,
-        )
+        with tempfile.TemporaryDirectory() as scratch:  # CSV files land here, not in the repo
+            result = ask(
+                question,
+                lambda commands, image=image: _execute(commands, image, vision, models, scratch),
+                client,
+            )
+        recorded = (result.result or {}).get("rows", [])
         row = {
             "id": task["id"],
             "suite": task["suite"],
             "expected": task["answer"],
             "answer": result.answer,
-            "solved": score(task, result.answer),
+            "solved": score(task, result.answer, recorded),
             "valid": result.program is not None,
             "attempts": result.attempts,
             "seconds": round(time.monotonic() - started, 1),
@@ -71,9 +102,9 @@ def run_bench(tasks, client, root=Path("."), out=None, vision=None):
     return summary(rows)
 
 
-def _execute(commands, image, vision, models):
+def _execute(commands, image, vision, models, base="."):
     """Run with OCR and segmentation models shared across tasks."""
-    session = Session(image, vision, **models)
+    session = Session(image, vision, base=base, **models)
     try:
         return session.execute(commands)
     finally:

@@ -1,4 +1,14 @@
-start: (_NL | command _NL)* command?
+start: _NL* (_statement _NL*)*
+_statement: command _NL | block
+?block: "if" condition _NL body ("else" _NL body)? "end" _NL -> if_block
+      | "for" "each" "image" "in" ESCAPED_STRING _NL body "end" _NL -> for_each
+body: _NL* (_statement _NL*)*
+?condition: "count" subject COMPARE NUMBER -> count_condition
+          | "text" "contains" ESCAPED_STRING -> text_condition
+?subject: target
+        | "text" -> text_subject
+        | "masks" -> masks_subject
+        | "codes" -> codes_subject
 ?command: "load" ESCAPED_STRING -> load
         | "detect" target ("confidence" NUMBER)? -> detect
         | "segment" "detections" -> segment
@@ -18,8 +28,13 @@ start: (_NL | command _NL)* command?
         | "print" "masks" -> count_masks
         | "print" NAME -> print_count
         | "show" "image" -> show
+        | "record" "count" subject -> record_count
+        | "record" "text" -> record_text
+        | "record" "codes" -> record_codes
+        | "save" "csv" ESCAPED_STRING -> save_csv
 ?target: NAME -> bare_target
        | ESCAPED_STRING -> quoted_target
+COMPARE: "<=" | ">=" | "==" | "!=" | "<" | ">"
 NAME: /[a-zA-Z][a-zA-Z0-9_]*/
 _NL: /\r?\n/
 %import common.NUMBER

@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.6.0a1 — language 0.4.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.6.0a1 — language 0.5 (in development).** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -35,7 +35,7 @@ check blur
 - Unquoted labels match a letter followed by letters, digits, or underscores. That syntax alone does not make a label recognisable by the model.
 - `detect` and `count` accept quoted labels with spaces, such as `"traffic light"`.
 - `print "person"` prints the literal text `person`. `print person` computes a count. For multiword labels, use `count "traffic light"`; `print "traffic light"` prints text.
-- No semicolons, braces, imports, variables, arithmetic, loops, or conditionals are implemented.
+- Blocks: `if … else … end` and `for each image in "folder" … end` (see [Conditions, folders and results](#conditions-folders-and-results)). There are no semicolons, braces, imports, variables or arithmetic.
 
 For example:
 
@@ -100,6 +100,30 @@ OCR results remain separate from object detections. A new `ocr` replaces the tex
 A second `load` resets the working image to the original supplied photo and clears all masks, detections, OCR results, text matches, scanned codes, image inspection, blur assessment, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
 
 An error stops execution. The terminal reports an error and an exit status. The whole source is parsed and checked for command-order errors before execution, so those errors prevent any commands from running. This preflight does not require inference.
+
+## Conditions, folders and results
+
+```vexa
+for each image in "photos/"
+  detect "screw"
+  record count "screw"
+  if count "screw" < 12
+    print "missing screws"
+  end
+end
+save csv "screws.csv"
+```
+
+| Form | Meaning |
+| --- | --- |
+| `if CONDITION` … `end`, optional `else` | Runs the body when the condition holds. Blocks can be nested. Results produced inside a branch (for example a `detect`) are not available after `end`. |
+| `count LABEL OP NUMBER` | Condition on the latest detections; also `count text`, `count masks`, `count codes`. `OP` is `<`, `<=`, `>`, `>=`, `==` or `!=`. Same requirements as the matching `count` command. |
+| `text contains "QUERY"` | Condition: some OCR line contains the text, ignoring case. Needs `ocr`. |
+| `for each image in "FOLDER"` … `end` | Runs the body once per JPEG, PNG or WebP file in the folder, in name order, at most 10,000. Each image starts loaded with no results; do not `load` inside. Loops cannot be nested, and nothing from the loop is available after `end`. |
+| `record count LABEL` | Adds a column to the current row: also `record count text` (`text_lines`), `record count masks`, `record count codes` (`codes_found`), `record text` (OCR lines joined with ` \| `) and `record codes`. Inside a loop each image has its own row; outside, records go to one row. |
+| `save csv "FILE.csv"` | Writes all rows recorded so far, one column per recorded name plus `image`. The path must be relative and end in `.csv`; it is not allowed inside a loop. |
+
+Folder paths and CSV files are relative to the current directory. A program whose only image work happens in a loop needs no `--image`. Rows also appear in `--json` output under `rows`. Blocks span several lines, so use them in program files rather than the interactive console.
 
 ## Supported object labels
 

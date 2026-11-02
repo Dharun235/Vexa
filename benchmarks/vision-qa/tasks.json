@@ -24,5 +24,11 @@
   {"id": "blur-yes", "image": "benchmarks/vision-qa/images/football_blurry.jpg", "question": "Is this photo blurry?", "type": "yesno", "answer": "yes", "suite": "quality"},
   {"id": "blur-no", "image": "examples/codes_sample.png", "question": "Is this image out of focus?", "type": "yesno", "answer": "no", "suite": "quality"},
   {"id": "street-sunglasses", "image": "examples/street.jpg", "question": "How many people wear sunglasses?", "type": "number", "answer": [2], "suite": "open-vocabulary"},
-  {"id": "porch-tree", "image": "examples/dog-bicycle.jpg", "question": "Is there a tree in the photo?", "type": "yesno", "answer": "yes", "suite": "open-vocabulary"}
+  {"id": "porch-tree", "image": "examples/dog-bicycle.jpg", "question": "Is there a tree in the photo?", "type": "yesno", "answer": "yes", "suite": "open-vocabulary"},
+  {"id": "batch-people-csv", "folder": "benchmarks/vision-qa/folders/photos", "question": "Save a CSV with the number of people in each photo.", "type": "rows", "answer": {"dog-bicycle.jpg": 0, "football.jpg": 2, "street.jpg": 4}, "suite": "batch"},
+  {"id": "batch-most-people", "folder": "benchmarks/vision-qa/folders/photos", "question": "Which photo has the most people?", "type": "text", "answer": "street", "suite": "batch"},
+  {"id": "batch-dogs", "folder": "benchmarks/vision-qa/folders/photos", "question": "How many of these photos contain a dog?", "type": "number", "answer": [1], "suite": "batch"},
+  {"id": "batch-reject", "folder": "benchmarks/vision-qa/folders/labels", "question": "Which part labels are marked REJECT?", "type": "text_all", "answer": ["label_02", "label_04"], "suite": "batch"},
+  {"id": "batch-serials", "folder": "benchmarks/vision-qa/folders/labels", "question": "Make a CSV table with the text of every label.", "type": "rows", "answer": {"label_01.png": "SN77A12290", "label_02.png": "SN77A12291", "label_03.png": "SN44C00817", "label_04.png": "SN44C00818"}, "suite": "batch"},
+  {"id": "batch-qr", "folder": "benchmarks/vision-qa/folders/codes", "question": "How many of these images contain a QR code or barcode?", "type": "number", "answer": [2], "suite": "batch"}
 ]

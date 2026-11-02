@@ -1,18 +1,34 @@
+import csv
 from dataclasses import asdict
+from pathlib import Path
 
 import cv2
 
 from vexa.ast_nodes import VexaError
 from vexa.parser import parse
 from vexa.validation import validate_commands
-from vexa.vision import draw_boxes, unknown_label
+from vexa.vision import MAX_IMAGE_BYTES, decode_image, draw_boxes, unknown_label
+
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+MAX_FOLDER_IMAGES = 10_000
+_COMPARE = {
+    "<": lambda a, b: a < b,
+    "<=": lambda a, b: a <= b,
+    ">": lambda a, b: a > b,
+    ">=": lambda a, b: a >= b,
+    "==": lambda a, b: a == b,
+    "!=": lambda a, b: a != b,
+}
+_COLUMNS = {":text": "text_lines", ":masks": "masks", ":codes": "codes_found"}
 
 
 class Session:
     """State for one program or REPL; the input image and detector can be reused."""
 
-    def __init__(self, source_image, vision, reader=None, segmenter=None):
+    def __init__(self, source_image, vision, reader=None, segmenter=None, base=Path(".")):
         self.source_image = source_image
+        self.base = Path(base)
+        self.rows, self.row, self.image_name = [], None, "image"
         self.vision = vision
         self.reader = reader
         self.segmenter = segmenter
@@ -28,6 +44,7 @@ class Session:
         self.text_regions = []
         self.ocr_done = False
         self.codes = []
+        self.codes_done = False
         self.text_matches = []
         self.image_info = None
         self.blur = None
@@ -44,15 +61,26 @@ class Session:
             detected=self.detected,
             ocr_done=self.ocr_done,
             segmented=self.segmented,
+            codes_done=self.codes_done,
             selection=self.selection,
         )
         logs = []
+        self._run(commands, logs)
+        return self._result(logs)
+
+    def _run(self, commands, logs):
         for command in commands:
             kind, target = command.kind, command.argument
             try:
                 if kind == "load":
+                    if self.source_image is None:
+                        raise VexaError(
+                            "load needs an image: pass --image, or use for each image in a folder."
+                        )
+                    name = self.image_name if self.row is not None else target
+                    row = self.row
                     self.reset()
-                    self.image = self.source_image.copy()
+                    self.image, self.image_name, self.row = self.source_image.copy(), name, row
                     logs.append(
                         f'Loaded image as "{target}" ({self.image.shape[1]} × {self.image.shape[0]}).'
                     )
@@ -99,7 +127,7 @@ class Session:
                 elif kind == "scan_codes":
                     from vexa.analysis import scan_codes
 
-                    self.codes = scan_codes(self.image)
+                    self.codes, self.codes_done = scan_codes(self.image), True
                     logs.append(f"Found {len(self.codes)} code(s).")
                     logs.extend(f"{item['format']}: {item['text']}" for item in self.codes)
                 elif kind == "find_text":
@@ -140,17 +168,23 @@ class Session:
                     self.image = draw_boxes(self.image, self.detections)
                     logs.append(f"Drew {len(self.detections)} bounding box(es).")
                 elif kind in {"count", "print_count"}:
-                    labels = getattr(self.vision, "labels", None)
-                    if (
-                        labels
-                        and self.selection == "all"
-                        and target != "all"
-                        and target not in labels.values()
-                    ):
-                        raise VexaError(unknown_label(target, labels.values()))
-                    value = sum(target == "all" or item.label == target for item in self.detections)
+                    value = self._count(target)
                     self.counts[target] = value
                     logs.append(f"{target}: {value}")
+                elif kind == "if_block":
+                    branch = command.body if self._holds(command.condition) else command.orelse
+                    self._run(branch, logs)
+                elif kind == "for_each":
+                    self._for_each(target, command.body, logs)
+                elif kind == "record_count":
+                    column = _COLUMNS.get(target, target)
+                    self._record(column, self._count(target), logs)
+                elif kind == "record_text":
+                    self._record("text", " | ".join(r.text for r in self.text_regions), logs)
+                elif kind == "record_codes":
+                    self._record("codes", " | ".join(c["text"] for c in self.codes), logs)
+                elif kind == "save_csv":
+                    self._save_csv(target, logs)
                 elif kind == "show":
                     success, encoded = cv2.imencode(".png", self.image)
                     if not success:
@@ -158,8 +192,78 @@ class Session:
                     self.shown = encoded.tobytes()
                     logs.append("Prepared image output.")
             except VexaError as exc:
-                exc.line, exc.column = command.line, command.column
+                if exc.line is None:
+                    exc.line, exc.column = command.line, command.column
                 raise
+
+    def _count(self, subject):
+        if subject == ":text":
+            return len(self.text_regions)
+        if subject == ":masks":
+            return len(self.masks)
+        if subject == ":codes":
+            return len(self.codes)
+        labels = getattr(self.vision, "labels", None)
+        if (
+            labels
+            and self.selection == "all"
+            and subject != "all"
+            and subject not in labels.values()
+        ):
+            raise VexaError(unknown_label(subject, labels.values()))
+        return sum(subject == "all" or item.label == subject for item in self.detections)
+
+    def _holds(self, condition):
+        if condition[0] == "contains":
+            return any(condition[1].casefold() in r.text.casefold() for r in self.text_regions)
+        _, subject, operator, number = condition
+        return _COMPARE[operator](self._count(subject), number)
+
+    def _record(self, column, value, logs):
+        if self.row is None:  # outside a loop, all records go to one row
+            self.row = {"image": self.image_name}
+            self.rows.append(self.row)
+        self.row[column] = value
+        logs.append(f"Recorded {column}: {value}")
+
+    def _for_each(self, folder, body, logs):
+        directory = self.base / folder
+        if not directory.is_dir():
+            raise VexaError(f'Folder not found: "{folder}"', kind="input")
+        files = sorted(p for p in directory.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES)
+        if not files:
+            raise VexaError(f'No JPEG, PNG or WebP images in "{folder}".', kind="input")
+        if len(files) > MAX_FOLDER_IMAGES:
+            raise VexaError(f"A folder can hold at most {MAX_FOLDER_IMAGES} images.", kind="input")
+        outer = self.source_image  # load inside the loop reloads the loop's image
+        for number, path in enumerate(files, 1):
+            with path.open("rb") as stream:
+                try:
+                    image = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
+                except VexaError as exc:
+                    raise VexaError(f"{path.name}: {exc.message}", kind=exc.kind) from exc
+            self.reset()
+            self.source_image, self.image, self.image_name = image, image.copy(), path.name
+            self.row = {"image": path.name}
+            self.rows.append(self.row)
+            logs.append(f"Image {number}/{len(files)}: {path.name}")
+            try:
+                self._run(body, logs)
+            finally:
+                self.source_image = outer
+        self.reset()
+        self.row = None
+
+    def _save_csv(self, target, logs):
+        columns = list(dict.fromkeys(key for row in self.rows for key in row))
+        path = self.base / target
+        with path.open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=columns or ["image"])
+            writer.writeheader()
+            writer.writerows(self.rows)
+        logs.append(f"Saved {len(self.rows)} row(s) to {target}")
+
+    def _result(self, logs):
         return {
             "logs": logs,
             "counts": self.counts.copy(),
@@ -171,7 +275,8 @@ class Session:
             "codes": self.codes.copy(),
             "image_info": self.image_info,
             "blur": self.blur,
-            "masks": [item.summary(self.source_image.shape) for item in self.masks],
+            "masks": [item.summary(self.image.shape) for item in self.masks],
+            "rows": [dict(row) for row in self.rows],
         }
 
 

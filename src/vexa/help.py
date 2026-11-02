@@ -1,7 +1,7 @@
 """Command descriptions shared by shell help and the interactive console."""
 
 TOPICS = {
-    "load": 'load "image.jpg" — use the image supplied with --image; clear prior results.',
+    "load": 'load "image.jpg" — start again from the original image (from --image, or the current image inside a for each loop) and clear prior results. The quoted name is only a label.',
     "detect": "detect person / detect all — find objects in the current image using CPU inference. Optional: detect person confidence 0.7 (0 to 1; default 0.25).",
     "count": "count person / count all — count the latest object detections.\ncount text — count OCR text lines after ocr.\ncount masks — count nonempty masks after segment detections.",
     "draw": "draw boxes — annotate object detections.\ndraw text — outline and number OCR text regions.\ndraw masks — overlay the latest segmentation masks.",
@@ -13,6 +13,10 @@ TOPICS = {
     "find": 'find text "TOTAL" — case-insensitive literal search in the latest OCR lines; prints matches and positions. Run ocr first.',
     "inspect": "inspect image — report working-image dimensions, channels, color order and pixel type.",
     "check": "check blur — report a Laplacian detail score and a rough blur assessment; not a quality guarantee.",
+    "if": 'if count person > 3 … end — run the indented commands only when the condition holds; optional else. Conditions: count LABEL / count text / count masks / count codes compared with < <= > >= == !=, or text contains "TOTAL".',
+    "for": 'for each image in "photos/" … end — run the commands once per JPEG, PNG or WebP image in the folder; each image starts loaded. Not nested.',
+    "record": "record count person / record count text / record text / record codes — add a column to the current image's row of results.",
+    "save": 'save csv "results.csv" — write all recorded rows to a CSV file (relative path). Use after a for each loop.',
     "help": "help / help ocr — show commands or details. Also available as vexa help [topic].",
     "exit": "exit / quit / :quit — leave the interactive console. Not a .vexa program command.",
     "reset": ":reset — clear session results; retain the original input image and loaded models.",
