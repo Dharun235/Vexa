@@ -2,6 +2,10 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. The project is an unreleased local prototype; version headings describe implementation state and do not imply a published package or Git tag.
 
+## Unreleased
+
+- Fix the release checksum helper to exclude hidden build files that are not uploaded.
+
 ## 0.1.0a1 — installable alpha — 2026-11-02
 
 - Add an installable wheel and source distribution with a `vexa` terminal command.

@@ -4,7 +4,7 @@
 
 ## Verified locally
 
-- 39 tests pass, including CLI errors, input-overwrite protection, model installation, executable documentation examples, API behaviour, and real inference on three images.
+- 40 tests pass on the current feature branch (39 at the initial alpha snapshot), covering CLI errors, input-overwrite protection, model installation, executable documentation examples, API behaviour, and real inference on three images.
 - Ruff checks and formatting pass. The frontend production build passes.
 - `uv build --no-sources` produces a wheel and source archive. The wheel is about 753 KB, including the grammar, CLI, and built browser editor. Model weights and development caches are excluded.
 - A fresh environment installs the core wheel and runs the sample from `/private/tmp`, outside the source checkout. It detects four people and saves PNG plus compact JSON.
