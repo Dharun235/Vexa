@@ -53,3 +53,11 @@ def test_parse_answer_and_score():
     assert score({"type": "yesno", "answer": "no"}, "No, there is none.")
     assert score({"type": "text", "answer": "SN77A12290"}, "The serial is sn77a12290.")
     assert not score({"type": "text", "answer": "4821"}, None)
+
+
+def test_ask_stops_when_object_is_not_detectable(image, fake_vision):
+    fake_vision.labels = {0: "person", 1: "car"}
+    client = ScriptedClient(['```vexa\nload "x"\ndetect all\ncount tree\n```'])
+    result = ask("Is there a tree?", lambda c: execute_commands(c, image, fake_vision), client)
+    assert result.attempts == 1 and result.program is None
+    assert result.answer.startswith('Vexa cannot answer this: Unknown object "tree"')

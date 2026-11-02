@@ -69,13 +69,13 @@ These forms share one parser and validator. `masks` is reserved in `count masks`
 
 ### Counts refer to the latest detection selection
 
-```vexa
-load "image.jpg"
-detect person
-count car
+`count car` after `detect person` would always be zero, so `vexa check` rejects it:
+
+```text
+count car after detect person always gives 0. Use detect car or detect all first.
 ```
 
-The car count is zero because the latest detection selection contains only people. It says nothing about cars elsewhere in the photo. To count multiple kinds with one inference:
+`count all` is allowed after any detection. To count multiple kinds with one inference:
 
 ```vexa
 load "image.jpg"
@@ -87,7 +87,7 @@ draw boxes
 show image
 ```
 
-Repeated counts for a label overwrite that label's value in the counts dictionary; each count also appends another log entry. An unrecognised label in `detect` raises an error. An unmatched label in `count` or unquoted `print` returns zero; these counting commands do not validate against the model's label list.
+Repeated counts for a label overwrite that label's value in the counts dictionary; each count also appends another log entry. An unrecognised label in `detect`, `count` or unquoted `print` raises an error that suggests the closest detectable label when there is one, for example `Unknown object "pickup truck". Did you mean "truck"?`. A recognised label that is simply absent from the image counts as zero.
 
 ### Images, snapshots, and resets
 

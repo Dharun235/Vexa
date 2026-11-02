@@ -1,4 +1,5 @@
 import ast
+import difflib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -77,7 +78,7 @@ class Vision:
                 if self.model is None:
                     self._load()
                 if target != "all" and target not in self.labels.values():
-                    raise VexaError(f'Unknown object "{target}". Use a COCO label or detect all.')
+                    raise VexaError(unknown_label(target, self.labels.values()))
                 tensor, scale, left, top = prepare_image(image)
                 predictions = self.model.run(None, {self.model.get_inputs()[0].name: tensor})[0][
                     0
@@ -122,6 +123,16 @@ class Vision:
                 )
             )
         return result
+
+
+def unknown_label(target, labels):
+    """Name the closest detectable label, so a person or a model can fix the program."""
+    labels = list(labels)
+    words = [label for label in labels if label in target.split()]
+    close = words or difflib.get_close_matches(target, labels, n=1, cutoff=0.75)
+    if close:
+        return f'Unknown object "{target}". Did you mean "{close[0]}"?'
+    return f'Unknown object "{target}". It is not one of the {len(labels)} detectable labels.'
 
 
 def decode_image(data: bytes):

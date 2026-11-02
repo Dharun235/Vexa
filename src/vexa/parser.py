@@ -10,6 +10,17 @@ _PARSER = Lark(
 )
 
 
+def _syntax_hint(source, line):
+    """Show the usage of the command the bad line starts with, when it names one."""
+    from vexa.help import TOPICS
+
+    lines = source.splitlines()
+    words = lines[line - 1].split() if 0 < line <= len(lines) else []
+    if words and words[0] in TOPICS:
+        return f"Invalid {words[0]} command. Use: {TOPICS[words[0]]}"
+    return "Invalid command. Run vexa help for supported syntax."
+
+
 def parse(source: str) -> list[Command]:
     if not source.strip():
         raise VexaError("Write a Vexa program before running.", kind="syntax")
@@ -19,7 +30,7 @@ def parse(source: str) -> list[Command]:
         tree = _PARSER.parse(source)
     except UnexpectedInput as exc:
         raise VexaError(
-            "Invalid command. Run vexa help for supported syntax.",
+            _syntax_hint(source, exc.line),
             exc.line,
             "syntax",
             column=exc.column,

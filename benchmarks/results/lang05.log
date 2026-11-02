@@ -1,0 +1,28 @@
+PASS  street-people        1 try   1.3s  got: 4
+PASS  street-bus           2 try   7.6s  got: yes
+PASS  street-total         1 try   4.5s  got: 5
+PASS  football-people      1 try   4.0s  got: 2
+fail  football-ties        1 try   4.1s  got: 1
+PASS  football-dog         1 try   4.1s  got: no
+PASS  porch-dog            1 try   4.1s  got: 1
+PASS  porch-bike           2 try   7.9s  got: yes
+fail  porch-truck          3 try  11.9s  got: no
+PASS  receipt-total        1 try   6.0s  got: 123.45
+PASS  receipt-year         1 try   4.5s  got: 2026
+PASS  invoice-number       1 try   4.6s  got: 4821
+PASS  invoice-due          1 try   5.5s  got: 2026-12-01
+PASS  invoice-total        1 try   5.3s  got: 88.20 EUR
+PASS  invoice-vendor       1 try   4.5s  got: yes
+PASS  label-serial         1 try   5.2s  got: SN77A12290
+PASS  label-lot            1 try   5.1s  got: 2611
+PASS  display-pressure     1 try   4.3s  got: 4.2
+PASS  codes-qr             1 try   3.9s  got: Vexa sample QR
+PASS  codes-barcode        1 try   4.6s  got: VEXA-12345
+PASS  manual-link          1 try   4.6s  got: https://example.com/manual/77
+PASS  manual-part          3 try  16.9s  got: PN-00918
+PASS  blur-yes             1 try   3.2s  got: yes
+PASS  blur-no              1 try   3.3s  got: no
+fail  street-sunglasses    1 try   3.9s  got: 4
+fail  porch-tree           2 try   6.9s  got: Vexa cannot answer this: Unknown object "tree". It is not one of the 80 detectable labels.
+
+Solved 22/26 (count 7/9, read 9/9, codes 4/4, quality 2/2, open-vocabulary 0/2); valid programs 96%, first try 81%; 5.5 s per task

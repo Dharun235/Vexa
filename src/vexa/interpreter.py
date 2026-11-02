@@ -5,7 +5,7 @@ import cv2
 from vexa.ast_nodes import VexaError
 from vexa.parser import parse
 from vexa.validation import validate_commands
-from vexa.vision import draw_boxes
+from vexa.vision import draw_boxes, unknown_label
 
 
 class Session:
@@ -22,6 +22,7 @@ class Session:
         self.image = None
         self.detections = []
         self.detected = False
+        self.selection = None
         self.counts = {}
         self.shown = None
         self.text_regions = []
@@ -43,6 +44,7 @@ class Session:
             detected=self.detected,
             ocr_done=self.ocr_done,
             segmented=self.segmented,
+            selection=self.selection,
         )
         logs = []
         for command in commands:
@@ -63,7 +65,7 @@ class Session:
                         confidence=command.confidence if command.confidence is not None else 0.25,
                     )
                     self.detections = detections
-                    self.detected = True
+                    self.detected, self.selection = True, target
                     self.masks, self.segmented = [], False
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
                     logs.append(f"Detected {len(detections)} object(s) matching {target}.")
@@ -138,6 +140,9 @@ class Session:
                     self.image = draw_boxes(self.image, self.detections)
                     logs.append(f"Drew {len(self.detections)} bounding box(es).")
                 elif kind in {"count", "print_count"}:
+                    labels = getattr(self.vision, "labels", None)
+                    if labels and target != "all" and target not in labels.values():
+                        raise VexaError(unknown_label(target, labels.values()))
                     value = sum(target == "all" or item.label == target for item in self.detections)
                     self.counts[target] = value
                     logs.append(f"{target}: {value}")

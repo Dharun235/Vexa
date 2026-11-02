@@ -4,7 +4,9 @@ from vexa.ast_nodes import VexaError
 from vexa.parser import parse
 
 
-def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False, segmented=False):
+def validate_commands(
+    commands, *, loaded=False, detected=False, ocr_done=False, segmented=False, selection=None
+):
     for command in commands:
         kind = command.kind
         if command.confidence is not None and not 0 <= command.confidence <= 1:
@@ -14,7 +16,7 @@ def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False,
         if kind == "find_text" and not command.argument.strip():
             raise VexaError("Search text cannot be empty.", command.line, column=command.column)
         if kind == "load":
-            loaded, detected, ocr_done, segmented = True, False, False, False
+            loaded, detected, ocr_done, segmented, selection = True, False, False, False, None
         elif kind != "print_text":
             if not loaded:
                 raise VexaError(
@@ -23,6 +25,17 @@ def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False,
             if kind in {"count", "print_count", "draw", "segment"} and not detected:
                 raise VexaError(
                     "Run detect before counting or drawing objects.",
+                    command.line,
+                    column=command.column,
+                )
+            if (
+                kind in {"count", "print_count"}
+                and selection not in (None, "all", command.argument)
+                and command.argument != "all"
+            ):
+                raise VexaError(
+                    f"count {command.argument} after detect {selection} always gives 0. "
+                    f"Use detect {command.argument} or detect all first.",
                     command.line,
                     column=command.column,
                 )
@@ -43,6 +56,7 @@ def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False,
             if kind == "detect":
                 detected = True
                 segmented = False
+                selection = command.argument
 
 
 def check_source(source):

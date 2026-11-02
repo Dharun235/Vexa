@@ -1,6 +1,7 @@
 # Plan: Vexa as an offline vision agent
 
-Status: proposal, 2 November 2026. Nothing here is implemented yet.
+Status: 2 November 2026. Phase 2 (`vexa ask`), a first benchmark and the
+first language fixes are implemented on branches; see Progress below.
 
 ## The idea in one line
 
@@ -32,6 +33,55 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 - VisProg and ViperGPT showed the approach with GPT-3 and Codex in the cloud.
   LandingAI's VisionAgent productised it, needed cloud API keys, and is now
   deprecated. No offline, small-model version with a public benchmark exists.
+
+## Progress
+
+| Branch | Content |
+| --- | --- |
+| `feat/agent-plan` | This plan |
+| `feat/vexa-ask` | `vexa ask`, `vexa bench`, 26 benchmark tasks, baseline result |
+| `feat/lang-0.5` | Language and agent fixes driven by the baseline failures |
+
+Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
+
+| Version | Solved | Count | Read | Codes | Quality | Open vocabulary | Valid programs | s/task |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Language 0.4 (baseline) | 18/26 | 3/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 5.9 |
+| `feat/lang-0.5` | 22/26 | 7/9 | 9/9 | 4/4 | 2/2 | 0/2 | 96% | 5.5 |
+
+What the baseline showed: every program was valid, yet counting failed
+because valid programs were meaningless. `detect person` then `count bus`
+silently gave 0, and `count tree` silently gave 0 for a label the detector
+does not know. The fixes:
+
+- `vexa check` rejects a count that cannot match the latest `detect`.
+- Unknown labels raise an error naming the closest detectable label
+  (`"pickup truck"` → `"truck"`); undetectable objects end the agent loop
+  with an honest "cannot answer" instead of wasted retries.
+- Syntax errors show the usage of the command on that line, so the model
+  repairs `print "x" + text` instead of repeating it.
+
+The four remaining failures are detector limits: a missed tie, a pickup
+detected as a car, and sunglasses and trees, which are not COCO labels.
+That makes the open-vocabulary detector (M1) the next step.
+
+## Related work and what Vexa takes from it
+
+- VisProg (one module call per line) and ViperGPT (Python over an image
+  API) showed visual programs with GPT-3 and Codex; both are frozen.
+  VisReP (CVPR 2024) self-trained a 7B model on programs that executed
+  correctly and beat GPT-3.5: the route to fine-tuning a small Vexa model.
+- A typed DSL beats free code for weak models: one study found models under
+  about 50% baseline collapse when asked to write code. Keep Vexa small,
+  flat and closed.
+- Generic "please fix it" repair barely helps (VDebugger, Olausson et al.);
+  precise, localised messages do (Instructor, TypeChat). This matched the
+  baseline: precise errors turned failures into passes on the second try.
+- Ollama constrains output only with JSON schemas, not grammars. Grammar
+  constrained decoding needs llama.cpp GBNF or Outlines/llguidance with a
+  Lark grammar; worth trying once programs get longer.
+- Public sets for later suites: CountBench (`nielsr/countbench`), CV-Bench
+  Count, TextVQA validation subsets, GQA testdev for compositional questions.
 
 ## Target users and tasks
 

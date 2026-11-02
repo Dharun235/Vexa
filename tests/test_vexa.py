@@ -6,6 +6,7 @@ import pytest
 from vexa.ast_nodes import VexaError
 from vexa.interpreter import execute
 from vexa.parser import parse
+from vexa.validation import check_source
 from vexa.vision import Vision, decode_image
 
 
@@ -61,11 +62,37 @@ def test_command_order_errors(image, fake_vision, source, line):
 
 
 def test_zero_counts_and_load_resets_state(image, fake_vision):
-    result = execute('load "x"\ndetect person\ncount car\nshow image\nload "y"', image, fake_vision)
+    result = execute('load "x"\ndetect all\ncount bus\nshow image\nload "y"', image, fake_vision)
     assert result["counts"] == {}
     assert result["image"] is None
-    result = execute('load "x"\ndetect person\ncount car', image, fake_vision)
-    assert result["counts"]["car"] == 0
+    result = execute('load "x"\ndetect all\ncount bus', image, fake_vision)
+    assert result["counts"]["bus"] == 0
+
+
+@pytest.mark.parametrize("source", ["detect person\ncount car", "detect person\nprint car"])
+def test_count_must_match_latest_detection(source):
+    with pytest.raises(VexaError, match="count car after detect person always gives 0") as error:
+        check_source(f'load "x"\n{source}')
+    assert error.value.line == 3
+
+
+def test_count_after_matching_or_all_detection_is_valid():
+    check_source('load "x"\ndetect person\ncount person\ncount all\ndetect all\ncount car')
+
+
+def test_unknown_labels_suggest_a_detectable_one(image, fake_vision):
+    from vexa.vision import unknown_label
+
+    labels = ["person", "truck", "dining table"]
+    assert (
+        unknown_label("pickup truck", labels)
+        == 'Unknown object "pickup truck". Did you mean "truck"?'
+    )
+    assert 'Did you mean "person"' in unknown_label("persn", labels)
+    assert "not one of the 3 detectable labels" in unknown_label("tree", labels)
+    fake_vision.labels = {0: "person", 1: "car"}
+    with pytest.raises(VexaError, match='Unknown object "tree"'):
+        execute('load "x"\ndetect all\ncount tree', image, fake_vision)
 
 
 @pytest.mark.parametrize("path", list(Path("examples").glob("*.vexa")))
@@ -130,3 +157,11 @@ def test_invalid_string_escape():
         parse(r'print "bad\q"')
     assert error.value.kind == "syntax"
     assert error.value.line == 1
+
+
+def test_syntax_errors_show_the_usage_of_the_command():
+    with pytest.raises(VexaError, match='Invalid print command. Use: print "Hello"') as error:
+        parse('load "x"\nprint "a" + text')
+    assert error.value.line == 2
+    with pytest.raises(VexaError, match="Invalid command. Run vexa help"):
+        parse("frobnicate")

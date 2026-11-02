@@ -45,7 +45,8 @@ One command per line, run top to bottom. Commands:
 
 Rules:
 - Start with load "image.jpg". The real image is supplied separately.
-- Run detect before count. To count several kinds of object, use detect all, then one count per label.
+- detect the object the question asks about, then count that same label. Each detect replaces
+  the previous detections. To count several kinds of object, use detect all, then one count per label.
 - detect only knows these labels; quote labels with spaces, e.g. detect "traffic light":
   {COCO_LABELS}
 - Run ocr before print text or find text. Use scan codes for QR codes and barcodes.
@@ -157,6 +158,10 @@ def ask(question, run, client, max_attempts=3):
         except VexaError as exc:
             error = describe_error(exc, program)
             outcome.errors.append(error)
+            if "detectable labels" in exc.message:
+                # Retrying cannot help when the object is outside the detector's labels.
+                outcome.answer = f"Vexa cannot answer this: {exc.message}"
+                return outcome
             messages.append(
                 {
                     "role": "user",
