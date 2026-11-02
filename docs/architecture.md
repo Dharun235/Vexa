@@ -42,9 +42,9 @@ ONNX is the model's portable computation format. ONNX Runtime optimises and exec
 
 ## What gets installed?
 
-The wheel contains the Python interpreter code, grammar, terminal entry point, and built playground assets. Native dependencies provide image operations and CPU inference. The model is installed separately in the user's data folder, so it survives application upgrades and is not copied into each environment.
+The wheel contains the Python interpreter code, grammar, terminal entry point, built playground, and CPU model. Native dependencies provide image operations and CPU inference. The model is read directly from the package; first use needs no download or cache copy. An optional user-installed model can override it.
 
-The core installation does not include FastAPI or Uvicorn. The `[playground]` extra adds them. PyTorch and Ultralytics are used only in an isolated developer environment to export the model; they are not needed by installed users.
+The standard installation includes FastAPI and Uvicorn, so `vexa serve` works immediately. PyTorch and Ultralytics are used only in an isolated developer environment to export the model; they are not needed by installed users.
 
 ## What is checked, and when?
 

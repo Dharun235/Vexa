@@ -16,7 +16,7 @@ means the command on line 3 needs an earlier `detect` command.
 | --- | --- |
 | `vexa` is not found | Run `uv tool update-shell`, then reopen the terminal. |
 | Installation fails | Check that you are using Python 3.12 on a supported 64-bit platform. Include the installer error in a bug report. |
-| Model not found | Run `vexa model install yolo11n.onnx`, or pass `--model FILE.onnx`. |
+| Model not found | Reinstall Vexa to restore its bundled model. If you supplied `--model` or `VEXA_MODEL_PATH`, check that path. |
 | Unsupported/invalid model | Use the fixed 640×640 YOLO11n detection export supplied for this alpha. Renaming a `.pt` file to `.onnx` does not convert it. |
 | Invalid command | Use lowercase keywords, double-quoted strings, and one command per line. No semicolons. |
 | Load your image first | Start image operations with `load "image.jpg"`. |
@@ -26,7 +26,7 @@ means the command on line 3 needs an earlier `detect` command.
 | No image output | Put `show image` after drawing. |
 | Invalid image / limit exceeded | Use a valid JPEG, PNG, or WebP up to 10 MB and 20 megapixels. |
 | File error | Check the file path, UTF-8 source encoding, destination folder, and write permissions. |
-| Playground dependencies are missing | Reinstall the wheel with the `[playground]` extra. |
+| Playground dependencies are missing | Reinstall the standard Vexa wheel. |
 | Cannot reach the playground | Keep `vexa serve` running; check the port shown in its terminal. |
 | Port already in use | Use the existing instance or choose `vexa serve --port 8001`. |
 

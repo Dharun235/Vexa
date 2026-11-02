@@ -2,8 +2,12 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. The project is an unreleased local prototype; version headings describe implementation state and do not imply a published package or Git tag.
 
-## Unreleased
+## 0.1.0a2 — one installation — 2026-11-02
 
+- Bundle the CPU model and its license/notice in the wheel and source archive.
+- Include the playground dependencies by default; remove the separate setup steps.
+- Run the bundled model directly, with no first-run download or cache copy.
+- Preserve explicit model paths and optional user-installed overrides.
 - Fix the release checksum helper to exclude hidden build files that are not uploaded.
 
 ## 0.1.0a1 — installable alpha — 2026-11-02

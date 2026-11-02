@@ -8,11 +8,19 @@ from pathlib import Path
 from platformdirs import user_data_path
 
 
-def model_path() -> Path:
+def user_model_path() -> Path:
     configured = os.environ.get("VEXA_MODEL_PATH")
     if configured:
         return Path(configured).expanduser()
     return user_data_path("vexa", appauthor=False) / "models" / "yolo11n.onnx"
+
+
+def model_path() -> Path:
+    user_path = user_model_path()
+    if os.environ.get("VEXA_MODEL_PATH") or user_path.is_file():
+        return user_path
+    bundled = Path(__file__).with_name("data") / "yolo11n.onnx"
+    return bundled if bundled.is_file() else user_path
 
 
 def install_model(source: Path) -> Path:
@@ -28,7 +36,7 @@ def install_model(source: Path) -> Path:
         raise VexaError(
             "Cannot install this model. Use a valid fixed-size YOLO11n ONNX export.", kind="vision"
         ) from exc
-    destination = model_path()
+    destination = user_model_path()
     destination.parent.mkdir(parents=True, exist_ok=True)
     if source == destination.resolve():
         return destination

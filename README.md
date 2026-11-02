@@ -12,9 +12,15 @@ show image
 
 ## Install and run
 
-The first package is **0.1.0a1**, an early test release. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then follow the [installation guide](docs/getting-started.md). It covers the terminal runner and optional browser playground.
+The current alpha is **0.1.0a2**. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
-With Vexa and its ONNX model installed:
+```sh
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.1.0a2/vexa-0.1.0a2-py3-none-any.whl
+```
+
+One installation includes the terminal runner, browser playground, and CPU model. See [Getting started](docs/getting-started.md) for your first program.
+
+After installing Vexa:
 
 ```sh
 vexa check demo.vexa
@@ -35,4 +41,4 @@ No GPU, Node.js, PyTorch, or source checkout is needed to run the installed pack
 
 See [examples](examples/), [release changes](CHANGELOG.md), and [package verification](docs/package-verification.md). Vexa supports still images; it has no loops, variables, video input, or standalone native compiler yet.
 
-Vexa's source code is [MIT licensed](LICENSE). The separately distributed YOLO model has its own [upstream licensing terms](https://www.ultralytics.com/license); see [model provenance](docs/model-notice.md).
+Vexa's source code is [MIT licensed](LICENSE). The bundled YOLO model has its own [upstream licensing terms](https://www.ultralytics.com/license); see [model provenance](docs/model-notice.md).

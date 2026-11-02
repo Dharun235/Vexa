@@ -1157,19 +1157,15 @@ wheels = [
 
 [[package]]
 name = "vexa"
-version = "0.1.0a1"
+version = "0.1.0a2"
 source = { editable = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "lark" },
     { name = "numpy" },
     { name = "onnxruntime" },
     { name = "opencv-python-headless" },
     { name = "platformdirs" },
-]
-
-[package.optional-dependencies]
-playground = [
-    { name = "fastapi" },
     { name = "python-multipart" },
     { name = "uvicorn" },
 ]
@@ -1189,16 +1185,15 @@ export = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'playground'", specifier = ">=0.115,<1" },
+    { name = "fastapi", specifier = ">=0.115,<1" },
     { name = "lark", specifier = ">=1.2,<2" },
     { name = "numpy", specifier = ">=2,<3" },
     { name = "onnxruntime", specifier = ">=1.20,<2" },
     { name = "opencv-python-headless", specifier = ">=4.10,<5" },
     { name = "platformdirs", specifier = ">=4,<5" },
-    { name = "python-multipart", marker = "extra == 'playground'", specifier = ">=0.0.20" },
-    { name = "uvicorn", marker = "extra == 'playground'", specifier = ">=0.34,<1" },
+    { name = "python-multipart", specifier = ">=0.0.20" },
+    { name = "uvicorn", specifier = ">=0.34,<1" },
 ]
-provides-extras = ["playground"]
 
 [package.metadata.requires-dev]
 dev = [

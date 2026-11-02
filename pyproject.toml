@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vexa"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "MIT AND AGPL-3.0-only"
+license-files = ["LICENSE", "LICENSE-MODEL"]
 authors = [{name = "Dharunkumar Senthilkumar"}]
 requires-python = ">=3.12,<3.13"
 classifiers = [
@@ -23,10 +23,10 @@ dependencies = [
   "numpy>=2,<3",
   "opencv-python-headless>=4.10,<5",
   "platformdirs>=4,<5",
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+  "python-multipart>=0.0.20",
 ]
-
-[project.optional-dependencies]
-playground = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "python-multipart>=0.0.20"]
 
 [project.scripts]
 vexa = "vexa.cli:main"
@@ -41,13 +41,13 @@ export = ["ultralytics>=8.3,<9", "onnx>=1.17,<2"]
 dev = ["pytest>=8,<10", "httpx>=0.28,<1", "ruff>=0.11,<1", "fastapi>=0.115,<1", "python-multipart>=0.0.20"]
 
 [tool.hatch.build]
-artifacts = ["src/vexa/web/**"]
+artifacts = ["src/vexa/web/**", "src/vexa/data/*.onnx"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vexa"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/vexa", "frontend/src", "frontend/index.html", "frontend/package.json", "frontend/package-lock.json", "frontend/tsconfig.json", "frontend/vite.config.ts", "scripts", "tests", "examples/*.vexa", "docs/*.md", "README.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "pyproject.toml", "uv.lock"]
+include = ["src/vexa", "frontend/src", "frontend/index.html", "frontend/package.json", "frontend/package-lock.json", "frontend/tsconfig.json", "frontend/vite.config.ts", "scripts", "tests", "examples/*.vexa", "docs/*.md", "README.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSE-MODEL", "pyproject.toml", "uv.lock"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -9,7 +9,7 @@ Vexa runs a plain text `.vexa` file against one image. Use the terminal runner f
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then install the alpha wheel:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.1.0a1/vexa-0.1.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.1.0a2/vexa-0.1.0a2-py3-none-any.whl
 vexa --version
 ```
 
@@ -17,21 +17,9 @@ uv creates an isolated environment and manages Python 3.12. If your terminal can
 
 The alpha has been run on an Apple Silicon Mac. Linux and Windows need 64-bit Python 3.12 plus compatible NumPy, OpenCV, and ONNX Runtime wheels. See [tested platforms](package-verification.md) before assuming a device is supported. “CPU inference” does not mean every processor or operating system is supported.
 
-## 2. Install the model once
+The package includes the CPU model and browser playground. There is no separate model download, model-install command, or playground extra to set up. Once installation finishes, detection can run offline from the first use. It does not use a GPU or send images to an inference service.
 
-Download **yolo11n.onnx** from the [same release](https://github.com/Dharun235/Vexa/releases/tag/v0.1.0a1). Keep the accompanying model notice and license. This model is separate from the Vexa wheel and uses [Ultralytics' licensing terms](model-notice.md).
-
-From the folder containing your download:
-
-```sh
-vexa model install yolo11n.onnx
-```
-
-Vexa validates the model and copies it into your user-data folder. `vexa model path` prints that location. Later runs reuse it without a download. To use an ONNX file directly, add `--model path/to/yolo11n.onnx` to `vexa run` or `vexa serve`.
-
-Initial installation needs internet. Once the package and model are installed, execution is offline. It does not use a GPU or send your images to an inference service.
-
-## 3. Save your first program
+## 2. Save your first program
 
 In any text editor, create `demo.vexa`:
 
@@ -45,7 +33,7 @@ show image
 
 This loads the supplied image, finds people, counts them, draws their boxes, and returns the picture. The name in `load` is an alias: the actual image comes from `--image` or the playground upload. It never opens an arbitrary path from inside the program.
 
-## 4. Run it
+## 3. Run it
 
 Use your own photo, or download one from the repository's [sample images](../examples/). With `demo.vexa` and `street.jpg` in the current folder:
 
@@ -66,10 +54,9 @@ The JSON contains `logs`, `counts`, `detections`, and `image_path`. It refers to
 
 ## Optional: use the browser playground
 
-Install the same wheel with the playground extra:
+The playground is already installed. Start it with:
 
 ```sh
-uv tool install --force --python 3.12 'vexa[playground] @ https://github.com/Dharun235/Vexa/releases/download/v0.1.0a1/vexa-0.1.0a1-py3-none-any.whl'
 vexa serve
 ```
 
@@ -96,3 +83,7 @@ Counting does not rerun detection. Each execution starts fresh. For the complete
 ## Already working from the repository?
 
 Use `./scripts/dev.sh` from the project root for the local playground. It creates the uv environment, exports a model if missing, and builds the frontend if needed. For the command-line runner, use `uv run vexa` in that checkout. Developers need Node.js for building the frontend; package users do not. Full setup and reload commands live in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Advanced: use another model location
+
+The bundled model is the default when no user-installed model exists. `vexa model install FILE.onnx` installs a validated override in your user-data folder; `vexa model path` shows which model is selected. An explicit `--model FILE.onnx` or `VEXA_MODEL_PATH` takes precedence. These are optional controls, not setup steps. The model's [upstream license and provenance](model-notice.md) are included with the package.

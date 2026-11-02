@@ -33,7 +33,7 @@ def arguments():
     run.add_argument(
         "--json", type=Path, dest="json_output", help="Also save logs, counts and boxes as JSON"
     )
-    serve = commands.add_parser("serve", help="Start the optional local browser playground")
+    serve = commands.add_parser("serve", help="Start the local browser playground")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--model", type=Path)
     model = commands.add_parser("model", help="Manage the model stored in your user data folder")
@@ -83,7 +83,7 @@ def serve(args):
         from vexa.main import app
     except ImportError as exc:
         raise VexaError(
-            "Playground dependencies are missing. Install Vexa with the [playground] extra.",
+            "Playground dependencies are missing. Reinstall Vexa.",
             kind="installation",
         ) from exc
     if not Path(__file__).with_name("web").joinpath("index.html").is_file():

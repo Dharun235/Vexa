@@ -7,10 +7,12 @@
 ```sh
 git switch codex/installable-language
 git switch -c codex/describe-your-change
-UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv sync --locked --extra playground
+UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv sync --locked
 ```
 
 Use Python 3.12. Runtime code lives in `src/vexa/`; tests in `tests/`. Never develop directly on `main`. The environment is editable, so source changes are available to `uv run vexa` without reinstalling.
+
+The model and playground are included in the standard installation.
 
 The package version comes from `pyproject.toml`. Both `vexa --version` and the API read the installed distribution metadata. The frontend package has its own development version; it is not a second Vexa language version.
 
@@ -37,7 +39,7 @@ For the built browser playground:
 ./scripts/dev.sh
 ```
 
-For live frontend changes, start `uv run --extra playground uvicorn vexa.main:app --reload --host 127.0.0.1 --port 8000` and, in another terminal, `cd frontend && npm ci && npm run dev`. Open http://127.0.0.1:5173. Set `VEXA_MODEL_PATH` when using a model outside the default user-data folder.
+For live frontend changes, start `uv run uvicorn vexa.main:app --reload --host 127.0.0.1 --port 8000` and, in another terminal, `cd frontend && npm ci && npm run dev`. Open http://127.0.0.1:5173. Set `VEXA_MODEL_PATH` when using a model outside the default user-data folder.
 
 The startup script reuses the frontend build. After editing the frontend, rebuild with `cd frontend && npm run build`, then restart the script and reload the browser. Markdown changes need no build.
 
@@ -63,11 +65,11 @@ Real-image smoke tests run if `models/yolo11n.onnx` exists, otherwise they skip.
 ./scripts/build-release.sh
 ```
 
-This tests the code, builds the frontend, copies the local web assets into the package, and uses `uv build --no-sources` to create a wheel and source archive in `dist/`. It does not publish anything. The source archive includes built web assets so rebuilding it does not require Node.js. Model weights and sample photos are not in either Python distribution.
+This tests the code, builds the frontend, copies the local web assets into the package, and uses `uv build --no-sources` to create a wheel and source archive in `dist/`. It does not publish anything. The source archive includes built web assets so rebuilding it does not require Node.js. Both distributions include the ONNX model and its upstream license/notice. Sample photos are not included.
 
-Before publishing, install the wheel into a fresh environment outside the checkout and verify `vexa --version`, `check`, real CPU inference, and the optional playground. Also rebuild the wheel from the source archive. Record the result in [package-verification.md](docs/package-verification.md). A `py3-none-any` tag describes Vexa's Python code; native dependencies still limit supported machines.
+Before publishing, install the wheel into a fresh environment outside the checkout and verify `vexa --version`, `check`, real CPU inference, and the playground. Also rebuild the wheel from the source archive. Record the result in [package-verification.md](docs/package-verification.md). A `py3-none-any` tag describes Vexa's Python code; native dependencies still limit supported machines.
 
-For release assets, include the separately exported `yolo11n.onnx`, upstream model license, model notice, and SHA-256 checksums. Do not label pretrained weights as MIT-licensed Vexa source. The [initial release script](scripts/prepare-assets.py) stages these notices and checksums without publishing.
+Release the wheel, source archive, and `SHA256SUMS`. The model is bundled, so no separate model asset is required. Run `uv run python scripts/prepare-assets.py` to write checksums for the current version only. The distribution's license expression covers the MIT Vexa source and AGPL-3.0 model; keep both license files and the model notice.
 
 ## Publish on the feature branch
 
@@ -75,10 +77,10 @@ The initial alpha uses a GitHub prerelease, so users can install the exact wheel
 
 ```sh
 git push -u origin codex/installable-language
-gh release create v0.1.0a1 dist/* --target COMMIT_SHA --prerelease --title 'Vexa 0.1.0a1' --notes-file docs/release-notes.md
+gh release create v0.1.0a2 dist/vexa-0.1.0a2-py3-none-any.whl dist/vexa-0.1.0a2.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.1.0a2' --notes-file docs/release-notes.md
 ```
 
-Replace `COMMIT_SHA` with the tested commit. The tag is a release snapshot; development remains on the feature branch. After publishing, download and install the hosted wheel again, check checksums, and rerun a sample image. Do not reuse a version for different artifacts.
+Replace `COMMIT_SHA` with the tested commit. The tag is a release snapshot; development remains on the feature branch. After publishing, download and install the hosted wheel again, check checksums, and rerun a sample image without a model argument or existing user-model cache. Do not reuse a version for different artifacts.
 
 For a future package-index trial, configure a TestPyPI token or trusted publisher and use `uv publish --publish-url https://test.pypi.org/legacy/ dist/*.whl dist/*.tar.gz`. The initial alpha is not claimed to be on PyPI. Do not put publishing tokens in source, terminal arguments, issue reports, or chat. [PyPI recommends trusted publishing](https://docs.pypi.org/publishing/publishing-to-pypi/).
 
