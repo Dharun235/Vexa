@@ -53,4 +53,12 @@ Maintainers reproduce the issue, add a focused regression test, and fix the beha
 
 ## In the interactive console
 
-An error is shown with the current input line, column, and caret. Correct the command and continue; there is no need to restart. Use `:reset` followed by `load "image.jpg"` to start a fresh image pass, or `:help` to list controls. Ctrl+D or `:quit` exits cleanly. If saving an image fails, fix the output path permissions and try `show image` again.
+An error is shown with the current input line, column, and caret. Correct the command and continue; there is no need to restart. Use `:reset` followed by `load "image.jpg"` to start a fresh image pass, or `:help` to list controls. `exit`, Ctrl+D, or `:quit` exits cleanly. If saving an image fails, fix the output path permissions and try `show image` again.
+
+## OCR and help
+
+Use `help` or `help ocr` inside the console, or `vexa help ocr` from the shell. `exit` leaves the console. These are not `.vexa` source commands.
+
+If text commands report `Run ocr before using text results`, run `ocr` after loading the image. Blank or unrecognized images return zero text lines. For unclear results, try a clean, upright image with larger, well-lit printed text and run OCR before drawing boxes. The reader can make mistakes, especially with handwriting and dense layouts.
+
+Missing OCR model files indicate an incomplete dependency installation: reinstall the standard Vexa package. The normal installation already includes them; do not install Tesseract or run a separate model downloader. Use `--debug` for an unexpected OCR failure.

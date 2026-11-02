@@ -2,6 +2,16 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. The project is an unreleased local prototype; version headings describe implementation state and do not imply a published package or Git tag.
 
+## 0.4.0a1 — help, exit, and OCR — 2026-11-02
+
+- Add shell `vexa help [topic]` and plain `help`, `help ocr`, `exit`, and `quit` in the REPL; keep the colon aliases.
+- Add `ocr`, `print text`, `count text`, and `draw text` with shared validation and persistent OCR results.
+- Read printed text using RapidOCR's installed ONNX models on CPU, loaded lazily with two-thread inference; no external OCR program or runtime model/font downloads.
+- Include text, confidence, and quadrilateral regions in JSON reports. Draw numbered outlines without a font dependency.
+- Add a synthetic OCR fixture and real offline/model-reuse checks. Include test fixtures in source distributions for reproducible tests.
+
+Migration: `text` is reserved for OCR in the unquoted `print text` and `count text` forms. `print "text"` still prints a literal string. Object commands otherwise keep their existing meaning.
+
 ## 0.3.0a1 — terminal only — 2026-11-02
 
 - Remove the React/Monaco playground, HTTP API, `vexa serve`, and web-server dependencies.

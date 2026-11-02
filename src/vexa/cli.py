@@ -22,6 +22,8 @@ def arguments():
     parser.add_argument("--version", action="version", version=f"Vexa {__version__}")
     parser.add_argument("--debug", action="store_true", help="Show details for unexpected errors")
     commands = parser.add_subparsers(dest="command", required=True)
+    help_command = commands.add_parser("help", help="Show Vexa commands and examples")
+    help_command.add_argument("topic", nargs="?")
     check = commands.add_parser(
         "check", help="Check syntax and command ordering without a model or image"
     )
@@ -87,7 +89,9 @@ def run_file(args):
         save_image(image_data, args.output)
         result["image_path"] = str(args.output)
     if args.json_output:
-        args.json_output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        args.json_output.write_text(
+            json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
     for line in result["logs"]:
         print(line)
     if image_data:
@@ -98,7 +102,11 @@ def main(argv=None):
     args = arguments().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.CRITICAL)
     try:
-        if args.command == "check":
+        if args.command == "help":
+            from vexa.help import help_text
+
+            print(help_text(args.topic))
+        elif args.command == "check":
             commands = check_source(read_source(args.program))
             print(f"Check OK: {len(commands)} command(s). Syntax and command ordering are valid.")
         elif args.command == "run":

@@ -9,7 +9,7 @@ Vexa runs a plain text `.vexa` file against one image. Run a saved program or ex
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then install the alpha wheel:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.3.0a1/vexa-0.3.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.4.0a1/vexa-0.4.0a1-py3-none-any.whl
 vexa --version
 ```
 
@@ -17,7 +17,7 @@ uv creates an isolated environment and manages Python 3.12. If your terminal can
 
 The alpha has been run on an Apple Silicon Mac. Linux and Windows need 64-bit Python 3.12 plus compatible NumPy, OpenCV, and ONNX Runtime wheels. See [tested platforms](package-verification.md) before assuming a device is supported. “CPU inference” does not mean every processor or operating system is supported.
 
-The package includes the CPU model. There is no separate model download or model-install command to set up. Once installation finishes, detection can run offline from the first use. It does not use a GPU or send images to an inference service.
+The installation includes the object model and RapidOCR's packaged ONNX text models. There is no separate model download or model-install command to set up. Once installation finishes, detection can run offline from the first use. It does not use a GPU or send images to an inference service.
 
 ## 2. Save your first program
 
@@ -50,7 +50,7 @@ To also save counts and box coordinates:
 vexa run demo.vexa --image street.jpg --output result.png --json result.json
 ```
 
-The JSON contains `logs`, `counts`, `detections`, and `image_path`. It refers to the saved PNG rather than embedding another copy of the image. Specified output files may be replaced on a successful run; Vexa refuses to use an input file as an output path. Without `--output`, image output goes to `vexa-output.png` in the current folder.
+The JSON contains `logs`, `counts`, `detections`, `text`, `text_regions`, and `image_path`. It refers to the saved PNG rather than embedding another copy of the image. Specified output files may be replaced on a successful run; Vexa refuses to use an input file as an output path. Without `--output`, image output goes to `vexa-output.png` in the current folder.
 
 ## Work interactively in the terminal
 
@@ -72,11 +72,38 @@ vexa> show image
 
 The image and detections stay available between commands. `show image` writes the PNG to `--output` (default: `vexa-output.png`); it does not open a desktop image viewer. `count` reuses the latest detections without another inference.
 
-- `:help` lists the commands.
+- `help` lists the commands; `help ocr` explains text recognition. `:help` still works.
 - `:reset` clears the working image, detections, and counts while retaining the original input and loaded model. Start again with `load`.
-- `:quit` or Ctrl+D exits. Ctrl+C cancels the current input/operation and returns to the prompt when control returns to Python.
+- `exit`, `quit`, `:quit`, or Ctrl+D exits. Ctrl+C cancels the current input/operation and returns to the prompt when control returns to Python.
 
-A syntax or command-order error leaves the previous session intact so you can correct the next command. Earlier successful commands are retained after a runtime error. Resetting does not delete a previously saved output file. Command history is not saved to disk. Console controls such as `:quit` are not Vexa language commands and cannot be used in `.vexa` files.
+A syntax or command-order error leaves the previous session intact so you can correct the next command. Earlier successful commands are retained after a runtime error. Resetting does not delete a previously saved output file. Command history is not saved to disk. Console controls such as `help` and `exit` are not Vexa language commands and cannot be used in `.vexa` files.
+
+## Read text from an image
+
+Use the sample OCR program:
+
+```sh
+vexa run examples/ocr.vexa --image examples/ocr_sample.png --output text-boxes.png --json text.json
+```
+
+The sample contains the printed lines `VEXA OCR 2026` and `TOTAL 123.45`. The program is:
+
+```vexa
+load "ocr_sample.png"
+ocr
+print text
+count text
+draw text
+show image
+```
+
+In the REPL, enter the same commands one at a time. `ocr` reports the number of recognized lines; `print text` prints their contents; `count text` counts lines, not words or characters. `draw text` draws numbered outlines corresponding to the result order in JSON. It does not render the recognized words onto the image, so it needs no font download.
+
+OCR is independent of object detection: there is no need to run `detect` first. Both results can coexist. `load` and `:reset` clear text results, while the lazily loaded OCR engines are retained for reuse. For best results, run OCR on the clean loaded image before drawing overlays. Blank images return zero lines rather than an error.
+
+The default OCR models are installed with RapidOCR 3.10.0. Vexa supplies their local paths and uses ONNX CPU inference with two threads. No runtime downloads, external OCR executable, GPU, or PyTorch are needed. Clear printed English is tested. Recognition of other languages, handwriting, tiny text, and complex layouts is not guaranteed; inspect the text and region confidence values before relying on the result.
+
+From the shell, `vexa help` or `vexa help ocr` works without an image. Inside the console, use `help` and `exit`. These controls are not valid lines in a `.vexa` program.
 
 ## Try counting several objects
 

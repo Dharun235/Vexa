@@ -32,19 +32,21 @@ File execution and the REPL use this same path. They do not have separate langua
 | Shared validator | Checks command ordering without image I/O or inference | [validation.py](../src/vexa/validation.py) |
 | Session interpreter | Executes nodes and keeps image, detections, counts, and output state; reused across REPL inputs | [interpreter.py](../src/vexa/interpreter.py) |
 | Vision runtime | Decodes images, prepares model input, runs ONNX on CPU, filters boxes, and draws results | [vision.py](../src/vexa/vision.py) |
+| OCR runtime | Reads text with lazy, packaged ONNX CPU models; no downloads or duplicate model copies | [ocr.py](../src/vexa/ocr.py) |
+| Help | One description registry for shell and console help | [help.py](../src/vexa/help.py) |
 | Model management | Chooses the model path and validates/copies a model into user storage | [model.py](../src/vexa/model.py) |
 | Terminal runner | Reads files, presents errors, and writes PNG/JSON outputs | [cli.py](../src/vexa/cli.py) |
 | REPL | Reads one command at a time and reuses one session and model | [repl.py](../src/vexa/repl.py) |
 
 ## Does it need a compiler?
 
-The current interpreter executes the command nodes directly. It does not generate machine code, bytecode, or a standalone executable for each program. An extra compiler would not make these six orchestration commands substantially faster: most execution time is spent in the vision model.
+The current interpreter executes the command nodes directly. It does not generate machine code, bytecode, or a standalone executable for each program. An extra compiler would not make these small orchestration language substantially faster: most execution time is spent in the vision model.
 
 ONNX is the model's portable computation format. ONNX Runtime optimises and executes that model on CPU. Exporting YOLO to ONNX is a model-preparation step, separate from parsing or running the Vexa language.
 
 ## What gets installed?
 
-The wheel contains the Vexa interpreter, grammar, terminal entry point, and CPU model. Native dependencies provide image operations and CPU inference. The model is read directly from the package; first use needs no download or cache copy. An optional user-installed model can override it.
+The wheel contains the Vexa interpreter, grammar, terminal entry point, and object model. RapidOCR 3.10.0 supplies its OCR models in its own installed wheel; Vexa does not duplicate them. Native dependencies provide image operations and CPU inference. The model is read directly from the package; first use needs no download or cache copy. An optional user-installed model can override it.
 
 PyTorch and Ultralytics are used only in an isolated developer environment to export the model; they are not needed by installed users.
 
@@ -62,7 +64,7 @@ PyTorch and Ultralytics are used only in an isolated developer environment to ex
 
 ## Keeping the runtime small
 
-One ONNX session is created lazily per terminal process. Inference uses CPU only, two intra-op threads, and one inter-op thread. A file run owns its language state; the REPL reuses one session. `count` and `draw` reuse detections; they do not load another model or run inference again.
+The object model is loaded lazily. OCR has its own lazy reader, with reusable detection, orientation, and recognition sessions. Inference uses CPU only, two intra-op threads, and one inter-op thread. A file run owns its language state; the REPL reuses one session. `count` and `draw` reuse detections; they do not load another model or run inference again.
 
 ## Session and validation boundary
 
@@ -70,4 +72,4 @@ One ONNX session is created lazily per terminal process. Inference uses CPU only
 
 ## Image output
 
-The session keeps its latest snapshot as PNG bytes. The terminal writes those bytes directly to disk; no HTTP transport, base64 encoding, web assets, or browser process is involved. JSON reports contain an image path, counts, logs, and detections.
+The session keeps its latest snapshot as PNG bytes. The terminal writes those bytes directly to disk; no HTTP transport, base64 encoding, web assets, or browser process is involved. JSON reports contain an image path, counts, logs, detections, and OCR text/regions.

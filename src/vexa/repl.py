@@ -5,11 +5,10 @@ from pathlib import Path
 from vexa import __version__
 from vexa.ast_nodes import VexaError
 from vexa.cli import print_error, protect_inputs, save_image
+from vexa.help import help_text
 from vexa.interpreter import Session
 from vexa.parser import parse
 from vexa.vision import MAX_IMAGE_BYTES, Vision, decode_image
-
-HELP = 'Use load "image.jpg", detect person, count person, draw boxes, show image.\n:help — help   :reset — clear session   :quit — exit'
 
 
 def run_repl(args):
@@ -22,24 +21,27 @@ def run_repl(args):
     with args.image.open("rb") as stream:
         source_image = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
     session = Session(source_image, Vision(args.model))
-    print(f"Vexa {__version__} — {Path(args.image).name}. Type :help for commands; Ctrl+D exits.")
+    print(
+        f"Vexa {__version__} — {Path(args.image).name}. Type help for commands; exit or Ctrl+D leaves the console."
+    )
     while True:
         try:
             source = input("vexa> ")
             if not source.strip() or source.lstrip().startswith("#"):
                 continue
             control = source.strip()
-            if control == ":quit":
+            if control in {"exit", "quit", ":quit", ":exit"}:
                 return
-            if control == ":help":
-                print(HELP)
+            parts = control.split()
+            if parts[0] in {"help", ":help"}:
+                print(help_text(" ".join(parts[1:]) or None))
                 continue
             if control == ":reset":
                 session.reset()
                 print('Session reset. Start again with load "image.jpg".')
                 continue
             if control.startswith(":"):
-                print("Unknown console command. Type :help.")
+                print("Unknown console command. Type help.")
                 continue
             commands = parse(source)
             result = session.execute(commands)
@@ -52,7 +54,7 @@ def run_repl(args):
             print()
             return
         except KeyboardInterrupt:
-            print("\nCancelled. Type :quit to exit.")
+            print("\nCancelled. Type exit to leave.")
         except VexaError as exc:
             print_error(exc, source)
         except (OSError, UnicodeError) as exc:

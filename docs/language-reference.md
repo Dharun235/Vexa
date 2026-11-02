@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.3.0a1 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.4.0a1 — language 0.2.** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -11,6 +11,10 @@ load "filename"
 detect label
 count label
 draw boxes
+ocr
+print text
+count text
+draw text
 print "text"
 print label
 show image
@@ -48,9 +52,13 @@ show image
 | `draw boxes` | `load`, then `detect` | Draws every current detection with its label and confidence on the working image. Does not change counts. |
 | `print "text"` | None | Appends literal text to the execution log. Does not require `load`; the terminal runner still requires an image argument. |
 | `print label` | `load`, then `detect` | Computes, stores, and logs a count just like `count label`. Unquoted, single-token labels only. |
+| `ocr` | `load` | Reads text from the current image. Replaces OCR text/regions and clears the stored text count; object detections remain available. |
+| `print text` | `load`, then `ocr` | Prints recognized lines in the engine's returned order, or `No text found.` |
+| `count text` | `load`, then `ocr` | Counts recognized lines (not words), stores `counts.text`, and logs it. |
+| `draw text` | `load`, then `ocr` | Draws numbered quadrilateral outlines for recognized text regions. No font or word rendering. |
 | `show image` | `load` | Encodes the current working image into the output snapshot. Does not run inference or draw anything. |
 
-There are six command keywords; `print` has two forms.
+There are seven language keywords. `text` is reserved in the `print text`, `count text`, and `draw text` forms; `print "text"` remains a literal string. `help` and `exit` are terminal-console controls, not language keywords.
 
 ### Counts refer to the latest detection selection
 
@@ -80,7 +88,9 @@ Repeated counts for a label overwrite that label's value in the counts dictionar
 
 `detect` replaces detections and clears counts, but preserves existing drawn pixels and the previous output snapshot. To begin another clean detection pass, reload the image first. Detection after drawing operates on the image containing those drawn boxes.
 
-A second `load` resets the working image to the original supplied photo and clears detections, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
+OCR results remain separate from object detections. A new `ocr` replaces the text selection without changing object detections or object counts. `print text`, `count text`, and `draw text` reuse results without running OCR again. Object `count all` still counts only detected objects.
+
+A second `load` resets the working image to the original supplied photo and clears detections, OCR results, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
 
 An error stops execution. The terminal reports an error and an exit status. The whole source is parsed and checked for command-order errors before execution, so those errors prevent any commands from running. This preflight does not require inference.
 
@@ -117,6 +127,8 @@ The result contains:
 | `logs` | Ordered array of execution messages and printed text |
 | `counts` | Object mapping counted labels to integer counts; empty if no counts were requested |
 | `detections` | Latest detection selection: `label`, `confidence` from 0 to 1, and `box` as `[x1, y1, x2, y2]` in original-image pixel coordinates |
+| `text` | OCR lines joined with newlines; empty when no OCR results exist |
+| `text_regions` | Array of `text`, `confidence`, and four-point `box` coordinates in source-image pixels |
 | `image_path` | Saved PNG path, or null when no current snapshot exists |
 
 The upper-left corner is the coordinate origin. Inference uses fixed 640×640 letterboxed input, confidence threshold 0.25, and class-aware non-maximum suppression with IoU threshold 0.45. Vexa 0.1 has no language command for changing these settings.
@@ -135,8 +147,14 @@ Image/model failures without a source location still have an explanatory message
 
 ## Compatibility
 
-This is the language reference for package 0.3.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+This is the language reference for package 0.4.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Interactive sessions
 
-`vexa repl --image FILE` runs these same commands with persistent state. Each entry is validated against that state; `load` and `:reset` clear detections/counts, while retaining the original supplied photo and the model instance. Error positions refer to the current input, not a saved program. `:help`, `:reset`, and `:quit` are console controls, not additions to this grammar. `show image` saves the snapshot to the console's output path. See the [interactive walkthrough](getting-started.md#work-interactively-in-the-terminal).
+`vexa repl --image FILE` runs these same commands with persistent state. Each entry is validated against that state; `load` and `:reset` clear detections/counts, while retaining the original supplied photo and the model instance. Error positions refer to the current input, not a saved program. `help`, `help ocr`, `exit`, `:reset`, and the colon shortcuts are console controls, not additions to this grammar. `show image` saves the snapshot to the console's output path. See the [interactive walkthrough](getting-started.md#work-interactively-in-the-terminal).
+
+## OCR details
+
+The `ocr` command uses RapidOCR's packaged PP-OCRv6 small detection/recognition models and text orientation classifier, running through ONNX Runtime on CPU. OCR is loaded only when requested and reused within a session. No YOLO inference is needed for OCR. Text confidence is a model estimate, not an accuracy guarantee. Clear printed English is tested; complex scene text, handwriting, and other languages need their own validation.
+
+OCR uses the current working image, including any drawn overlays. Use `load` again for a clean pass. Zero recognized lines is valid. A failed OCR invocation retains the previous successful text selection. Text coordinates are four corner points, unlike the two-corner rectangles used by object detections.

@@ -1,6 +1,6 @@
 # Package verification
 
-**Package:** Vexa 0.3.0a1 · **Date:** 2 November 2026
+**Package:** Vexa 0.4.0a1 · **Date:** 2 November 2026
 
 ## Terminal-only package
 
@@ -8,13 +8,16 @@ The wheel and source archive contain the parser, shared validator, session inter
 
 The model is read directly from package resources. No separate model setup, first-run download, GPU, PyTorch, or Ultralytics runtime is required. An explicit model path or an existing user-installed model can still override the bundled model.
 
+OCR uses RapidOCR 3.10.0’s packaged ONNX models through the CPU provider. Models load only when `ocr` runs and are reused within a session. No OCR model or font download occurs during execution.
+
 ## Verification
 
-- 50 tests cover grammar, shared validation, command execution, model selection, real inference, PNG/JSON output, REPL persistence/recovery/reset, error locations, and release checksums.
+- 62 tests cover grammar, shared validation, command execution, model selection, real inference, PNG/JSON output, REPL persistence/recovery/reset, error locations, and release checksums.
+- Real OCR tests prohibit network/download calls, recognize the bundled text fixture, handle blank images, and verify all three sessions use CPU only.
 - Ruff and shell-script checks pass. The Python-only release build also rebuilds the wheel from its source archive.
 - A clean wheel installation outside the checkout verifies file execution, counts, saved PNG/JSON, and a persistent REPL with real CPU inference.
 - Distribution contents and dependency metadata are checked to exclude web code, assets, and web-server dependencies.
-- `vexa serve` is rejected; supported terminal commands are `check`, `run`, `repl`, and `model`.
+- `vexa serve` is rejected; supported terminal commands are `help`, `check`, `run`, `repl`, and `model`.
 - Image snapshots are PNG bytes internally. The terminal writes them directly; JSON reports store a file path instead of a duplicate image.
 
 ## Platform coverage

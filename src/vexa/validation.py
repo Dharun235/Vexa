@@ -4,11 +4,11 @@ from vexa.ast_nodes import VexaError
 from vexa.parser import parse
 
 
-def validate_commands(commands, *, loaded=False, detected=False):
+def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False):
     for command in commands:
         kind = command.kind
         if kind == "load":
-            loaded, detected = True, False
+            loaded, detected, ocr_done = True, False, False
         elif kind != "print_text":
             if not loaded:
                 raise VexaError(
@@ -20,6 +20,12 @@ def validate_commands(commands, *, loaded=False, detected=False):
                     command.line,
                     column=command.column,
                 )
+            if kind in {"print_ocr", "count_text", "draw_text"} and not ocr_done:
+                raise VexaError(
+                    "Run ocr before using text results.", command.line, column=command.column
+                )
+            if kind == "ocr":
+                ocr_done = True
             if kind == "detect":
                 detected = True
 

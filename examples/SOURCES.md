@@ -7,3 +7,5 @@ Public upstream demonstration images included for local testing:
 - `dog-bicycle.jpg`: [Darknet dog example](https://github.com/pjreddie/darknet/blob/master/data/dog.jpg).
 
 Image rights remain with their respective owners; these are third-party test fixtures. Upload your own images for your own work.
+
+`ocr_sample.png` is a synthetic two-line test image generated for Vexa using OpenCV. It contains `VEXA OCR 2026` and `TOTAL 123.45`; no personal document data is used.

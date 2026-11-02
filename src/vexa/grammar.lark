@@ -1,9 +1,13 @@
 start: (_NL | command _NL)* command?
 ?command: "load" ESCAPED_STRING -> load
         | "detect" target -> detect
+        | "count" "text" -> count_text
         | "count" target -> count
         | "draw" "boxes" -> draw
+        | "draw" "text" -> draw_text
+        | "ocr" -> ocr
         | "print" ESCAPED_STRING -> print_text
+        | "print" "text" -> print_ocr
         | "print" NAME -> print_count
         | "show" "image" -> show
 ?target: NAME -> bare_target

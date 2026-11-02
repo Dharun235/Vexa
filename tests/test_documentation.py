@@ -16,6 +16,6 @@ EXAMPLES = [
 
 
 @pytest.mark.parametrize("source", EXAMPLES)
-def test_documented_program_executes(source, image, fake_vision):
-    result = execute(source, image, fake_vision)
+def test_documented_program_executes(source, image, fake_vision, fake_reader):
+    result = execute(source, image, fake_vision, fake_reader)
     assert result["logs"]

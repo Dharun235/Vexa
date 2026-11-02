@@ -19,7 +19,7 @@ def parse(source: str) -> list[Command]:
         tree = _PARSER.parse(source)
     except UnexpectedInput as exc:
         raise VexaError(
-            "Invalid command. Try: detect person, draw boxes, or show image.",
+            "Invalid command. Run vexa help for supported syntax.",
             exc.line,
             "syntax",
             column=exc.column,

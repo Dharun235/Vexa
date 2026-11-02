@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vexa"
-version = "0.3.0a1"
+version = "0.4.0a1"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"
 license = "MIT AND AGPL-3.0-only"
@@ -23,6 +23,7 @@ dependencies = [
   "numpy>=2,<3",
   "opencv-python-headless>=4.10,<5",
   "platformdirs>=4,<5",
+  "rapidocr==3.10.0",
 ]
 
 [project.scripts]
@@ -44,7 +45,7 @@ artifacts = ["src/vexa/data/*.onnx"]
 packages = ["src/vexa"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/vexa", "scripts", "tests", "examples/*.vexa", "docs/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSE-MODEL", "pyproject.toml", "uv.lock"]
+include = ["src/vexa", "scripts", "tests", "examples", "docs/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSE-MODEL", "pyproject.toml", "uv.lock"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

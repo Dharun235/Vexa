@@ -39,7 +39,7 @@ uv run ruff format --check src tests scripts
 
 `./scripts/dev.sh` is a convenience wrapper accepting the same CLI arguments. With no arguments, it prints help.
 
-Real-image smoke tests run when the bundled ONNX model exists, otherwise they skip. Unit and console tests reuse the deterministic detector. Fix bugs with focused regression tests. For command changes, update the reference and affected examples in the same commit. Runnable documentation blocks are labelled `vexa`; syntax templates and intentionally invalid programs use `text`.
+Real-image smoke tests run when the bundled ONNX model exists, otherwise they skip. Unit and console tests reuse deterministic detector and OCR fixtures. Real OCR tests reject network downloads and check CPU providers. Fix bugs with focused regression tests. For command changes, update the reference and affected examples in the same commit. Runnable documentation blocks are labelled `vexa`; syntax templates and intentionally invalid programs use `text`.
 
 After verification, remove task-created temporary environments, output copies, old local distributions, and unused caches. Preserve active environments, user data/custom models, current release artifacts, and published history. Follow [AGENTS.md](AGENTS.md).
 
@@ -50,13 +50,13 @@ After verification, remove task-created temporary environments, output copies, o
 uv run python scripts/prepare-assets.py
 ```
 
-The Python-only build runs tests/checks and creates a wheel plus source archive in `dist/`. Both include the CPU model and license/notice. Sample photos and development caches are excluded. Before publishing, inspect the archives for obsolete assets and dependencies, install the wheel in a fresh environment outside the checkout, and verify `check`, `run`, and `repl` with real CPU inference.
+The Python-only build runs tests/checks and creates a wheel plus source archive in `dist/`. Both include the CPU model and license/notice. The source archive includes example fixtures for reproducible tests; development caches are excluded. OCR models come from the pinned RapidOCR dependency, so do not copy them into Vexa. Before publishing, inspect the archives for obsolete assets and dependencies, install the wheel in a fresh environment outside the checkout, and verify `check`, `run`, and `repl` with real CPU inference.
 
 Push the feature branch and create a GitHub prerelease targeting the tested commit, not `main`:
 
 ```sh
 git push origin codex/installable-language
-gh release create v0.3.0a1 dist/vexa-0.3.0a1-py3-none-any.whl dist/vexa-0.3.0a1.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.3.0a1' --notes-file docs/release-notes.md
+gh release create v0.4.0a1 dist/vexa-0.4.0a1-py3-none-any.whl dist/vexa-0.4.0a1.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.4.0a1' --notes-file docs/release-notes.md
 ```
 
 Replace `COMMIT_SHA` with the tested commit. Verify the public installation and checksums. Do not reuse a version for different distributions. Package-index publishing is not configured; no PyPI release is implied.
