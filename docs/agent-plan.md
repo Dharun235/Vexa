@@ -41,6 +41,7 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 | `feat/agent-plan` | This plan |
 | `feat/vexa-ask` | `vexa ask`, `vexa bench`, 26 benchmark tasks, baseline result |
 | `feat/lang-0.5` | Language and agent fixes driven by the baseline failures |
+| `feat/open-vocab` | M1: YOLO-World open-vocabulary detection, `vexa model download` |
 
 Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
 
@@ -48,6 +49,7 @@ Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Language 0.4 (baseline) | 18/26 | 3/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 5.9 |
 | `feat/lang-0.5` | 22/26 | 7/9 | 9/9 | 4/4 | 2/2 | 0/2 | 96% | 5.5 |
+| `feat/open-vocab` | 23/26 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 5.8 |
 
 What the baseline showed: every program was valid, yet counting failed
 because valid programs were meaningless. `detect person` then `count bus`
@@ -175,7 +177,7 @@ If (1) beats (3) on counting and inspection, that is the project's pitch.
 
 | Milestone | Done when |
 | --- | --- |
-| M1 Detector spike | Benchmark table for 2–3 open-vocabulary models; one chosen |
+| M1 Detector spike | Done: YOLO-World v2-S chosen, see open-vocabulary-benchmark.md |
 | M2 Language 0.5 | `if`, `for each`, `record`/`save csv`, open-vocabulary `detect`, validator and tests |
 | M3 Agent | `vexa ask` answers the README example offline with repair loop and tests |
 | M4 Benchmark | Counting and reading suites, scores for the three configurations |

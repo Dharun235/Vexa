@@ -23,3 +23,12 @@ RapidOCR code and the included PaddleOCR-derived models are Apache-2.0 licensed,
 The wheel and source archive bundle EfficientSAM ViT-T's encoder and decoder from the [official ONNX release](https://github.com/labelmeai/efficient-sam/releases/tag/onnx-models-20231225), without retraining. SHA-256 hashes and provenance are recorded in `vexa/data/NOTICE.md` and `scripts/setup-segmentation.py`. These models are Apache-2.0 licensed; the complete license is `LICENSE-SEGMENTATION`.
 
 Vexa's preprocessing and prompt decoding adapt [Osam's EfficientSAM implementation](https://github.com/wkentaro/osam/tree/748ac296612b2a1f86cd56a107ece705547d7d9c/osam/_models/efficientsam), copyright 2024 Kentaro Wada, MIT licensed (`LICENSE-THIRD-PARTY`). The selected pair totals 41,365,489 bytes. SAM2 benchmark weights are not shipped. Runtime does not depend on Osam, PyTorch, or a download service.
+
+## Open-vocabulary models
+
+`vexa model download` fetches three files into the user data folder; they are not part of the wheel:
+
+- `yolov8s-worldv2.onnx` from [Instemic/yolo-world-onnx](https://huggingface.co/Instemic/yolo-world-onnx) at revision `7e1d02c9`: an ONNX export of Ultralytics YOLOv8-World v2 small with dynamic text-embedding input. AGPL-3.0, like the bundled YOLO11 model.
+- `onnx/text_model_fp16.onnx` and `tokenizer.json` from [Xenova/clip-vit-base-patch32](https://huggingface.co/Xenova/clip-vit-base-patch32) at revision `6b7c5237`: the OpenAI CLIP ViT-B/32 text encoder in fp16. MIT licensed.
+
+SHA-256 hashes are pinned in `src/vexa/openvocab.py`; a mismatch installs nothing. Vexa tokenizes prompts with its own CLIP BPE implementation and needs no extra Python packages for this feature.

@@ -35,13 +35,15 @@ def validate_commands(
             ):
                 raise VexaError(
                     f"count {command.argument} after detect {selection} always gives 0. "
-                    f"Use detect {command.argument} or detect all first.",
+                    f"Count {selection} instead, or detect {command.argument} first.",
                     command.line,
                     column=command.column,
                 )
             if kind in {"print_ocr", "count_text", "draw_text", "find_text"} and not ocr_done:
                 raise VexaError(
-                    "Run ocr before using text results.", command.line, column=command.column
+                    "Run ocr before using text results. For barcodes and QR codes, scan codes prints the content itself.",
+                    command.line,
+                    column=command.column,
                 )
             if kind in {"count_masks", "draw_masks"} and not segmented:
                 raise VexaError(

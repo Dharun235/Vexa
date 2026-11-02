@@ -72,7 +72,7 @@ These forms share one parser and validator. `masks` is reserved in `count masks`
 `count car` after `detect person` would always be zero, so `vexa check` rejects it:
 
 ```text
-count car after detect person always gives 0. Use detect car or detect all first.
+count car after detect person always gives 0. Count person instead, or detect car first.
 ```
 
 `count all` is allowed after any detection. To count multiple kinds with one inference:
@@ -120,6 +120,12 @@ hair drier, toothbrush
 ```
 
 This list was checked against the local model metadata. Replacing the model may change recognised labels or predictions; that is separate from changing Vexa syntax.
+
+### Any other object
+
+Other names use open-vocabulary detection with YOLO-World v2-S and a CLIP text encoder, for example `detect "sunglasses"` or `detect "screw"`. Download the models once with `vexa model download` (about 175 MB, pinned revisions, SHA-256 checked); detection then runs offline on CPU, roughly 0.4 s per image. Without them, an unknown label raises an error that suggests the closest built-in label and the download command.
+
+Open-vocabulary detections use a default confidence of 0.3 and can be tuned with `confidence`. Count them with the same quoted name: `count "sunglasses"`. Accuracy varies with the object and wording; check results on your own images. See [the detector comparison](open-vocabulary-benchmark.md).
 
 ## Inputs and outputs
 

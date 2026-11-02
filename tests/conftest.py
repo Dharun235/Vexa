@@ -7,7 +7,8 @@ from vexa.vision import Detection
 class FakeVision:
     model = None
 
-    def detect(self, image, target, confidence=0.25):
+    def detect(self, image, target, confidence=None):
+        confidence = 0.25 if confidence is None else confidence
         items = [Detection("person", 0.9, (5, 10, 40, 50)), Detection("car", 0.8, (50, 20, 90, 70))]
         return [
             item

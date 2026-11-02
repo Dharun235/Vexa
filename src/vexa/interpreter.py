@@ -62,7 +62,7 @@ class Session:
                     detections = self.vision.detect(
                         self.image,
                         target,
-                        confidence=command.confidence if command.confidence is not None else 0.25,
+                        confidence=command.confidence,
                     )
                     self.detections = detections
                     self.detected, self.selection = True, target
@@ -141,7 +141,12 @@ class Session:
                     logs.append(f"Drew {len(self.detections)} bounding box(es).")
                 elif kind in {"count", "print_count"}:
                     labels = getattr(self.vision, "labels", None)
-                    if labels and target != "all" and target not in labels.values():
+                    if (
+                        labels
+                        and self.selection == "all"
+                        and target != "all"
+                        and target not in labels.values()
+                    ):
                         raise VexaError(unknown_label(target, labels.values()))
                     value = sum(target == "all" or item.label == target for item in self.detections)
                     self.counts[target] = value

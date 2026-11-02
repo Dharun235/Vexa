@@ -35,6 +35,25 @@ Segmentation: `detect dog`, `segment detections`, `count masks`, `draw masks`, t
 
 Try `vexa help scan` for QR/barcode reading, `vexa help find` for OCR search, and `vexa help check` for blur scoring. `inspect image` reports decoded image properties; `detect person confidence 0.7` selects stronger detections.
 
+## Ask in plain English
+
+A local model can write the program for you. Install [Ollama](https://ollama.com), then:
+
+```sh
+ollama pull qwen3:4b-instruct
+vexa ask "How many people and buses are there?" --image street.jpg
+```
+
+Vexa checks the program before running it and sends any error back to the model to fix. The answer comes with the program, which `--save` keeps for reuse without the model. `vexa bench` scores this on the [benchmark tasks](benchmarks/vision-qa/tasks.json).
+
+## Any object, not only 80 labels
+
+```sh
+vexa model download   # once, about 175 MB; offline afterwards
+```
+
+Then `detect "sunglasses"` or `detect "screw"` uses open-vocabulary detection (YOLO-World v2-S) on CPU. The 80 built-in labels keep using the bundled detector.
+
 ## Documentation
 
 - [Getting started](docs/getting-started.md): installation, file execution, and REPL.

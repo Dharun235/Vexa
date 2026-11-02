@@ -41,6 +41,7 @@ class Vision:
         self.path = (path or model_path()).expanduser()
         self.model = None
         self.labels = {}
+        self.open_vocabulary = None
         self.lock = Lock()
 
     def _load(self):
@@ -72,18 +73,29 @@ class Vision:
             )
         self.labels, self.model = labels, session
 
-    def detect(self, image, target, confidence=0.25):
+    def detect(self, image, target, confidence=None):
+        with self.lock:
+            if self.model is None:
+                self._load()
+        if target != "all" and target not in self.labels.values():
+            return self._detect_open(image, target, confidence)
         with self.lock:
             try:
                 if self.model is None:
                     self._load()
-                if target != "all" and target not in self.labels.values():
-                    raise VexaError(unknown_label(target, self.labels.values()))
                 tensor, scale, left, top = prepare_image(image)
                 predictions = self.model.run(None, {self.model.get_inputs()[0].name: tensor})[0][
                     0
                 ].T
-                return self._decode(predictions, image.shape, target, scale, left, top, confidence)
+                return self._decode(
+                    predictions,
+                    image.shape,
+                    target,
+                    scale,
+                    left,
+                    top,
+                    0.25 if confidence is None else confidence,
+                )
             except VexaError:
                 raise
             except Exception as exc:
@@ -91,6 +103,20 @@ class Vision:
                 raise VexaError(
                     "ONNX inference failed. Rerun with --debug for details.", kind="vision"
                 ) from exc
+
+    def _detect_open(self, image, target, confidence):
+        from vexa import openvocab
+
+        if not openvocab.installed():
+            raise VexaError(
+                unknown_label(target, self.labels.values())
+                + " Other objects need open-vocabulary detection: run vexa model download."
+            )
+        if self.open_vocabulary is None:
+            self.open_vocabulary = openvocab.OpenVocabulary()
+        if confidence is None:
+            confidence = openvocab.DEFAULT_CONFIDENCE
+        return self.open_vocabulary.detect(image, target, confidence)
 
     def _decode(self, predictions, shape, target, scale, left, top, confidence=0.25):
         class_ids = predictions[:, 4:].argmax(axis=1)

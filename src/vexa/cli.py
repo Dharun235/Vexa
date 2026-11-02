@@ -59,6 +59,10 @@ def arguments():
     model = commands.add_parser("model", help="Manage the model stored in your user data folder")
     actions = model.add_subparsers(dest="model_action", required=True)
     actions.add_parser("path", help="Print the model location")
+    actions.add_parser(
+        "download",
+        help="Download open-vocabulary detection models once (about 175 MB) for offline use",
+    )
     install = actions.add_parser("install", help="Validate and copy a YOLO11n ONNX model")
     install.add_argument("file", type=Path)
     return parser
@@ -175,6 +179,10 @@ def main(argv=None):
             from vexa.repl import run_repl
 
             run_repl(args)
+        elif args.model_action == "download":
+            from vexa.openvocab import download
+
+            print(f"Open-vocabulary models ready in {download()}")
         elif args.model_action == "path":
             print(model_path())
         else:

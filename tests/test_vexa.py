@@ -137,7 +137,8 @@ def test_onnx_preprocessing(image):
     assert left == 0 and top > 0
 
 
-def test_unknown_label(image):
+def test_unknown_label(image, monkeypatch):
+    monkeypatch.setattr("vexa.openvocab.installed", lambda: False)
     vision = Vision()
     vision.model = object()
     vision.labels = {0: "person"}

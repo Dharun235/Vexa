@@ -47,8 +47,10 @@ Rules:
 - Start with load "image.jpg". The real image is supplied separately.
 - detect the object the question asks about, then count that same label. Each detect replaces
   the previous detections. To count several kinds of object, use detect all, then one count per label.
-- detect only knows these labels; quote labels with spaces, e.g. detect "traffic light":
+- These labels use the fast built-in detector; quote labels with spaces, e.g. detect "traffic light":
   {COCO_LABELS}
+  Any other object name also works with detect, e.g. detect "sunglasses" or detect "screw".
+  Use the object name the question uses, e.g. detect "pickup truck" for a pickup truck.
 - Run ocr before print text or find text. Use scan codes for QR codes and barcodes.
 - There are no variables, conditions or loops. Do not draw or show anything unless asked.
 - Reply with only the program in a ```vexa code block.
@@ -59,6 +61,12 @@ load "image.jpg"
 detect all
 count dog
 count cat
+```
+
+Example question: What does the barcode say?
+```vexa
+load "image.jpg"
+scan codes
 ```
 
 Example question: What is the invoice number?
@@ -158,7 +166,7 @@ def ask(question, run, client, max_attempts=3):
         except VexaError as exc:
             error = describe_error(exc, program)
             outcome.errors.append(error)
-            if "detectable labels" in exc.message:
+            if "detectable labels" in exc.message or "vexa model download" in exc.message:
                 # Retrying cannot help when the object is outside the detector's labels.
                 outcome.answer = f"Vexa cannot answer this: {exc.message}"
                 return outcome
