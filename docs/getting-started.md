@@ -9,7 +9,7 @@ Vexa runs a plain text `.vexa` file against one image. Run a saved program or ex
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then install the alpha wheel:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.4.0a1/vexa-0.4.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.5.0a1/vexa-0.5.0a1-py3-none-any.whl
 vexa --version
 ```
 
@@ -128,3 +128,20 @@ Use `uv run vexa` from the project root, or run `./scripts/dev.sh` with the same
 ## Advanced: use another model location
 
 The bundled model is the default when no user-installed model exists. `vexa model install FILE.onnx` installs a validated override in your user-data folder; `vexa model path` shows which model is selected. An explicit `--model FILE.onnx` or `VEXA_MODEL_PATH` takes precedence. These are optional controls, not setup steps. The model's [upstream license and provenance](model-notice.md) are included with the package.
+
+## Ask questions about an image
+
+```vexa
+load "image.jpg"
+inspect image
+check blur
+scan codes
+ocr
+find text "TOTAL"
+detect person confidence 0.7
+count person
+```
+
+These commands print results directly in the terminal. `find text` searches existing OCR results without running the engine again. Blur is a rough detail score, not a guaranteed quality verdict. Scanned links are displayed without opening them.
+
+Try `examples/codes.vexa` with `--image examples/codes_sample.png`: it contains one QR code and one Code 128 barcode. For text search, use `examples/ocr.vexa` and its OCR sample. Use `help scan`, `help find`, `help inspect`, `help check`, or `help detect` in the console for syntax.

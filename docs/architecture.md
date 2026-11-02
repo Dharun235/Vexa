@@ -73,3 +73,7 @@ The object model is loaded lazily. OCR has its own lazy reader, with reusable de
 ## Image output
 
 The session keeps its latest snapshot as PNG bytes. The terminal writes those bytes directly to disk; no HTTP transport, base64 encoding, web assets, or browser process is involved. JSON reports contain an image path, counts, logs, detections, and OCR text/regions.
+
+Image queries in `analysis.py` reuse OpenCV for inspection and bounded blur scoring; code scanning imports ZXing-C++ lazily. Text search reuses existing OCR regions. Detection confidence belongs to the command node and is validated before image I/O or inference, then applied before NMS. Query results remain session-local and clear on load/reset.
+
+The scanning adapter follows the [official ZXing-C++ Python API](https://github.com/zxing-cpp/zxing-cpp/blob/master/wrappers/python/README.md). Its installed dependency supplies its own Apache-2.0 license; no scanner models are bundled or downloaded.

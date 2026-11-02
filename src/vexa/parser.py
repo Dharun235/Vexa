@@ -40,7 +40,10 @@ def parse(source: str) -> list[Command]:
                     "syntax",
                     column=node.meta.column,
                 ) from exc
-        commands.append(Command(str(node.data), argument, node.meta.line, node.meta.column))
+        confidence = float(node.children[1]) if len(node.children) > 1 else None
+        commands.append(
+            Command(str(node.data), argument, node.meta.line, node.meta.column, confidence)
+        )
     if not commands:
         raise VexaError("Program contains no commands.", kind="syntax")
     return commands

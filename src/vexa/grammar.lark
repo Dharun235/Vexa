@@ -1,6 +1,10 @@
 start: (_NL | command _NL)* command?
 ?command: "load" ESCAPED_STRING -> load
-        | "detect" target -> detect
+        | "detect" target ("confidence" NUMBER)? -> detect
+        | "scan" "codes" -> scan_codes
+        | "find" "text" ESCAPED_STRING -> find_text
+        | "inspect" "image" -> inspect_image
+        | "check" "blur" -> check_blur
         | "count" "text" -> count_text
         | "count" target -> count
         | "draw" "boxes" -> draw
@@ -14,6 +18,7 @@ start: (_NL | command _NL)* command?
        | ESCAPED_STRING -> quoted_target
 NAME: /[a-zA-Z][a-zA-Z0-9_]*/
 _NL: /\r?\n/
+%import common.NUMBER
 %import common.ESCAPED_STRING
 %import common.WS_INLINE
 %ignore WS_INLINE

@@ -1,6 +1,17 @@
 # Changelog
 
-User-visible changes to the Vexa language and local runner are recorded here. The project is an unreleased local prototype; version headings describe implementation state and do not imply a published package or Git tag.
+User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
+
+## 0.5.0a1 — image queries — 2026-11-02
+
+- Add `scan codes` for offline QR and barcode decoding with a small ZXing-C++ CPU dependency.
+- Add `find text "query"` for case-insensitive literal OCR search with positions, without repeating inference.
+- Add per-command confidence thresholds: `detect person confidence 0.7`; the default remains 0.25.
+- Add `inspect image` for decoded image properties and `check blur` for a bounded Laplacian detail score with a rough assessment.
+- Retain query results within a session and include them in the existing optional CLI JSON report. No `save results` language command is added.
+- Add synthetic QR and Code 128 fixtures, focused checks, command help and documentation.
+
+Existing commands retain their syntax and defaults.
 
 ## 0.4.0a1 — help, exit, and OCR — 2026-11-02
 

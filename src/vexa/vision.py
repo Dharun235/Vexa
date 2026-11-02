@@ -71,7 +71,7 @@ class Vision:
             )
         self.labels, self.model = labels, session
 
-    def detect(self, image, target):
+    def detect(self, image, target, confidence=0.25):
         with self.lock:
             try:
                 if self.model is None:
@@ -82,7 +82,7 @@ class Vision:
                 predictions = self.model.run(None, {self.model.get_inputs()[0].name: tensor})[0][
                     0
                 ].T
-                return self._decode(predictions, image.shape, target, scale, left, top)
+                return self._decode(predictions, image.shape, target, scale, left, top, confidence)
             except VexaError:
                 raise
             except Exception as exc:
@@ -91,10 +91,10 @@ class Vision:
                     "ONNX inference failed. Rerun with --debug for details.", kind="vision"
                 ) from exc
 
-    def _decode(self, predictions, shape, target, scale, left, top):
+    def _decode(self, predictions, shape, target, scale, left, top, confidence=0.25):
         class_ids = predictions[:, 4:].argmax(axis=1)
         scores = predictions[np.arange(len(predictions)), class_ids + 4]
-        mask = scores >= 0.25
+        mask = scores >= confidence
         if target != "all":
             mask &= class_ids == next(key for key, name in self.labels.items() if name == target)
         rows, scores, class_ids = predictions[mask], scores[mask], class_ids[mask]
@@ -105,7 +105,7 @@ class Vision:
         boxes[:, :2] -= boxes[:, 2:] / 2
         nms_boxes = boxes.copy()
         nms_boxes[:, :2] += class_ids[:, None] * 4096
-        keep = cv2.dnn.NMSBoxes(nms_boxes.tolist(), scores.tolist(), 0.25, 0.45)
+        keep = cv2.dnn.NMSBoxes(nms_boxes.tolist(), scores.tolist(), confidence, 0.45)
         result = []
         height, width = shape[:2]
         for index in np.asarray(keep).flatten():

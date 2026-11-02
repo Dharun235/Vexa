@@ -9,3 +9,5 @@ Public upstream demonstration images included for local testing:
 Image rights remain with their respective owners; these are third-party test fixtures. Upload your own images for your own work.
 
 `ocr_sample.png` is a synthetic two-line test image generated for Vexa using OpenCV. It contains `VEXA OCR 2026` and `TOTAL 123.45`; no personal document data is used.
+
+`codes_sample.png` is a synthetic QR / Code 128 fixture generated with ZXing-C++ 3.1.1, encoding only `Vexa sample QR` and `VEXA-12345`. No personal data.

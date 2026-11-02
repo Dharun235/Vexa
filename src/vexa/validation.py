@@ -7,6 +7,12 @@ from vexa.parser import parse
 def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False):
     for command in commands:
         kind = command.kind
+        if command.confidence is not None and not 0 <= command.confidence <= 1:
+            raise VexaError(
+                "Confidence must be between 0 and 1.", command.line, column=command.column
+            )
+        if kind == "find_text" and not command.argument.strip():
+            raise VexaError("Search text cannot be empty.", command.line, column=command.column)
         if kind == "load":
             loaded, detected, ocr_done = True, False, False
         elif kind != "print_text":
@@ -20,7 +26,7 @@ def validate_commands(commands, *, loaded=False, detected=False, ocr_done=False)
                     command.line,
                     column=command.column,
                 )
-            if kind in {"print_ocr", "count_text", "draw_text"} and not ocr_done:
+            if kind in {"print_ocr", "count_text", "draw_text", "find_text"} and not ocr_done:
                 raise VexaError(
                     "Run ocr before using text results.", command.line, column=command.column
                 )

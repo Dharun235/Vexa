@@ -56,7 +56,7 @@ Push the feature branch and create a GitHub prerelease targeting the tested comm
 
 ```sh
 git push origin codex/installable-language
-gh release create v0.4.0a1 dist/vexa-0.4.0a1-py3-none-any.whl dist/vexa-0.4.0a1.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.4.0a1' --notes-file docs/release-notes.md
+gh release create v0.5.0a1 dist/vexa-0.5.0a1-py3-none-any.whl dist/vexa-0.5.0a1.tar.gz dist/SHA256SUMS --target COMMIT_SHA --prerelease --title 'Vexa 0.5.0a1' --notes-file docs/release-notes.md
 ```
 
 Replace `COMMIT_SHA` with the tested commit. Verify the public installation and checksums. Do not reuse a version for different distributions. Package-index publishing is not configured; no PyPI release is implied.

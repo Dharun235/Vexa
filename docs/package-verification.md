@@ -1,6 +1,6 @@
 # Package verification
 
-**Package:** Vexa 0.4.0a1 · **Date:** 2 November 2026
+**Package:** Vexa 0.5.0a1 · **Date:** 2 November 2026
 
 ## Terminal-only package
 
@@ -12,7 +12,8 @@ OCR uses RapidOCR 3.10.0’s packaged ONNX models through the CPU provider. Mode
 
 ## Verification
 
-- 62 tests cover grammar, shared validation, command execution, model selection, real inference, PNG/JSON output, REPL persistence/recovery/reset, error locations, and release checksums.
+- 73 tests cover grammar, shared validation, command execution, model selection, real inference, PNG/JSON output, REPL persistence/recovery/reset, error locations, and release checksums.
+- Query checks cover real QR/Code 128 decoding, no-code images, literal text matching, confidence filtering before NMS, non-mutating image inspection and blur scoring, CLI/REPL behavior, reset and error locations.
 - Real OCR tests prohibit network/download calls, recognize the bundled text fixture, handle blank images, and verify all three sessions use CPU only.
 - Ruff and shell-script checks pass. The Python-only release build also rebuilds the wheel from its source archive.
 - A clean wheel installation outside the checkout verifies file execution, counts, saved PNG/JSON, and a persistent REPL with real CPU inference.

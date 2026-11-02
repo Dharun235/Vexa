@@ -7,6 +7,7 @@ class Command:
     argument: str | None
     line: int
     column: int = 1
+    confidence: float | None = None
 
 
 class VexaError(Exception):

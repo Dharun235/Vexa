@@ -1,0 +1,4 @@
+load "codes_sample.png"
+inspect image
+check blur
+scan codes

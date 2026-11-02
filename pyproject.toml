@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vexa"
-version = "0.4.0a1"
+version = "0.5.0a1"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"
 license = "MIT AND AGPL-3.0-only"
@@ -24,6 +24,7 @@ dependencies = [
   "opencv-python-headless>=4.10,<5",
   "platformdirs>=4,<5",
   "rapidocr==3.10.0",
+  "zxing-cpp>=3,<4",
 ]
 
 [project.scripts]

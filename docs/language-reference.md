@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.4.0a1 — language 0.2.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.5.0a1 — language 0.3.** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -8,7 +8,7 @@ This reference describes the current interpreter. The executable syntax definiti
 
 ```text
 load "filename"
-detect label
+detect label [confidence NUMBER]
 count label
 draw boxes
 ocr
@@ -18,6 +18,10 @@ draw text
 print "text"
 print label
 show image
+scan codes
+find text "query"
+inspect image
+check blur
 ```
 
 - Commands execute from top to bottom, one per line. A final newline is optional.
@@ -47,7 +51,7 @@ show image
 | Command | Requires | Effect |
 | --- | --- | --- |
 | `load "filename"` | An image supplied to this execution | Copies the supplied source image into working state. Clears detections, counts, and the displayed snapshot. The quoted name is only an alias. |
-| `detect label` | `load` | Runs CPU inference on the current working image. Replaces detections with matches for that label, or all recognised labels for `all`. Clears the counts dictionary. Does not draw boxes. |
+| `detect label` | `load` | Runs CPU inference on the current working image. Replaces detections with matches for that label, or all recognised labels for `all`. Clears object counts, preserving the OCR text count. Does not draw boxes. |
 | `count label` | `load`, then `detect` | Counts matching detections from the latest detection command, stores the count under that label, and logs it. `all` counts all current detections. Does not change the image or run inference. |
 | `draw boxes` | `load`, then `detect` | Draws every current detection with its label and confidence on the working image. Does not change counts. |
 | `print "text"` | None | Appends literal text to the execution log. Does not require `load`; the terminal runner still requires an image argument. |
@@ -58,7 +62,7 @@ show image
 | `draw text` | `load`, then `ocr` | Draws numbered quadrilateral outlines for recognized text regions. No font or word rendering. |
 | `show image` | `load` | Encodes the current working image into the output snapshot. Does not run inference or draw anything. |
 
-There are seven language keywords. `text` is reserved in the `print text`, `count text`, and `draw text` forms; `print "text"` remains a literal string. `help` and `exit` are terminal-console controls, not language keywords.
+These forms share one parser and validator. `text` is reserved in the `print text`, `count text`, and `draw text` forms; `print "text"` remains a literal string. `help` and `exit` are terminal-console controls, not language keywords.
 
 ### Counts refer to the latest detection selection
 
@@ -86,11 +90,11 @@ Repeated counts for a label overwrite that label's value in the counts dictionar
 
 `show image` captures the image at that point. Drawing afterwards does not update that snapshot: call `show image` again. If there are several `show image` commands, only the latest snapshot is returned. `show image` can display the loaded image without any detection.
 
-`detect` replaces detections and clears counts, but preserves existing drawn pixels and the previous output snapshot. To begin another clean detection pass, reload the image first. Detection after drawing operates on the image containing those drawn boxes.
+`detect` replaces detections and clears object counts, but preserves existing drawn pixels and the previous output snapshot. To begin another clean detection pass, reload the image first. Detection after drawing operates on the image containing those drawn boxes.
 
 OCR results remain separate from object detections. A new `ocr` replaces the text selection without changing object detections or object counts. `print text`, `count text`, and `draw text` reuse results without running OCR again. Object `count all` still counts only detected objects.
 
-A second `load` resets the working image to the original supplied photo and clears detections, OCR results, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
+A second `load` resets the working image to the original supplied photo and clears all detections, OCR results, text matches, scanned codes, image inspection, blur assessment, counts, and output snapshot. It cannot load a second file. Each file run has independent state; REPL entries share a session.
 
 An error stops execution. The terminal reports an error and an exit status. The whole source is parsed and checked for command-order errors before execution, so those errors prevent any commands from running. This preflight does not require inference.
 
@@ -129,9 +133,13 @@ The result contains:
 | `detections` | Latest detection selection: `label`, `confidence` from 0 to 1, and `box` as `[x1, y1, x2, y2]` in original-image pixel coordinates |
 | `text` | OCR lines joined with newlines; empty when no OCR results exist |
 | `text_regions` | Array of `text`, `confidence`, and four-point `box` coordinates in source-image pixels |
+| `text_matches` | Latest `find text` matches, using the same fields as `text_regions` |
+| `codes` | Latest decoded codes: `text`, `format`, four-point `box` |
+| `image_info` | Latest inspection: width, height, channels, color order, dtype; null until requested |
+| `blur` | Latest detail score, threshold, assessment, and analysis dimensions; null until requested |
 | `image_path` | Saved PNG path, or null when no current snapshot exists |
 
-The upper-left corner is the coordinate origin. Inference uses fixed 640×640 letterboxed input, confidence threshold 0.25, and class-aware non-maximum suppression with IoU threshold 0.45. Vexa 0.1 has no language command for changing these settings.
+The upper-left corner is the coordinate origin. Inference uses fixed 640×640 letterboxed input, default confidence threshold 0.25, and class-aware non-maximum suppression with IoU threshold 0.45. Use `detect label confidence NUMBER` to change the confidence threshold (0 to 1 inclusive) for that invocation. Other inference settings remain fixed.
 
 ### Errors
 
@@ -147,7 +155,7 @@ Image/model failures without a source location still have an explanatory message
 
 ## Compatibility
 
-This is the language reference for package 0.4.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+This is the language reference for package 0.5.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Interactive sessions
 
@@ -158,3 +166,15 @@ This is the language reference for package 0.4.0a1. No language version directiv
 The `ocr` command uses RapidOCR's packaged PP-OCRv6 small detection/recognition models and text orientation classifier, running through ONNX Runtime on CPU. OCR is loaded only when requested and reused within a session. No YOLO inference is needed for OCR. Text confidence is a model estimate, not an accuracy guarantee. Clear printed English is tested; complex scene text, handwriting, and other languages need their own validation.
 
 OCR uses the current working image, including any drawn overlays. Use `load` again for a clean pass. Zero recognized lines is valid. A failed OCR invocation retains the previous successful text selection. Text coordinates are four corner points, unlike the two-corner rectangles used by object detections.
+
+## Image queries
+
+| Command | Requires | Result |
+| --- | --- | --- |
+| `detect person confidence 0.7` | `load` | Runs detection with the supplied threshold before non-maximum suppression. Omitting it uses 0.25, including after an earlier custom threshold. |
+| `scan codes` | `load` | Decodes QR codes and barcodes using ZXing-C++; logs content and format, stores corner coordinates. No matches is valid. Content is printed, never opened or executed. |
+| `find text "TOTAL"` | `load`, `ocr` | Case-insensitive literal substring search. Prints matching lines and positions, stores `text_matches`. Does not rerun OCR or change the full text selection. Empty/whitespace queries are rejected. |
+| `inspect image` | `load` | Reports dimensions, three BGR channels and decoded pixel type. It describes the working image, not the original file format or metadata. |
+| `check blur` | `load` | Computes grayscale Laplacian variance; lower means less detail. Analysis scales images down to a maximum side of 1024 pixels. Scores below 100 are labelled possibly blurry. This is a heuristic: texture, contrast and resolution affect it, and a blank image also scores low. |
+
+These queries do not draw or modify pixels. Each invocation replaces its own previous result. `ocr` clears prior search matches; `load` and `:reset` clear all query results. All commands operate on the working image, including existing drawn overlays. Code decoding needs no OCR, YOLO, external service, or model download. Small, damaged or obscured codes may not decode; an empty result does not prove that an image contains no codes.

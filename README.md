@@ -15,7 +15,7 @@ show image
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.4.0a1/vexa-0.4.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.5.0a1/vexa-0.5.0a1-py3-none-any.whl
 ```
 
 The package includes the interpreter and object-detection model; its pinned OCR dependency includes the OCR models. No separate model setup is needed. After installation, detection works offline.
@@ -30,6 +30,8 @@ vexa repl --image street.jpg
 ```
 
 The REPL retains the image and detections between commands. Use `help`, `help ocr`, `:reset`, or `exit` (the colon shortcuts still work). `show image` saves a PNG; it does not open a browser or desktop viewer.
+
+Try `vexa help scan` for QR/barcode reading, `vexa help find` for OCR search, and `vexa help check` for blur scoring. `inspect image` reports decoded image properties; `detect person confidence 0.7` selects stronger detections.
 
 ## Documentation
 

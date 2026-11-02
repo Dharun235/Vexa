@@ -25,6 +25,10 @@ class Session:
         self.shown = None
         self.text_regions = []
         self.ocr_done = False
+        self.codes = []
+        self.text_matches = []
+        self.image_info = None
+        self.blur = None
 
     def execute(self, commands):
         # Validate the entire submission before any image changes or inference.
@@ -44,7 +48,11 @@ class Session:
                 elif kind == "print_text":
                     logs.append(target)
                 elif kind == "detect":
-                    detections = self.vision.detect(self.image, target)
+                    detections = self.vision.detect(
+                        self.image,
+                        target,
+                        confidence=command.confidence if command.confidence is not None else 0.25,
+                    )
                     self.detections = detections
                     self.detected = True
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
@@ -56,8 +64,37 @@ class Session:
                         self.reader = TextReader()
                     regions = self.reader.read(self.image)
                     self.text_regions, self.ocr_done = regions, True
+                    self.text_matches = []
                     self.counts.pop("text", None)
                     logs.append(f"Recognized {len(regions)} text line(s).")
+                elif kind == "scan_codes":
+                    from vexa.analysis import scan_codes
+
+                    self.codes = scan_codes(self.image)
+                    logs.append(f"Found {len(self.codes)} code(s).")
+                    logs.extend(f"{item['format']}: {item['text']}" for item in self.codes)
+                elif kind == "find_text":
+                    self.text_matches = [
+                        region
+                        for region in self.text_regions
+                        if target.casefold() in region.text.casefold()
+                    ]
+                    logs.append(f"Found {len(self.text_matches)} matching text line(s).")
+                    logs.extend(f"{region.text} at {region.box}" for region in self.text_matches)
+                elif kind == "inspect_image":
+                    from vexa.analysis import inspect_image
+
+                    self.image_info = inspect_image(self.image)
+                    logs.append(
+                        f"{self.image_info['width']} × {self.image_info['height']}, {self.image_info['channels']} channels ({self.image_info['color_order']}), {self.image_info['dtype']}"
+                    )
+                elif kind == "check_blur":
+                    from vexa.analysis import check_blur
+
+                    self.blur = check_blur(self.image)
+                    logs.append(
+                        f"Blur score: {self.blur['score']:.2f} — {'possibly blurry' if self.blur['possibly_blurry'] else 'detail detected'} (heuristic, threshold 100)."
+                    )
                 elif kind == "print_ocr":
                     logs.extend(region.text for region in self.text_regions)
                     if not self.text_regions:
@@ -93,6 +130,10 @@ class Session:
             "detections": [asdict(item) for item in self.detections],
             "text": "\n".join(item.text for item in self.text_regions),
             "text_regions": [asdict(item) for item in self.text_regions],
+            "text_matches": [asdict(item) for item in self.text_matches],
+            "codes": self.codes.copy(),
+            "image_info": self.image_info,
+            "blur": self.blur,
         }
 
 

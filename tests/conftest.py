@@ -7,9 +7,13 @@ from vexa.vision import Detection
 class FakeVision:
     model = None
 
-    def detect(self, image, target):
+    def detect(self, image, target, confidence=0.25):
         items = [Detection("person", 0.9, (5, 10, 40, 50)), Detection("car", 0.8, (50, 20, 90, 70))]
-        return [item for item in items if target == "all" or item.label == target]
+        return [
+            item
+            for item in items
+            if (target == "all" or item.label == target) and item.confidence >= confidence
+        ]
 
 
 @pytest.fixture

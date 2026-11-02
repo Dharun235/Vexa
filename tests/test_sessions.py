@@ -54,7 +54,7 @@ def test_failed_detection_keeps_previous_selection(image, fake_vision, monkeypat
     session = Session(image, fake_vision)
     session.execute(parse('load "x"\ndetect person'))
 
-    def fail(*_args):
+    def fail(*_args, **_kwargs):
         raise VexaError("Detection failed")
 
     monkeypatch.setattr(fake_vision, "detect", fail)
