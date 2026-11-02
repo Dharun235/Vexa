@@ -9,20 +9,7 @@ from backend.ast_nodes import VexaError
 from backend.interpreter import execute
 from backend.main import app
 from backend.parser import parse
-from backend.vision import Detection, Vision, decode_image
-
-
-class FakeVision:
-    model = None
-
-    def detect(self, image, target):
-        items = [Detection("person", 0.9, (5, 10, 40, 50)), Detection("car", 0.8, (50, 20, 90, 70))]
-        return [item for item in items if target == "all" or item.label == target]
-
-
-@pytest.fixture
-def image():
-    return np.zeros((100, 120, 3), dtype=np.uint8)
+from backend.vision import Vision, decode_image
 
 
 def test_parser_commands_comments_and_quoted_labels():
@@ -51,11 +38,11 @@ def test_invalid_programs(source):
     assert error.value.kind == "syntax"
 
 
-def test_all_commands_execute(image):
+def test_all_commands_execute(image, fake_vision):
     result = execute(
         'load "anything.jpg"\ndetect all\ncount person\nprint car\nprint "done"\ndraw boxes\nshow image',
         image,
-        FakeVision(),
+        fake_vision,
     )
     assert result["counts"] == {"person": 1, "car": 1}
     assert "done" in result["logs"]
@@ -70,29 +57,27 @@ def test_all_commands_execute(image):
     "source,line",
     [("detect person", 1), ('load "x"\ncount person', 2), ('load "x"\ndraw boxes', 2)],
 )
-def test_command_order_errors(image, source, line):
+def test_command_order_errors(image, fake_vision, source, line):
     with pytest.raises(VexaError) as error:
-        execute(source, image, FakeVision())
+        execute(source, image, fake_vision)
     assert error.value.line == line
 
 
-def test_zero_counts_and_load_resets_state(image):
-    result = execute(
-        'load "x"\ndetect person\ncount car\nshow image\nload "y"', image, FakeVision()
-    )
+def test_zero_counts_and_load_resets_state(image, fake_vision):
+    result = execute('load "x"\ndetect person\ncount car\nshow image\nload "y"', image, fake_vision)
     assert result["counts"] == {}
     assert result["image"] is None
-    result = execute('load "x"\ndetect person\ncount car', image, FakeVision())
+    result = execute('load "x"\ndetect person\ncount car', image, fake_vision)
     assert result["counts"]["car"] == 0
 
 
 @pytest.mark.parametrize("path", list(Path("examples").glob("*.vexa")))
-def test_examples(path, image):
-    assert execute(path.read_text(), image, FakeVision())["image"]
+def test_examples(path, image, fake_vision):
+    assert execute(path.read_text(), image, fake_vision)["image"]
 
 
-def test_api_success_and_errors(monkeypatch, image):
-    monkeypatch.setattr("backend.main.vision", FakeVision())
+def test_api_success_and_errors(monkeypatch, image, fake_vision):
+    monkeypatch.setattr("backend.main.vision", fake_vision)
     client = TestClient(app)
     data = cv2.imencode(".png", image)[1].tobytes()
     response = client.post(
