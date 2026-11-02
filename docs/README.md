@@ -11,6 +11,7 @@ Start with [Getting started](getting-started.md). It takes you from installation
 ## Working on Vexa
 
 - [How Vexa works](architecture.md): lexer/parser, command nodes, interpreter, and CPU runtime.
+- [Language setup research](language-setup.md): Python/C++/Rust execution, shell versus IDE workflows, and proposed Vexa tooling.
 - [Contributing](../CONTRIBUTING.md): branch workflow, tests, packaging, and publishing.
 - [Changelog](../CHANGELOG.md): user-visible changes.
 - [Package verification](package-verification.md): what was tested and what remains unverified.
