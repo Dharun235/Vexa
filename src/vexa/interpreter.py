@@ -3,13 +3,16 @@ from dataclasses import asdict
 
 import cv2
 
-from backend.ast_nodes import VexaError
-from backend.parser import parse
-from backend.vision import draw_boxes
+from vexa.ast_nodes import VexaError
+from vexa.parser import parse
+from vexa.vision import draw_boxes
 
 
 def execute(source, uploaded_image, vision):
-    commands = parse(source)
+    return execute_commands(parse(source), uploaded_image, vision)
+
+
+def execute_commands(commands, uploaded_image, vision):
     image = None
     detections = []
     detected = False
@@ -22,9 +25,7 @@ def execute(source, uploaded_image, vision):
             if kind == "load":
                 image = uploaded_image.copy()
                 detections, counts, detected, shown = [], {}, False, None
-                logs.append(
-                    f'Loaded uploaded image as "{target}" ({image.shape[1]} × {image.shape[0]}).'
-                )
+                logs.append(f'Loaded image as "{target}" ({image.shape[1]} × {image.shape[0]}).')
             elif kind == "print_text":
                 logs.append(target)
             else:

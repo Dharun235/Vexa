@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from backend.vision import Detection
+from vexa.vision import Detection
 
 
 class FakeVision:

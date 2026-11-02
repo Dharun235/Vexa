@@ -12,3 +12,7 @@ frontend/dist/
 .DS_Store
 *.onnx
 *.tsbuildinfo
+dist/
+src/vexa/web/
+.release-test/
+vexa-output.png

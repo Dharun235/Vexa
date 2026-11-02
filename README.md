@@ -1,6 +1,6 @@
 # Vexa
 
-A beginner-friendly computer vision language. Upload a photo, write five lines, and get local object detections, counts, and an annotated image.
+Vexa is a small language for finding and counting objects in images. It runs locally on CPU.
 
 ```vexa
 load "street.jpg"
@@ -10,34 +10,29 @@ draw boxes
 show image
 ```
 
-## Run locally
+## Install and run
 
-Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 20.19+ or 22.12+. From this project folder on macOS/Linux:
+The first package is **0.1.0a1**, an early test release. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then follow the [installation guide](docs/getting-started.md). It covers the terminal runner and optional browser playground.
+
+With Vexa and its ONNX model installed:
 
 ```sh
-./scripts/dev.sh
+vexa check demo.vexa
+vexa run demo.vexa --image street.jpg --output result.png
 ```
 
-Open **http://127.0.0.1:8000**. First startup installs the locked environment, converts the model once, and builds the playground. Later starts reuse those assets. Keep the terminal open; **Ctrl+C** stops the server.
+No GPU, Node.js, PyTorch, or source checkout is needed to run the installed package. Python 3.12 is managed by uv. Model conversion is a separate developer task.
 
-The app uses ONNX Runtime on CPU with two inference threads. Initial model conversion temporarily uses PyTorch/Ultralytics in an optional dependency group; those packages are removed from the normal environment afterwards. Initial setup needs internet; subsequent inference is local. Uploaded images are processed in memory, without a remote inference service.
+## Documentation
 
-## Learn the language
+| You want to… | Read |
+| --- | --- |
+| Install Vexa and run your first program | [Getting started](docs/getting-started.md) |
+| Look up commands and object names | [Language reference](docs/language-reference.md) |
+| Fix an error or report a bug | [Troubleshooting](docs/troubleshooting.md) |
+| Understand the parser, interpreter, and runtime | [How Vexa works](docs/architecture.md) |
+| Develop, test, or publish a change | [Contributing](CONTRIBUTING.md) |
 
-- [Documentation home](docs/README.md)
-- [Getting started: where to write code, first program, and troubleshooting](docs/getting-started.md)
-- [Language reference: all commands, supported labels, execution rules, and errors](docs/language-reference.md)
-- [Run saved `.vexa` files through the local API](docs/getting-started.md#save-and-run-a-vexa-file)
-- [Example programs and sample images](examples/) · [Image sources](examples/SOURCES.md)
+See [examples](examples/), [release changes](CHANGELOG.md), and [package verification](docs/package-verification.md). Vexa supports still images; it has no loops, variables, video input, or standalone native compiler yet.
 
-The current 0.1.0 prototype runs through the local playground or API. It does not yet provide a standalone `vexa` terminal command. The playground's editor does not automatically save source files.
-
-## Develop and maintain
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for branches, uv setup, live reload, checks, dependency updates, and language compatibility. [CHANGELOG.md](CHANGELOG.md) records user-visible changes. Keep command behaviour and its documentation together.
-
-The backend lives in `backend/`, the React/Monaco playground in `frontend/`, and focused tests in `tests/`. The grammar is [backend/grammar.lark](backend/grammar.lark). Runnable tutorial/reference examples are checked by the test suite. No documentation build or hosting service is required.
-
-See [prototype verification](docs/verification.md), the [playground screenshot](docs/playground.png), and the [short walkthrough](docs/demo.mp4). The walkthrough is assembled from captured screens.
-
-Ultralytics dependencies and model weights have their own [licensing terms](https://www.ultralytics.com/license).
+Vexa's source code is [MIT licensed](LICENSE). The separately distributed YOLO model has its own [upstream licensing terms](https://www.ultralytics.com/license); see [model provenance](docs/model-notice.md).

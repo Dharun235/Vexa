@@ -4,8 +4,10 @@ cd "$(dirname "$0")/.."
 export UV_CACHE_DIR="$PWD/.uv-cache"
 export UV_PYTHON_INSTALL_DIR="$PWD/.uv-python"
 if [ ! -f models/yolo11n.onnx ]; then ./scripts/setup-model.sh; fi
-uv sync --locked
+uv sync --locked --extra playground
 if [ ! -f frontend/dist/index.html ]; then
   (cd frontend && npm ci && npm run build)
 fi
-exec uv run --locked uvicorn backend.main:app --host 127.0.0.1 --port 8000
+mkdir -p src/vexa/web
+cp -R frontend/dist/. src/vexa/web/
+exec uv run --locked --extra playground vexa serve --model models/yolo11n.onnx

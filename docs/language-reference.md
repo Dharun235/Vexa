@@ -1,8 +1,8 @@
 # Vexa language reference
 
-**Version 0.1.0 — local still-image MVP.** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.1.0a1 — language 0.1.** [Documentation home](README.md) · [First program](getting-started.md)
 
-This reference describes the current interpreter. The executable syntax definition is [backend/grammar.lark](../backend/grammar.lark); runtime behaviour is in [backend/interpreter.py](../backend/interpreter.py).
+This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
 ## Syntax at a glance
 
@@ -106,6 +106,8 @@ This list was checked against the local model metadata. Replacing the model may 
 
 ## Inputs and outputs
 
+The terminal and playground share the command rules above. The terminal reads the image named by `--image`. Its optional JSON report uses `image_path` for the saved PNG; the API uses an embedded `image` data URL.
+
 The local API accepts one uploaded image and one source string per execution. Limits are 10 MB of encoded image bytes, 20 megapixels after decoding, and 20,000 source characters. JPEG, PNG, and WebP are the intended playground formats. There is no video, webcam, directory, or multi-image execution in this version.
 
 The result contains:
@@ -133,8 +135,8 @@ Syntax, runtime, upload, and vision errors use HTTP 400 with this shape:
 }
 ```
 
-`line` is one-based and can be null for failures not associated with a command, such as invalid image data. Missing API form fields return FastAPI's HTTP 422 validation response instead. See the [troubleshooting table](getting-started.md#fix-a-common-problem) for fixes.
+`line` is one-based and can be null for failures not associated with a command, such as invalid image data. Missing API form fields return FastAPI's HTTP 422 validation response instead. See [troubleshooting](troubleshooting.md) for fixes.
 
 ## Compatibility
 
-This is the 0.1.0 prototype reference. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).
+This is the language reference for package 0.1.0a1. No language version directive is implemented. Program files use `.vexa` by convention. Compatibility expectations and the change process are documented in [CONTRIBUTING.md](../CONTRIBUTING.md); released changes belong in [CHANGELOG.md](../CHANGELOG.md).

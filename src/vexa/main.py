@@ -6,13 +6,13 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.ast_nodes import VexaError
-from backend.interpreter import execute
-from backend.vision import Vision, decode_image
+from vexa import __version__
+from vexa.ast_nodes import VexaError
+from vexa.interpreter import execute
+from vexa.vision import MAX_UPLOAD, Vision, decode_image
 
-app = FastAPI(title="Vexa", version="0.1.0")
+app = FastAPI(title="Vexa", version=__version__)
 vision = Vision()
-MAX_UPLOAD = 10 * 1024 * 1024
 
 
 @app.get("/api/health")
@@ -37,6 +37,6 @@ async def execute_program(source: Annotated[str, Form()], image: Annotated[Uploa
         await image.close()
 
 
-DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+DIST = Path(__file__).with_name("web")
 if DIST.is_dir():
     app.mount("/", StaticFiles(directory=DIST, html=True), name="playground")

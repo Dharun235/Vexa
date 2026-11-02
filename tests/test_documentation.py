@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from backend.interpreter import execute
+from vexa.interpreter import execute
 
-GUIDES = [Path("docs/getting-started.md"), Path("docs/language-reference.md")]
+GUIDES = [Path("README.md"), Path("docs/getting-started.md"), Path("docs/language-reference.md")]
 EXAMPLES = [
     pytest.param(source, id=f"{path.stem}-{index}")
     for path in GUIDES

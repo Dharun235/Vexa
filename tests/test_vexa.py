@@ -5,11 +5,11 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.ast_nodes import VexaError
-from backend.interpreter import execute
-from backend.main import app
-from backend.parser import parse
-from backend.vision import Vision, decode_image
+from vexa.ast_nodes import VexaError
+from vexa.interpreter import execute
+from vexa.main import app
+from vexa.parser import parse
+from vexa.vision import Vision, decode_image
 
 
 def test_parser_commands_comments_and_quoted_labels():
@@ -77,7 +77,7 @@ def test_examples(path, image, fake_vision):
 
 
 def test_api_success_and_errors(monkeypatch, image, fake_vision):
-    monkeypatch.setattr("backend.main.vision", fake_vision)
+    monkeypatch.setattr("vexa.main.vision", fake_vision)
     client = TestClient(app)
     data = cv2.imencode(".png", image)[1].tobytes()
     response = client.post(
@@ -128,7 +128,7 @@ def test_onnx_decode_filters_nms_and_maps_boxes(image):
 
 
 def test_onnx_preprocessing(image):
-    from backend.vision import prepare_image
+    from vexa.vision import prepare_image
 
     tensor, scale, left, top = prepare_image(image)
     assert tensor.shape == (1, 3, 640, 640)

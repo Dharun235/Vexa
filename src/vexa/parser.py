@@ -3,7 +3,7 @@ from pathlib import Path
 
 from lark import Lark, Token, UnexpectedInput
 
-from backend.ast_nodes import Command, VexaError
+from vexa.ast_nodes import Command, VexaError
 
 _PARSER = Lark(
     Path(__file__).with_name("grammar.lark").read_text(), parser="lalr", propagate_positions=True

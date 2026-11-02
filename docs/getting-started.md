@@ -1,60 +1,39 @@
-# Your first Vexa program
+# Getting started
 
-For Vexa 0.1.0. [Documentation home](README.md) · [Language reference](language-reference.md)
+[Documentation home](README.md) · [Commands](language-reference.md)
 
-Vexa is a small language for detecting and counting objects in still images. You write Vexa commands; the Vexa interpreter runs them in order and uses a pretrained YOLO model through ONNX Runtime on your CPU. You do not need to write Python, train a model, or have a GPU.
+Vexa runs a plain text `.vexa` file against one image. Use the terminal runner for saved programs, or the browser playground for experimenting.
 
-## Where do I write and run it?
+## 1. Install Vexa
 
-| Task | Place |
-| --- | --- |
-| Start the Vexa application | Your computer's terminal, inside the Vexa project folder |
-| Write Vexa commands and view results | The local browser playground at http://127.0.0.1:8000 |
-| Save a program for later | A plain text file ending in `.vexa`, using any text editor |
-| Execute a saved file from a terminal | Send the file and an image to the running local API, as shown below |
-
-Vexa currently has no standalone `vexa program.vexa` command, interactive REPL, compiler, or VS Code extension. Python runs the interpreter behind the playground; `.vexa` files are not Python scripts or C++ source files. The browser editor is named `main.vexa`, but it does not automatically save that text to disk.
-
-## 1. Start Vexa
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 20.19+ or 22.12+. The commands below use a macOS/Linux shell; the startup scripts have been verified on macOS. Windows users can use a compatible WSL environment, but native Windows startup has not been verified.
-
-If you already have this project, open a terminal in its folder and run:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then install the alpha wheel:
 
 ```sh
-./scripts/dev.sh
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.1.0a1/vexa-0.1.0a1-py3-none-any.whl
+vexa --version
 ```
 
-For the existing checkout on this machine, that means:
+uv creates an isolated environment and manages Python 3.12. If your terminal cannot find `vexa`, run `uv tool update-shell` and open a new terminal. You can also use the environment's Python with `python -m vexa`.
+
+The alpha has been run on an Apple Silicon Mac. Linux and Windows need 64-bit Python 3.12 plus compatible NumPy, OpenCV, and ONNX Runtime wheels. See [tested platforms](package-verification.md) before assuming a device is supported. “CPU inference” does not mean every processor or operating system is supported.
+
+## 2. Install the model once
+
+Download **yolo11n.onnx** from the [same release](https://github.com/Dharun235/Vexa/releases/tag/v0.1.0a1). Keep the accompanying model notice and license. This model is separate from the Vexa wheel and uses [Ultralytics' licensing terms](model-notice.md).
+
+From the folder containing your download:
 
 ```sh
-cd /Users/dharunkumar/Dev/Vexa
-./scripts/dev.sh
+vexa model install yolo11n.onnx
 ```
 
-For a fresh checkout of the prototype branch:
+Vexa validates the model and copies it into your user-data folder. `vexa model path` prints that location. Later runs reuse it without a download. To use an ONNX file directly, add `--model path/to/yolo11n.onnx` to `vexa run` or `vexa serve`.
 
-```sh
-git clone --branch codex/local-mvp https://github.com/Dharun235/Vexa.git
-cd Vexa
-./scripts/dev.sh
-```
+Initial installation needs internet. Once the package and model are installed, execution is offline. It does not use a GPU or send your images to an inference service.
 
-The first startup installs a Python 3.12 environment with uv, converts the small YOLO model to ONNX, and builds the React playground. Conversion temporarily needs PyTorch; the script removes the conversion dependencies from the normal environment afterwards. This first setup requires internet access and more disk space than everyday use.
+## 3. Save your first program
 
-Later starts reuse the model and frontend build. Inference runs locally on CPU with two threads. No external inference account or key is needed. Keep the terminal open while using the playground. Press **Ctrl+C** there to stop the server.
-
-Open **http://127.0.0.1:8000** in your browser. If port 8000 is already serving Vexa, use that running instance rather than starting a second one.
-
-## 2. Upload a photo
-
-Click the image area and select `examples/street.jpg`, or drag a photo onto it. The other included photos are `examples/football.jpg` and `examples/dog-bicycle.jpg`.
-
-Use a JPEG, PNG, or WebP image up to 10 MB and 20 megapixels. Uploads are processed in memory. The application does not save them to disk or send them to a remote inference service.
-
-## 3. Write five lines
-
-Paste this into the playground editor:
+In any text editor, create `demo.vexa`:
 
 ```vexa
 load "street.jpg"
@@ -64,85 +43,56 @@ draw boxes
 show image
 ```
 
-Read it as:
+This loads the supplied image, finds people, counts them, draws their boxes, and returns the picture. The name in `load` is an alias: the actual image comes from `--image` or the playground upload. It never opens an arbitrary path from inside the program.
 
-1. Use my uploaded photo, calling it `street.jpg` inside this program.
-2. Find people.
-3. Count the people found.
-4. Draw boxes around those detections.
-5. Display the resulting image.
+## 4. Run it
 
-The name in `load` is an alias. It does not have to match the uploaded file and never opens a path on your computer. Every `load` in a run refers to the same uploaded photo.
+Use your own photo, or download one from the repository's [sample images](../examples/). With `demo.vexa` and `street.jpg` in the current folder:
 
-## 4. Run and read the result
+```sh
+vexa check demo.vexa
+vexa run demo.vexa --image street.jpg --output result.png
+```
 
-Click **Run program**. The image output shows the boxes, the count appears below it, and **Execution log** explains each step. The included street photo produced four person detections during prototype verification; predictions can vary with model changes.
+`check` validates syntax only. Image data, object labels, and command order are checked when you run the program. The terminal prints a log and counts; `result.png` contains the annotated image. A PNG is written when the completed program has an image snapshot from `show image`. A JSON report can be saved even without image output.
 
-Use **Download image** to save the processed PNG. A missing `show image` still allows logs and counts, but produces no image output. Counts are predictions, so check the boxes when accuracy matters to your task.
+To also save counts and box coordinates:
 
-## 5. Try a second program
+```sh
+vexa run demo.vexa --image street.jpg --output result.png --json result.json
+```
 
-Use the dog/bicycle photo and detect everything the model recognises:
+The JSON contains `logs`, `counts`, `detections`, and `image_path`. It refers to the saved PNG rather than embedding another copy of the image. Specified output files may be replaced on a successful run; Vexa refuses to use an input file as an output path. Without `--output`, image output goes to `vexa-output.png` in the current folder.
+
+## Optional: use the browser playground
+
+Install the same wheel with the playground extra:
+
+```sh
+uv tool install --force --python 3.12 'vexa[playground] @ https://github.com/Dharun235/Vexa/releases/download/v0.1.0a1/vexa-0.1.0a1-py3-none-any.whl'
+vexa serve
+```
+
+Open **http://127.0.0.1:8000**, upload a photo, paste the five lines, and click **Run program**. Use **Execution log** to read each step and **Download image** to save the result. Press **Ctrl+C** in the server terminal to stop it. If port 8000 is occupied, use `vexa serve --port 8001`.
+
+The installed wheel includes the editor and its worker. Node.js is not needed. The browser editor does not automatically save `.vexa` source files: copy your program into a text editor to keep it.
+
+## Try counting several objects
+
+Use `detect all` so that one inference can supply several counts:
 
 ```vexa
-load "dog-bicycle.jpg"
+load "image.jpg"
 detect all
-count dog
-count bicycle
+count person
+count car
 count all
-print "Finished looking."
 draw boxes
 show image
 ```
 
-`detect all` makes several labels available to count without running inference repeatedly. Counting does not rerun the detector. Each click of Run starts a fresh execution; it does not retain state from the previous run.
+Counting does not rerun detection. Each execution starts fresh. For the complete rules, see the [language reference](language-reference.md). For a failure, start with [troubleshooting](troubleshooting.md).
 
-## Save and run a `.vexa` file
+## Already working from the repository?
 
-Copy your code into a plain text file such as `my-program.vexa`. To use it in the playground later, open that file in a text editor and paste its contents into Vexa. The current UI uploads images, not source files.
-
-To execute the included saved program from a second terminal while Vexa is running, start in the project folder:
-
-```sh
-curl --fail-with-body http://127.0.0.1:8000/execute \
-  --form 'source=<examples/demo.vexa' \
-  --form 'image=@examples/street.jpg' \
-  --output /private/tmp/vexa-result.json
-```
-
-`source=<...` sends the file contents as the source field. `image=@...` uploads the image file. The response is JSON with logs, counts, detections, and a PNG data URL. To inspect the counts and save the image:
-
-```sh
-.venv/bin/python - <<'PY'
-import base64
-import json
-from pathlib import Path
-
-result = json.loads(Path('/private/tmp/vexa-result.json').read_text())
-print(result['counts'])
-if result['image']:
-    encoded = result['image'].split(',', 1)[1]
-    Path('/private/tmp/vexa-result.png').write_bytes(base64.b64decode(encoded))
-    print('Saved /private/tmp/vexa-result.png')
-PY
-```
-
-These temporary output paths are for the verified macOS workflow; choose appropriate paths on another system. The server also exposes interactive API documentation at **http://127.0.0.1:8000/docs** and health status at **http://127.0.0.1:8000/api/health**.
-
-## Fix a common problem
-
-| What you see | What to do |
-| --- | --- |
-| Cannot reach Vexa / connection refused | Start `./scripts/dev.sh` and keep its terminal open. Check the address and port. |
-| Address already in use | Use the existing Vexa instance, or stop the process you previously started on port 8000. |
-| Add an image | Upload a photo before clicking Run. |
-| Load your image first | Put `load "image.jpg"` before image commands. |
-| Run detect before counting or drawing | Put a `detect` command before `count`, `print person`, or `draw boxes`. |
-| Unknown object | Use an exact [supported label](language-reference.md#supported-object-labels), such as `person`, or use `all`. |
-| Invalid command | Check spelling, double quotes, and one command per line. Do not add semicolons. |
-| No image output | Put `show image` after `draw boxes`. |
-| Zero objects | Try `detect all` and inspect the photo. The model may not recognise the requested object. |
-| Model is missing | Run `./scripts/setup-model.sh` once with internet access, then restart the server. |
-| Changes to frontend source are missing | Run `cd frontend && npm run build`, then restart the server and reload the page; or follow the development workflow in [CONTRIBUTING.md](../CONTRIBUTING.md). |
-
-Next: keep the [six-command reference](language-reference.md#command-reference) nearby as you experiment.
+Use `./scripts/dev.sh` from the project root for the local playground. It creates the uv environment, exports a model if missing, and builds the frontend if needed. For the command-line runner, use `uv run vexa` in that checkout. Developers need Node.js for building the frontend; package users do not. Full setup and reload commands live in [CONTRIBUTING.md](../CONTRIBUTING.md).

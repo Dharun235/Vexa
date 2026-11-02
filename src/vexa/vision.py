@@ -7,9 +7,10 @@ from threading import Lock
 import cv2
 import numpy as np
 
-from backend.ast_nodes import VexaError
+from vexa.ast_nodes import VexaError
+from vexa.model import model_path
 
-MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "yolo11n.onnx"
+MAX_UPLOAD = 10 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -35,24 +36,40 @@ def prepare_image(image, size=640):
 class Vision:
     """Lazy ONNX CPU session, two threads, and serialized inference."""
 
-    def __init__(self):
+    def __init__(self, path: Path | None = None):
+        self.path = (path or model_path()).expanduser()
         self.model = None
         self.labels = {}
         self.lock = Lock()
 
     def _load(self):
-        if not MODEL_PATH.is_file():
-            raise VexaError("Model is missing. Run ./scripts/setup-model.sh once.", kind="vision")
+        if not self.path.is_file():
+            raise VexaError(
+                f"Model not found at {self.path}. Use vexa model install FILE.onnx or --model FILE.onnx.",
+                kind="vision",
+            )
         import onnxruntime as ort
 
         ort.disable_telemetry_events()
         options = ort.SessionOptions()
         options.intra_op_num_threads = 2
         options.inter_op_num_threads = 1
-        self.model = ort.InferenceSession(
-            str(MODEL_PATH), sess_options=options, providers=["CPUExecutionProvider"]
+        session = ort.InferenceSession(
+            str(self.path), sess_options=options, providers=["CPUExecutionProvider"]
         )
-        self.labels = ast.literal_eval(self.model.get_modelmeta().custom_metadata_map["names"])
+        labels = ast.literal_eval(session.get_modelmeta().custom_metadata_map["names"])
+        if (
+            session.get_inputs()[0].shape != [1, 3, 640, 640]
+            or session.get_inputs()[0].type != "tensor(float)"
+            or session.get_outputs()[0].shape != [1, 84, 8400]
+            or not isinstance(labels, dict)
+            or set(labels) != set(range(80))
+            or not all(isinstance(label, str) for label in labels.values())
+        ):
+            raise VexaError(
+                "Unsupported model. Use the fixed-size YOLO11n ONNX export.", kind="vision"
+            )
+        self.labels, self.model = labels, session
 
     def detect(self, image, target):
         with self.lock:
@@ -108,6 +125,8 @@ class Vision:
 
 
 def decode_image(data: bytes):
+    if len(data) > MAX_UPLOAD:
+        raise VexaError("Image exceeds the 10 MB upload limit.", kind="upload")
     if not data:
         raise VexaError("Upload a non-empty image.", kind="upload")
     try:

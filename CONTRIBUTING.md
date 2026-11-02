@@ -1,74 +1,89 @@
-# Contributing and maintaining Vexa
+# Working on Vexa
 
-Vexa is a local, CPU-first prototype. Keep changes focused and avoid introducing infrastructure or dependencies when a small extension to the existing interpreter will do.
+[Architecture](docs/architecture.md) · [Language reference](docs/language-reference.md) · [Bug reports](docs/troubleshooting.md)
 
-## Local development
-
-Use a feature branch based on the current prototype branch (or the agreed integration branch later). Do not work directly on `main`.
+## Set up a feature branch
 
 ```sh
-git switch codex/local-mvp
+git switch codex/installable-language
 git switch -c codex/describe-your-change
-UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv sync --locked
+UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv sync --locked --extra playground
 ```
 
-Build the model once with `./scripts/setup-model.sh` if it is missing. The normal application environment uses ONNX Runtime on CPU. Keep PyTorch/Ultralytics in the optional export group; do not introduce them into the request path.
+Use Python 3.12. Runtime code lives in `src/vexa/`; tests in `tests/`. Never develop directly on `main`. The environment is editable, so source changes are available to `uv run vexa` without reinstalling.
 
-For backend reload:
+The package version comes from `pyproject.toml`. Both `vexa --version` and the API read the installed distribution metadata. The frontend package has its own development version; it is not a second Vexa language version.
+
+## Prepare a model
 
 ```sh
-UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+./scripts/setup-model.sh
 ```
 
-In a second terminal:
+This exports `models/yolo11n.onnx` in an isolated export environment, syncs the normal environment, and installs the model in your user-data folder. The exact export dependencies are in `uv.lock`. Keep PyTorch and Ultralytics outside the application's runtime dependencies. The model's provenance and license belong in [model-notice.md](docs/model-notice.md).
+
+## Run while developing
+
+For the terminal runner:
 
 ```sh
-cd frontend
-npm ci
-npm run dev
+uv run vexa check examples/demo.vexa
+uv run vexa run examples/demo.vexa --image examples/street.jpg --model models/yolo11n.onnx
 ```
 
-Open http://127.0.0.1:5173. Vite forwards API requests to port 8000. For a built local app use `./scripts/dev.sh`; it reuses an existing frontend build. Rebuild manually after frontend changes, then restart the server and reload the browser.
-
-## Keep behaviour, examples, and docs together
-
-When changing a command, make one focused change covering the affected items:
-
-1. Update [grammar.lark](backend/grammar.lark) for syntax and [parser.py](backend/parser.py) / [ast_nodes.py](backend/ast_nodes.py) for the parsed representation as needed.
-2. Implement its behaviour in [interpreter.py](backend/interpreter.py). Keep image/model work in [vision.py](backend/vision.py); the API should only handle transport and execution.
-3. Add a small test for its normal behaviour and a meaningful error or boundary. Reuse the deterministic detector for language/API tests; use real ONNX smoke tests only where they add evidence.
-4. Update the [language reference](docs/language-reference.md), relevant tutorial/example, and the playground's inline language guide or syntax highlighting if affected.
-5. Describe user-visible changes under Unreleased in [CHANGELOG.md](CHANGELOG.md). Note any migration needed for existing `.vexa` files.
-
-Documentation blocks labelled `vexa` in the tutorial and reference are runnable examples. Use `text` for syntax templates or intentionally invalid snippets. Tests execute runnable examples against a fixed image and detector; they check language consistency, not real-world detection accuracy. Existing tests separately assert specific semantics such as reset behaviour and counts. Do not add a second grammar or interpreter just for documentation.
-
-## Verify a change
-
-From the repository root:
+For the built browser playground:
 
 ```sh
-UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv run pytest
-UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv run ruff check backend tests scripts/export_model.py
-UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv run ruff format --check backend tests scripts/export_model.py
+./scripts/dev.sh
 ```
 
-For frontend changes:
+For live frontend changes, start `uv run --extra playground uvicorn vexa.main:app --reload --host 127.0.0.1 --port 8000` and, in another terminal, `cd frontend && npm ci && npm run dev`. Open http://127.0.0.1:5173. Set `VEXA_MODEL_PATH` when using a model outside the default user-data folder.
+
+The startup script reuses the frontend build. After editing the frontend, rebuild with `cd frontend && npm run build`, then restart the script and reload the browser. Markdown changes need no build.
+
+## Make a focused change
+
+Update the grammar/parser for syntax, interpreter for command behaviour, or vision adapter for model work. Keep terminal and HTTP handling outside the interpreter. Both runners must use the same language path.
+
+For a bug fix, add a small regression test. For a changed command, update its reference entry and affected examples in the same commit. Runnable documentation blocks are labelled `vexa`; syntax templates and intentionally invalid programs use `text`. The tests execute runnable examples with the existing deterministic detector. Avoid duplicating the grammar, command implementation, or test helpers.
+
+Run:
 
 ```sh
-cd frontend
-npm run build
+uv run pytest
+uv run ruff check src tests scripts/export_model.py
+uv run ruff format --check src tests scripts/export_model.py
 ```
 
-For documentation changes, also check relative links and verify any modified setup/API commands. No frontend rebuild is needed for Markdown-only edits. Real-model tests skip when the model has not been exported. Keep the lockfiles updated when dependencies change; use `uv sync` and `npm install` in the appropriate folder. Commit source changes and their documentation together.
+Real-image smoke tests run if `models/yolo11n.onnx` exists, otherwise they skip. Unit, CLI, and API tests use small local fixtures. A documentation-only change needs tests and link checks, not a frontend rebuild.
 
-## Version and release discipline
+## Build an installable release
 
-The current prototype is **0.1.0**. This is a maintenance policy for future changes, not an automated release system:
+```sh
+./scripts/build-release.sh
+```
 
-- Preserve working syntax and documented behaviour for patch fixes. Document corrections in the changelog.
-- Treat changed command meaning, ordering, output schema, or removed syntax as a compatibility change. During 0.x development, release those in a new minor version with a migration example.
-- A model or threshold update can change detection counts even when syntax is unchanged. Record the model/settings change separately and rerun all three real-image smoke tests.
-- For a release, align the version in `pyproject.toml`, FastAPI metadata in `backend/main.py`, `frontend/package.json` and its lockfile, and documentation version labels. Regenerate `uv.lock` as needed. Date the changelog entry and verify examples before tagging the commit.
-- Until a release workflow is agreed, use feature branches and review changes before merging. Publishing, deployment, and new language features are separate tasks.
+This tests the code, builds the frontend, copies the local web assets into the package, and uses `uv build --no-sources` to create a wheel and source archive in `dist/`. It does not publish anything. The source archive includes built web assets so rebuilding it does not require Node.js. Model weights and sample photos are not in either Python distribution.
 
-A `vexa` CLI, REPL, file-open/save controls, and generated API/command references may be useful later. They are not prerequisites for maintaining this six-command prototype and are not currently implemented.
+Before publishing, install the wheel into a fresh environment outside the checkout and verify `vexa --version`, `check`, real CPU inference, and the optional playground. Also rebuild the wheel from the source archive. Record the result in [package-verification.md](docs/package-verification.md). A `py3-none-any` tag describes Vexa's Python code; native dependencies still limit supported machines.
+
+For release assets, include the separately exported `yolo11n.onnx`, upstream model license, model notice, and SHA-256 checksums. Do not label pretrained weights as MIT-licensed Vexa source. The [initial release script](scripts/prepare-assets.py) stages these notices and checksums without publishing.
+
+## Publish on the feature branch
+
+The initial alpha uses a GitHub prerelease, so users can install the exact wheel without a PyPI account. Push the feature branch, then create the prerelease targeting its reviewed commit, not `main`:
+
+```sh
+git push -u origin codex/installable-language
+gh release create v0.1.0a1 dist/* --target COMMIT_SHA --prerelease --title 'Vexa 0.1.0a1' --notes-file docs/release-notes.md
+```
+
+Replace `COMMIT_SHA` with the tested commit. The tag is a release snapshot; development remains on the feature branch. After publishing, download and install the hosted wheel again, check checksums, and rerun a sample image. Do not reuse a version for different artifacts.
+
+For a future package-index trial, configure a TestPyPI token or trusted publisher and use `uv publish --publish-url https://test.pypi.org/legacy/ dist/*.whl dist/*.tar.gz`. The initial alpha is not claimed to be on PyPI. Do not put publishing tokens in source, terminal arguments, issue reports, or chat. [PyPI recommends trusted publishing](https://docs.pypi.org/publishing/publishing-to-pypi/).
+
+## Compatibility and releases
+
+Record changes in [CHANGELOG.md](CHANGELOG.md). Patch versions should preserve working syntax and documented behaviour. During 0.x development, changes to command meaning, ordering, or output schemas need a new minor version and a migration example. Use alpha versions until installation and behaviour are ready for broader use.
+
+Model updates can change detection counts without changing the language. Record the model/settings separately and rerun all three image smoke tests. Before tagging a package, update its version in `pyproject.toml`, refresh `uv.lock`, check the docs, and keep release artifacts tied to the tested commit.

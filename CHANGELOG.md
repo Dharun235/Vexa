@@ -2,11 +2,15 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. The project is an unreleased local prototype; version headings describe implementation state and do not imply a published package or Git tag.
 
-## Unreleased
+## 0.1.0a1 — installable alpha — 2026-11-02
 
-- Add a beginner's guide covering setup, the playground, saved `.vexa` files, and terminal execution through the local API.
-- Add a 0.1.0 language reference with command semantics, object labels, state/reset behaviour, outputs, and errors.
-- Add a documentation index, executable documentation-example checks, and contributor guidance for compatibility and maintenance.
+- Add an installable wheel and source distribution with a `vexa` terminal command.
+- Add syntax checking, file execution, compact JSON reports, and model installation.
+- Package the browser editor; make web-server dependencies optional.
+- Move the shared interpreter into `src/vexa/` and keep model exports isolated from runtime.
+- Add clear terminal errors, exit statuses, input-overwrite protection, and a bug report template.
+- Simplify the user guides and separate language architecture and maintenance instructions.
+- Keep runnable documentation examples in the tests and add clean-install checks.
 
 ## 0.1.0 — prototype baseline — 2026-11-02
 
