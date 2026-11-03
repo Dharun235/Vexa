@@ -50,6 +50,7 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 | `feat/depth` | `estimate depth`, `rank LABEL by distance`, `record distances`, `draw depth`, `export points` (Depth Anything V2 Small, int8 ONNX); three depth tasks |
 | `feat/pose` | `estimate poses`, `count pose POSTURE`, `record poses`, `draw poses` (RTMPose-s ONNX); language only, not in the agent prompt |
 | `feat/privacy` | `detect face` (YuNet), `blur LABEL`, `pixelate LABEL`, mask-following blur; language only |
+| `feat/florence` | `caption`, `caption detailed`, `record caption`, `if caption contains`, `locate "PHRASE"` (Florence-2-base int8 ONNX); language only |
 
 Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
 

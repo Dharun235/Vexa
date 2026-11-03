@@ -61,6 +61,7 @@ class Session:
         self.depth = None  # closeness map, 1 is nearest
         self.distances = []
         self.poses = []
+        self.caption = None
         if self.segmenter is not None:
             self.segmenter.clear_image()
 
@@ -78,6 +79,7 @@ class Session:
             depth=self.depth is not None,
             ranked=bool(self.distances),
             posed=bool(self.poses),
+            captioned=self.caption is not None,
         )
         logs = []
         self._run(commands, logs)
@@ -230,6 +232,21 @@ class Session:
 
                     self.depth = estimate(self.image)
                     logs.append("Estimated depth (relative: closeness 1 is nearest, 0 farthest).")
+                elif kind in {"caption", "caption_detailed"}:
+                    from vexa.florence import caption
+
+                    self.caption = caption(self.image, detailed=kind == "caption_detailed")
+                    logs.append(f"Caption: {self.caption}")
+                elif kind == "record_caption":
+                    self._record("caption", self.caption, logs)
+                elif kind == "locate":
+                    from vexa.florence import locate
+
+                    self.detections = locate(self.image, target)
+                    self.detected, self.selection = True, target
+                    self.masks, self.segmented, self.poses = [], False, []
+                    self.counts = {k: v for k, v in self.counts.items() if k == "text"}
+                    logs.append(f'Located {len(self.detections)} region(s) matching "{target}".')
                 elif kind in {"blur", "pixelate"}:
                     from vexa.privacy import anonymise
                     from vexa.segmentation import match_mask
@@ -314,6 +331,8 @@ class Session:
         return sum(subject == "all" or item.label == subject for item in self.detections)
 
     def _holds(self, condition):
+        if condition[0] == "caption":
+            return condition[1].casefold() in (self.caption or "").casefold()
         if condition[0] == "contains":
             return any(condition[1].casefold() in r.text.casefold() for r in self.text_regions)
         _, subject, operator, number = condition
@@ -509,6 +528,7 @@ class Session:
             "measurements": [dict(item) for item in self.measurements],
             "distances": [dict(item) for item in self.distances],
             "poses": [_pose_result(item) for item in self.poses],
+            "caption": self.caption,
         }
 
 

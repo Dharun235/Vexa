@@ -76,6 +76,8 @@ def _block(body):
 def _condition(node):
     if node.data == "text_condition":
         return ("contains", _value(node, node.children[0]))
+    if node.data == "caption_condition":
+        return ("caption", _value(node, node.children[0]))
     subject, operator, number = node.children
     return ("count", _value(node, subject), str(operator), float(number))
 

@@ -285,6 +285,32 @@ show image
 
 After `segment detections`, both follow each object's mask instead of its box, e.g. `detect person`, `segment detections`, `blur person` hides people as soft silhouettes. Detections stay available after blurring, like after `draw boxes`. Blur `"license plate"` or any other object through open-vocabulary detection. Check the result before sharing: anything the detector misses stays visible.
 
+## Captions and phrases
+
+```vexa
+for each image in "photos/"
+  caption
+  record caption
+  if caption contains "dog"
+    locate "dog"
+    record count "dog"
+  end
+end
+save csv "captions.csv"
+```
+
+These commands use Florence-2-base, a 230-million-parameter image-to-text model, in its int8 ONNX form on CPU. They need `vexa model download florence` once (about 275 MB). Each call takes about 2.5 s on an M2.
+
+| Command | Requires | Effect |
+| --- | --- | --- |
+| `caption` | `load` | Describes the image in one sentence, e.g. `Caption: A dog sitting next to a bicycle on a porch.` |
+| `caption detailed` | `load` | A few sentences, including background and colours. |
+| `record caption` | `caption` | Adds a `caption` column to the current row. |
+| `if caption contains "dog"` | `caption` | Condition on the caption text, ignoring case. |
+| `locate "PHRASE"` | `load` | Finds regions matching any phrase, such as `"red tie"`, `"sunglasses"` or `"tree"`, and makes them the current detections, labelled with the phrase. `count`, `draw boxes`, `blur`, `measure`, `rank … by distance` and `segment detections` then work on them. |
+
+`locate` understands descriptions the object detector cannot: colours, parts, materials and objects outside its 80 labels. It is grounding, not exhaustive detection: it usually returns every instance of common things like people, but may return only one of several small objects. For counting many objects of a known label, `detect` is faster and more complete. Captions are generated text: they can name the wrong vehicle or miss details, so check `if caption contains …` filters on a few images first. Transforms clear the caption.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

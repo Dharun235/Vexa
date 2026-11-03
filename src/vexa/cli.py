@@ -68,7 +68,7 @@ def arguments():
         nargs="?",
         default="detector",
         help="detector: open-vocabulary detection (about 175 MB); styles: neural styles "
-        "(about 34 MB); depth: depth estimation (27 MB); pose: pose estimation (20 MB); faces: face detection (232 KB); or a translate model such as horse2zebra (45 MB, see vexa help translate)",
+        "(about 34 MB); depth: depth estimation (27 MB); pose: pose estimation (20 MB); faces: face detection (232 KB); florence: captions and locate (about 275 MB); or a translate model such as horse2zebra (45 MB, see vexa help translate)",
     )
     install = actions.add_parser("install", help="Validate and copy a YOLO11n ONNX model")
     install.add_argument("file", type=Path)
@@ -202,6 +202,10 @@ def main(argv=None):
             from vexa.style import download
 
             print(f"Neural styles ready in {download()}")
+        elif args.model_action == "download" and args.what == "florence":
+            from vexa.florence import download
+
+            print(f"Florence-2 ready in {download()}")
         elif args.model_action == "download" and args.what == "faces":
             from vexa.privacy import download
 

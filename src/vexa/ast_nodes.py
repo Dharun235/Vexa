@@ -10,7 +10,9 @@ class Command:
     confidence: float | None = None
     body: tuple = ()  # commands inside an if or for each block
     orelse: tuple = ()  # commands after else
-    condition: tuple | None = None  # (subject, label, operator, number) or ("contains", text)
+    condition: tuple | None = (
+        None  # (subject, label, operator, number) or ("contains" | "caption", text)
+    )
 
 
 class VexaError(Exception):

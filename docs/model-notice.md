@@ -49,6 +49,10 @@ SHA-256 hashes are pinned in `src/vexa/openvocab.py`; a mismatch installs nothin
 
 `vexa model download faces` fetches `face_detection_yunet_2023mar.onnx` from [opencv/face_detection_yunet](https://huggingface.co/opencv/face_detection_yunet) at revision `3cc26e7f` (232 KB) into the user data folder. It is YuNet (Wu, Peng, Yu et al., 2023) from the OpenCV Zoo, MIT licensed. It is not part of the wheel. The SHA-256 hash is pinned in `src/vexa/privacy.py`. It runs with OpenCV's built-in `FaceDetectorYN`.
 
+## Florence-2 model
+
+`vexa model download florence` fetches the int8 ONNX export of Microsoft's Florence-2-base-ft (Xiao et al., 2023) from [onnx-community/Florence-2-base-ft](https://huggingface.co/onnx-community/Florence-2-base-ft) at revision `e88a44ea`: `vision_encoder_quantized.onnx`, `embed_tokens_quantized.onnx`, `encoder_model_quantized.onnx`, `decoder_model_merged_quantized.onnx` and `tokenizer.json`, about 275 MB in total, into the user data folder. They are not part of the wheel. Florence-2 is MIT licensed. SHA-256 hashes are pinned in `src/vexa/florence.py`. Vexa runs the four parts with ONNX Runtime on two CPU threads, decodes greedily with a key/value cache, and tokenizes with its own byte-level BPE, so no extra packages are needed.
+
 ## Translation models
 
 `vexa model download horse2zebra` (and the other names listed by `vexa help translate`) fetches one of the original CycleGAN generators (Zhu, Park, Isola and Efros, 2017) from the authors' server, `efrosgans.eecs.berkeley.edu/cyclegan/pretrained_models/`, about 45 MB each, into the user data folder. They are not part of the wheel. The CycleGAN code and models are BSD licensed. SHA-256 hashes are pinned in `src/vexa/translate.py`.

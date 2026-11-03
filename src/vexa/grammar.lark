@@ -6,6 +6,7 @@ _statement: command _NL | block
 body: _NL* (_statement _NL*)*
 ?condition: "count" subject COMPARE NUMBER -> count_condition
           | "text" "contains" ESCAPED_STRING -> text_condition
+          | "caption" "contains" ESCAPED_STRING -> caption_condition
 ?subject: target
         | "text" -> text_subject
         | "masks" -> masks_subject
@@ -20,6 +21,10 @@ body: _NL* (_statement _NL*)*
         | "estimate" "depth" -> estimate_depth
         | "estimate" "poses" -> estimate_poses
         | "blur" target -> blur
+        | "caption" "detailed" -> caption_detailed
+        | "caption" -> caption
+        | "record" "caption" -> record_caption
+        | "locate" target -> locate
         | "pixelate" target -> pixelate
         | "count" "pose" target -> count_pose
         | "draw" "poses" -> draw_poses

@@ -22,6 +22,7 @@ class State:
     depth: bool = False
     ranked: bool = False
     posed: bool = False
+    captioned: bool = False
 
 
 def validate_commands(
@@ -37,6 +38,7 @@ def validate_commands(
     depth=False,
     ranked=False,
     posed=False,
+    captioned=False,
 ):
     state = State(
         loaded,
@@ -49,6 +51,7 @@ def validate_commands(
         depth,
         ranked,
         posed,
+        captioned,
     )
     _validate(commands, state, False)
 
@@ -133,6 +136,9 @@ def _check(command, state, in_loop):
     if kind == "if_block":
         if command.condition[0] == "contains":
             _need_subject(":text", state, command)
+        elif command.condition[0] == "caption":
+            if not state.captioned:
+                _fail("Run caption before if caption contains.", command)
         else:
             _need_subject(command.condition[1], state, command)
         # Results produced inside a branch are not available after it.
@@ -203,6 +209,16 @@ def _check(command, state, in_loop):
         if kind == "scale" and command.argument[0] <= 0:
             _fail("scale needs a factor above 0, e.g. scale 0.5", command)
         return State(loaded=True)  # earlier results no longer match the pixels
+    if kind in {"caption", "caption_detailed"}:
+        return replace(state, captioned=True)
+    if kind == "record_caption" and not state.captioned:
+        _fail("Run caption before record caption.", command)
+    if kind == "locate":
+        if not command.argument.strip():
+            _fail('locate needs a phrase, e.g. locate "red tie"', command)
+        return replace(
+            state, detected=True, segmented=False, selection=command.argument, posed=False
+        )
     if kind == "estimate_poses":
         if not state.detected:
             _fail("estimate poses works on people: detect person first.", command)
