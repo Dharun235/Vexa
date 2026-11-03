@@ -30,5 +30,7 @@
   {"id": "batch-dogs", "folder": "benchmarks/vision-qa/folders/photos", "question": "How many of these photos contain a dog?", "type": "number", "answer": [1], "suite": "batch"},
   {"id": "batch-reject", "folder": "benchmarks/vision-qa/folders/labels", "question": "Which part labels are marked REJECT?", "type": "text_all", "answer": ["label_02", "label_04"], "suite": "batch"},
   {"id": "batch-serials", "folder": "benchmarks/vision-qa/folders/labels", "question": "Make a CSV table with the text of every label.", "type": "rows", "answer": {"label_01.png": "SN77A12290", "label_02.png": "SN77A12291", "label_03.png": "SN44C00817", "label_04.png": "SN44C00818"}, "suite": "batch"},
-  {"id": "batch-qr", "folder": "benchmarks/vision-qa/folders/codes", "question": "How many of these images contain a QR code or barcode?", "type": "number", "answer": [2], "suite": "batch"}
+  {"id": "batch-qr", "folder": "benchmarks/vision-qa/folders/codes", "question": "How many of these images contain a QR code or barcode?", "type": "number", "answer": [2], "suite": "batch"},
+  {"id": "sideways-people", "image": "benchmarks/vision-qa/images/street_sideways.jpg", "question": "This photo was saved sideways (turned clockwise). How many people are in it?", "type": "number", "answer": [4], "suite": "transform"},
+  {"id": "upside-down-serial", "image": "benchmarks/vision-qa/images/part_label_upside_down.png", "question": "This label photo is upside down. What is the serial number?", "type": "text", "answer": "SN77A12290", "suite": "transform"}
 ]

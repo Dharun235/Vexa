@@ -125,6 +125,29 @@ save csv "screws.csv"
 
 Folder paths and CSV files are relative to the current directory. A program whose only image work happens in a loop needs no `--image`. Rows also appear in `--json` output under `rows`. Blocks span several lines, so use them in program files rather than the interactive console.
 
+## Rotate, flip, resize, crop and move
+
+```vexa
+load "photo.jpg"
+rotate -90
+crop 0 100 600 700
+scale 0.5
+detect person
+count person
+show image
+```
+
+| Command | Effect |
+| --- | --- |
+| `rotate DEGREES` | Turns counterclockwise; negative angles turn clockwise. 90, 180 and 270 are lossless; other angles enlarge the canvas to keep every pixel. |
+| `flip horizontal` / `flip vertical` | Mirrors left–right or top–bottom. |
+| `resize WIDTH HEIGHT` | Sets the exact size in pixels. |
+| `scale FACTOR` | Resizes by a factor above 0, keeping the shape. |
+| `crop X1 Y1 X2 Y2` | Keeps that rectangle, clipped to the image; corners may be given in any order. |
+| `move DX DY` | Shifts right by `DX` and down by `DY` pixels; uncovered areas turn black. |
+
+Each operation changes the working image and clears detections, masks, OCR text, codes and other results, because their coordinates no longer match; counts already recorded stay. Run `detect` or `ocr` again afterwards. Results are limited to 20 megapixels. `load` restores the original image. Detectors expect upright scenes, so rotating a sideways photo upright first improves detection.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

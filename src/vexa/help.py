@@ -17,10 +17,18 @@ TOPICS = {
     "for": 'for each image in "photos/" … end — run the commands once per JPEG, PNG or WebP image in the folder; each image starts loaded. Not nested.',
     "record": "record count person / record count text / record text / record codes — add a column to the current image's row of results.",
     "save": 'save csv "results.csv" — write all recorded rows to a CSV file (relative path). Use after a for each loop.',
+    "rotate": "rotate 90 — turn the image counterclockwise by any angle (negative turns clockwise). 90, 180 and 270 are lossless; other angles enlarge the canvas. Clears earlier results.",
+    "flip": "flip horizontal / flip vertical — mirror the image, which also mirrors text. For an upside-down image use rotate 180 instead. Clears earlier results.",
+    "resize": "resize 640 480 — set the exact width and height in pixels. scale 0.5 — resize by a factor, keeping the shape. Clears earlier results.",
+    "crop": "crop 100 50 400 300 — keep the rectangle from x1 y1 to x2 y2 (pixels, clipped to the image). Clears earlier results.",
+    "move": "move 20 -10 — shift the image right by 20 and up by 10 pixels; uncovered areas turn black. Clears earlier results.",
     "help": "help / help ocr — show commands or details. Also available as vexa help [topic].",
     "exit": "exit / quit / :quit — leave the interactive console. Not a .vexa program command.",
     "reset": ":reset — clear session results; retain the original input image and loaded models.",
 }
+
+
+TOPICS["scale"] = TOPICS["resize"]
 
 
 def help_text(topic=None):
@@ -28,4 +36,5 @@ def help_text(topic=None):
         return TOPICS.get(
             topic.lower(), f'Unknown help topic "{topic}". Use help to list commands.'
         )
-    return "Vexa commands (use vexa --help for shell options)\n" + "\n".join(TOPICS.values())
+    unique = dict.fromkeys(TOPICS.values())  # scale shares the resize entry
+    return "Vexa commands (use vexa --help for shell options)\n" + "\n".join(unique)

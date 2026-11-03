@@ -32,12 +32,20 @@ body: _NL* (_statement _NL*)*
         | "record" "text" -> record_text
         | "record" "codes" -> record_codes
         | "save" "csv" ESCAPED_STRING -> save_csv
+        | "rotate" SIGNED_NUMBER -> rotate
+        | "flip" "horizontal" -> flip_horizontal
+        | "flip" "vertical" -> flip_vertical
+        | "resize" NUMBER NUMBER -> resize
+        | "scale" NUMBER -> scale
+        | "crop" NUMBER NUMBER NUMBER NUMBER -> crop
+        | "move" SIGNED_NUMBER SIGNED_NUMBER -> move
 ?target: NAME -> bare_target
        | ESCAPED_STRING -> quoted_target
 COMPARE: "<=" | ">=" | "==" | "!=" | "<" | ">"
 NAME: /[a-zA-Z][a-zA-Z0-9_]*/
 _NL: /\r?\n/
 %import common.NUMBER
+%import common.SIGNED_NUMBER
 %import common.ESCAPED_STRING
 %import common.WS_INLINE
 %ignore WS_INLINE

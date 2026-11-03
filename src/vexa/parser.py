@@ -10,6 +10,7 @@ _PARSER = Lark(
 )
 
 
+TRANSFORMS = {"rotate", "flip_horizontal", "flip_vertical", "resize", "scale", "crop", "move"}
 _SUBJECTS = {"text_subject": ":text", "masks_subject": ":masks", "codes_subject": ":codes"}
 
 
@@ -48,6 +49,8 @@ def _command(node):
         )
     if kind == "for_each":
         return Command(kind, _value(node, children[0]), line, column, body=_block(children[1]))
+    if kind in TRANSFORMS:
+        return Command(kind, tuple(float(child) for child in children), line, column)
     argument = _value(node, children[0]) if children else None
     confidence = float(children[1]) if len(children) > 1 else None
     return Command(kind, argument, line, column, confidence)

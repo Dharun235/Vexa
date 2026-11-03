@@ -4,8 +4,9 @@ from pathlib import Path
 
 import cv2
 
+from vexa import transforms
 from vexa.ast_nodes import VexaError
-from vexa.parser import parse
+from vexa.parser import TRANSFORMS, parse
 from vexa.validation import validate_commands
 from vexa.vision import MAX_IMAGE_BYTES, decode_image, draw_boxes, unknown_label
 
@@ -36,11 +37,15 @@ class Session:
 
     def reset(self):
         self.image = None
+        self.counts = {}
+        self.shown = None
+        self.clear_results()
+
+    def clear_results(self):
+        """Forget everything measured on the current pixels."""
         self.detections = []
         self.detected = False
         self.selection = None
-        self.counts = {}
-        self.shown = None
         self.text_regions = []
         self.ocr_done = False
         self.codes = []
@@ -171,6 +176,13 @@ class Session:
                     value = self._count(target)
                     self.counts[target] = value
                     logs.append(f"{target}: {value}")
+                elif kind in TRANSFORMS:
+                    self.image = transforms.apply(self.image, kind, target)
+                    self.clear_results()
+                    logs.append(
+                        f"{kind.replace('_', ' ').capitalize()}: now "
+                        f"{self.image.shape[1]} × {self.image.shape[0]}."
+                    )
                 elif kind == "if_block":
                     branch = command.body if self._holds(command.condition) else command.orelse
                     self._run(branch, logs)

@@ -43,6 +43,7 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 | `feat/lang-0.5` | Language and agent fixes driven by the baseline failures |
 | `feat/open-vocab` | M1: YOLO-World open-vocabulary detection, `vexa model download` |
 | `feat/lang-control` | M2: `if`/`else`, `for each image in`, `record`, `save csv`, folder benchmark tasks |
+| `feat/transforms` | `rotate`, `flip`, `resize`, `scale`, `crop`, `move`; two orientation tasks |
 
 Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
 
@@ -52,6 +53,9 @@ Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB
 | `feat/lang-0.5` | 22/26 | 7/9 | 9/9 | 4/4 | 2/2 | 0/2 | 96% | 5.5 |
 | `feat/open-vocab` | 23/26 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 5.8 |
 | `feat/lang-control` (32 tasks, + batch 6/6) | 29/32 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 7.9 |
+| `feat/transforms` (34 tasks, + batch 6/6, transform 2/2)¹ | 31/34 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 10.7 |
+
+¹ The full run scored 30/34: the model fixed an upside-down label with `flip vertical`, which mirrors the text. After adding an orientation rule to the prompt, the transform, read, count, batch and codes suites were rerun: transform 2/2, everything else unchanged.
 
 What the baseline showed: every program was valid, yet counting failed
 because valid programs were meaningless. `detect person` then `count bus`

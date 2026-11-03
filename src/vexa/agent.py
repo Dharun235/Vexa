@@ -37,6 +37,15 @@ _PROGRAM_TOPICS = (
     "segment",
     "inspect",
     "check",
+    "if",
+    "for",
+    "record",
+    "save",
+    "rotate",
+    "flip",
+    "resize",
+    "crop",
+    "move",
 )
 
 SYSTEM_PROMPT = f"""You write programs in Vexa, a small language for computer vision.
@@ -51,6 +60,8 @@ Rules:
   {COCO_LABELS}
   Any other object name also works with detect, e.g. detect "sunglasses" or detect "screw".
   Use the object name the question uses, e.g. detect "pickup truck" for a pickup truck.
+- If the image is sideways or upside down, rotate it first: rotate 180 for upside down, rotate 90
+  if it was turned clockwise, rotate -90 if counterclockwise. Never flip to fix orientation.
 - Run ocr before print text or find text. Use scan codes for QR codes and barcodes.
 - For a folder, put the commands for one image inside for each … end (no load inside), record
   what the question needs, and save csv after end when a table is asked for.

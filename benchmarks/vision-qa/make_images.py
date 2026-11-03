@@ -80,5 +80,9 @@ if __name__ == "__main__":
     photos.mkdir(exist_ok=True)
     for name in ("street.jpg", "football.jpg", "dog-bicycle.jpg"):
         (photos / name).write_bytes((EXAMPLES / name).read_bytes())
+    street = cv2.imread(str(EXAMPLES / "street.jpg"))
+    cv2.imwrite(str(OUT / "street_sideways.jpg"), cv2.rotate(street, cv2.ROTATE_90_CLOCKWISE))
+    label = cv2.imread(str(OUT / "part_label.png"))
+    cv2.imwrite(str(OUT / "part_label_upside_down.png"), cv2.rotate(label, cv2.ROTATE_180))
     blurry = cv2.GaussianBlur(cv2.imread(str(EXAMPLES / "football.jpg")), (0, 0), 9)
     cv2.imwrite(str(OUT / "football_blurry.jpg"), blurry)

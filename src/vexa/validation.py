@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from pathlib import PurePath
 
 from vexa.ast_nodes import VexaError
-from vexa.parser import parse
+from vexa.parser import TRANSFORMS, parse
 
 NO_IMAGE_NEEDED = {"print_text", "save_csv", "for_each", "if_block"}
 
@@ -104,6 +104,10 @@ def _check(command, state, in_loop):
     if kind == "record_codes":
         _need_subject(":codes", state, command)
 
+    if kind in TRANSFORMS:
+        if kind == "scale" and command.argument[0] <= 0:
+            _fail("scale needs a factor above 0, e.g. scale 0.5", command)
+        return State(loaded=True)  # earlier results no longer match the pixels
     if kind == "detect":
         return replace(state, detected=True, segmented=False, selection=command.argument)
     if kind == "segment":
