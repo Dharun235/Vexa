@@ -19,6 +19,8 @@ class State:
     codes_done: bool = False
     selection: str | None = None
     measured: bool = False
+    depth: bool = False
+    ranked: bool = False
 
 
 def validate_commands(
@@ -31,8 +33,12 @@ def validate_commands(
     codes_done=False,
     selection=None,
     measured=False,
+    depth=False,
+    ranked=False,
 ):
-    state = State(loaded, detected, ocr_done, segmented, codes_done, selection, measured)
+    state = State(
+        loaded, detected, ocr_done, segmented, codes_done, selection, measured, depth, ranked
+    )
     _validate(commands, state, False)
 
 
@@ -63,6 +69,12 @@ def _need_subject(subject, state, command):
                     f"print {subject} counts again, and after detect {state.selection} that gives 0. "
                     "Earlier counts are already in the result: remove this print, or use "
                     "detect all and count each label.",
+                    command,
+                )
+            if command.kind == "rank_distance":
+                _fail(
+                    f"rank {subject} after detect {state.selection} finds no {subject}. "
+                    "To compare objects, use detect all, then rank all by distance.",
                     command,
                 )
             _fail(
@@ -104,12 +116,27 @@ def _check(command, state, in_loop):
         _validate(command.orelse, state, in_loop)
         return state
     if kind == "save_csv":
-        path = PurePath(command.argument)
         if in_loop:
             _fail("Use save csv after the for each loop ends.", command)
-        if path.suffix.lower() != ".csv" or path.is_absolute() or ".." in path.parts:
+        if not _relative_file(command.argument, ".csv"):
             _fail('save csv needs a relative path ending in .csv, e.g. save csv "out.csv"', command)
         return state
+    if kind in {"rank_distance", "draw_depth", "export_points"} and not state.depth:
+        _fail("Run estimate depth first.", command)
+    if kind == "export_points":
+        if in_loop:
+            _fail("export points writes one file; use it outside for each loops.", command)
+        if not _relative_file(command.argument, ".ply"):
+            _fail(
+                'export points needs a relative path ending in .ply, e.g. export points "scene.ply"',
+                command,
+            )
+        return state
+    if kind == "rank_distance":
+        _need_subject(command.argument, state, command)
+        return replace(state, ranked=True)
+    if kind == "record_distances" and not state.ranked:
+        _fail("Run rank LABEL by distance before record distances.", command)
     if kind in {"count", "print_count", "draw", "segment", "record_count"}:
         _need_subject(
             command.argument if kind != "draw" and kind != "segment" else "all", state, command
@@ -152,6 +179,8 @@ def _check(command, state, in_loop):
         if kind == "scale" and command.argument[0] <= 0:
             _fail("scale needs a factor above 0, e.g. scale 0.5", command)
         return State(loaded=True)  # earlier results no longer match the pixels
+    if kind == "estimate_depth":
+        return replace(state, depth=True)
     if kind == "detect":
         return replace(state, detected=True, segmented=False, selection=command.argument)
     if kind == "segment":
@@ -163,6 +192,11 @@ def _check(command, state, in_loop):
     if kind in {"measure", "measure_gap"}:
         return replace(state, measured=True)
     return state
+
+
+def _relative_file(name, suffix):
+    path = PurePath(name)
+    return path.suffix.lower() == suffix and not path.is_absolute() and ".." not in path.parts
 
 
 def check_source(source):

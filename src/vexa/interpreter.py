@@ -58,6 +58,8 @@ class Session:
         self.segmented = False
         self.measurements = []
         self.reference = None  # (units per pixel, unit name)
+        self.depth = None  # closeness map, 1 is nearest
+        self.distances = []
         if self.segmenter is not None:
             self.segmenter.clear_image()
 
@@ -72,6 +74,8 @@ class Session:
             codes_done=self.codes_done,
             selection=self.selection,
             measured=bool(self.measurements),
+            depth=self.depth is not None,
+            ranked=bool(self.distances),
         )
         logs = []
         self._run(commands, logs)
@@ -218,6 +222,30 @@ class Session:
                         "; ".join(self._describe(m) for m in self.measurements),
                         logs,
                     )
+                elif kind == "estimate_depth":
+                    from vexa.depth import estimate
+
+                    self.depth = estimate(self.image)
+                    logs.append("Estimated depth (relative: closeness 1 is nearest, 0 farthest).")
+                elif kind == "rank_distance":
+                    self._rank(target, logs)
+                elif kind == "record_distances":
+                    self._record(
+                        "distances",
+                        "; ".join(f"{d['object']} {d['closeness']:g}" for d in self.distances),
+                        logs,
+                    )
+                elif kind == "draw_depth":
+                    from vexa.depth import colorize
+
+                    self.image = colorize(self.depth)
+                    logs.append("Drew depth: bright is near, dark is far.")
+                elif kind == "export_points":
+                    from vexa.depth import points, write_ply
+
+                    xyz, rgb = points(self.image, self.depth)
+                    write_ply(self.base / target, xyz, rgb)
+                    logs.append(f"Saved {len(xyz)} points to {target} (relative scale).")
                 elif kind == "record_count":
                     column = _COLUMNS.get(target, target)
                     self._record(column, self._count(target), logs)
@@ -378,6 +406,25 @@ class Session:
         self.measurements.append({"gap": f"{first} to {second}", "value": gap, "unit": unit})
         logs.append(self._describe(self.measurements[-1]))
 
+    def _rank(self, label, logs):
+        from vexa.depth import closeness, match_mask
+
+        self._count(label)  # rejects labels the detector does not know
+        numbers, ranked = {}, []
+        for item in self.detections:
+            if label in ("all", item.label):
+                numbers[item.label] = numbers.get(item.label, 0) + 1
+                name = f"{item.label} {numbers[item.label]}"
+                mask = match_mask(item.box, self.masks, item.label) if self.masks else None
+                ranked.append({"object": name, "closeness": closeness(self.depth, item.box, mask)})
+        ranked.sort(key=lambda entry: -entry["closeness"])  # stable: ties keep detection order
+        self.distances = [{**entry, "rank": rank} for rank, entry in enumerate(ranked, 1)]
+        if not ranked:
+            logs.append(f"No {label} to rank.")
+            return
+        listed = ", ".join(f"{d['object']} ({d['closeness']:g})" for d in self.distances)
+        logs.append(f"Nearest first: {listed}")
+
     @staticmethod
     def _describe(item):
         if "gap" in item:
@@ -408,6 +455,7 @@ class Session:
             "masks": [item.summary(self.image.shape) for item in self.masks],
             "rows": [dict(row) for row in self.rows],
             "measurements": [dict(item) for item in self.measurements],
+            "distances": [dict(item) for item in self.distances],
         }
 
 

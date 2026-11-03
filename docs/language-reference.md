@@ -218,6 +218,29 @@ show image
 
 Each pair needs `vexa model download NAME` once (45 MB). The generator runs in NumPy on CPU at up to 512 pixels on the long side, about 3 to 4 s per image on an M2, and the result is scaled back to the original size. These are 2017 models trained on narrow datasets: horse to zebra works best on side views of horses on grass, and summer to winter on landscapes like Yosemite. Other content passes through mostly unchanged or with artefacts. Like `style`, `translate` clears earlier results.
 
+## Depth
+
+```vexa
+load "street.jpg"
+estimate depth
+detect all
+rank all by distance
+export points "street.ply"
+draw depth
+show image
+```
+
+`estimate depth` predicts how far every pixel is from the camera with Depth Anything V2 Small (int8 ONNX, about 1.2 s on an M2). It needs `vexa model download depth` once (27 MB). The model sees one photo, so depth is relative: Vexa reports closeness from 1 for the nearest point in the image to 0 for the farthest, and never metres. Closeness values are comparable within one image, not between images.
+
+| Command | Requires | Effect |
+| --- | --- | --- |
+| `rank LABEL by distance` | `estimate depth`, `detect` | Orders the latest detections of `LABEL` (or `all`) nearest first, e.g. `Nearest first: person 2 (0.65), bus 1 (0.32)`. Objects are numbered per label in detection order. |
+| `record distances` | `rank` | Adds a `distances` column to the current row. |
+| `draw depth` | `estimate depth` | Replaces the image with its depth map: bright yellow is near, dark purple is far. Detections and depth are kept, so `draw boxes` still works. |
+| `export points "scene.ply"` | `estimate depth` | Writes a coloured point cloud (binary PLY, at most 300,000 points) that opens in MeshLab or Blender. Outside loops only. |
+
+A box also contains background. Without masks, an object's closeness is the 75th percentile inside its box, because the object is usually in front of what is behind it. After `segment detections`, `rank` uses the median of each object's mask instead, which is more exact when objects overlap. The point cloud maps closeness to depths 1 to 10 under an assumed field of view of about 53 degrees, so it has the scene's shape, not its real scale. Transforms, `style` and `translate` clear the depth map.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

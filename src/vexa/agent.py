@@ -42,6 +42,8 @@ _PROGRAM_TOPICS = (
     "record",
     "reference",
     "measure",
+    "estimate",
+    "rank",
     "save",
     "rotate",
     "flip",
@@ -67,6 +69,10 @@ Rules:
 - Run ocr before print text or find text. Use scan codes for QR codes and barcodes.
 - measure reports pixels. For real sizes, put reference "OBJECT" SIZE mm (or cm, m) first,
   using an object of known size the question names, then detect and measure.
+- For questions about which objects are nearer or farther from the camera: estimate depth,
+  detect all, then rank all by distance. Never detect each object separately for this. The
+  ranking lists every object nearest first, which also answers how many are nearer than another
+  object: add no if, count or print for it.
 - For a video, use for each frame in "video.mp4" every 1 second … end; rows are named by time.
 - For a folder, put the commands for one image inside for each … end (no load inside), record
   what the question needs, and save csv after end when a table is asked for.
@@ -117,6 +123,14 @@ detect "screw"
 measure "screw"
 ```
 
+Example question: Is the nearest car closer to the camera than the truck?
+```vexa
+load "image.jpg"
+estimate depth
+detect all
+rank all by distance
+```
+
 Example question: At which second does a car appear in "road.mp4"?
 ```vexa
 for each frame in "road.mp4" every 1 second
@@ -143,7 +157,8 @@ produced this result:
 Answer the question from this result only. When it asks which images, name their files.
 "rows" has one entry per image: a missing or empty value means nothing was recorded or found
 for that image. For a video, each row is one moment, named by its time in seconds.
-Reply with one line:
+"distances" lists objects nearest first: those nearer than the object at rank R have ranks 1 to R - 1.
+Explain in one short sentence, then end with one line:
 ANSWER: <short answer, e.g. a number, yes/no, or the exact text>"""
 
 
@@ -199,7 +214,7 @@ def describe_error(error, program):
 
 
 def summarise(result):
-    keep = ("rows", "measurements", "logs", "counts", "text", "codes", "blur")
+    keep = ("rows", "measurements", "distances", "logs", "counts", "text", "codes", "blur")
     return json.dumps({key: result[key] for key in keep if result.get(key)}, ensure_ascii=False)[
         :3000
     ]

@@ -38,5 +38,8 @@
   {"id": "measure-dog-cm", "image": "examples/dog-bicycle.jpg", "question": "The bicycle is 170 cm long. How tall is the dog, in cm?", "type": "number", "answer": [123.5], "tolerance": 0.1, "suite": "measure"},
   {"id": "video-people-csv", "video": "benchmarks/vision-qa/images/clip.mp4", "question": "Save a CSV with the number of people in the video every second.", "type": "rows", "answer": {"0s": 0, "1s": 2, "2s": 4}, "suite": "video"},
   {"id": "video-most-people", "video": "benchmarks/vision-qa/images/clip.mp4", "question": "At which second of the video are the most people visible?", "type": "number", "answer": [2], "suite": "video"},
-  {"id": "video-dog", "video": "benchmarks/vision-qa/images/clip.mp4", "question": "At what second does a dog appear in the video?", "type": "number", "answer": [0], "suite": "video"}
+  {"id": "video-dog", "video": "benchmarks/vision-qa/images/clip.mp4", "question": "At what second does a dog appear in the video?", "type": "number", "answer": [0], "suite": "video"},
+  {"id": "depth-dog-bicycle", "image": "examples/dog-bicycle.jpg", "question": "Is the dog closer to the camera than the bicycle?", "type": "yesno", "answer": "yes", "suite": "depth"},
+  {"id": "depth-truck", "image": "examples/dog-bicycle.jpg", "question": "Is the truck closer to the camera than the dog?", "type": "yesno", "answer": "no", "suite": "depth"},
+  {"id": "depth-street", "image": "examples/street.jpg", "question": "How many people are closer to the camera than the bus?", "type": "number", "answer": [4], "suite": "depth"}
 ]

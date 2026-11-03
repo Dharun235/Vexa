@@ -15,6 +15,11 @@ body: _NL* (_statement _NL*)*
         | "segment" "detections" -> segment
         | "count" "masks" -> count_masks
         | "draw" "masks" -> draw_masks
+        | "draw" "depth" -> draw_depth
+        | "estimate" "depth" -> estimate_depth
+        | "rank" target "by" "distance" -> rank_distance
+        | "record" "distances" -> record_distances
+        | "export" "points" ESCAPED_STRING -> export_points
         | "scan" "codes" -> scan_codes
         | "find" "text" ESCAPED_STRING -> find_text
         | "inspect" "image" -> inspect_image

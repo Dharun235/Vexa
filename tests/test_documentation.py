@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import cv2
+import numpy as np
 import pytest
 
 from vexa.interpreter import execute
@@ -22,6 +23,7 @@ def test_documented_program_executes(
 ):
     # Folder examples read photos/ and write CSV files relative to the current directory.
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("vexa.depth.estimate", lambda img: np.zeros(img.shape[:2], np.float32))
     (tmp_path / "photos").mkdir()
     cv2.imwrite(str(tmp_path / "photos" / "one.png"), image)
     writer = cv2.VideoWriter(

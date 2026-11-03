@@ -47,6 +47,7 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 | `feat/m3-measure-video` | `measure`, `measure gap`, `reference`, `record measurements`; `for each frame in` video files; `vexa ask --video` |
 | `feat/style` | `style`: six OpenCV styles and five neural styles (`vexa model download styles`); not in the agent prompt, so the benchmark is unchanged |
 | `feat/translate` | `translate horse to zebra` and nine other CycleGAN pairs; legacy PyTorch weights read safely and run in NumPy |
+| `feat/depth` | `estimate depth`, `rank LABEL by distance`, `record distances`, `draw depth`, `export points` (Depth Anything V2 Small, int8 ONNX); three depth tasks |
 
 Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
 
@@ -58,8 +59,11 @@ Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB
 | `feat/lang-control` (32 tasks, + batch 6/6) | 29/32 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 7.9 |
 | `feat/transforms` (34 tasks, + batch 6/6, transform 2/2)¹ | 31/34 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 10.7 |
 | `feat/m3-measure-video` (40 tasks, + batch 6/6, transform 2/2, measure 3/3, video 3/3) | 37/40 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 6.1 |
+| `feat/depth` (43 tasks, + batch 6/6, transform 2/2, measure 3/3, video 3/3, depth 3/3)² | 40/43 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 11.4 |
 
 ¹ The full run scored 30/34: the model fixed an upside-down label with `flip vertical`, which mirrors the text. After adding an orientation rule to the prompt, the transform, read, count, batch and codes suites were rerun: transform 2/2, everything else unchanged.
+
+² The answer step now explains in one sentence before its `ANSWER:` line. Without it the model miscounted the depth ranking (3 people nearer than the bus instead of 4); with it all 43 tasks score as before or better, but each task takes about 5 s longer. A program-computed answer would remove that second model call.
 
 What the baseline showed: every program was valid, yet counting failed
 because valid programs were meaningless. `detect person` then `count bus`

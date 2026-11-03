@@ -37,6 +37,10 @@ SHA-256 hashes are pinned in `src/vexa/openvocab.py`; a mismatch installs nothin
 
 `vexa model download styles` fetches five fast-neural-style networks (Johnson et al., 2016, trained with the PyTorch examples) from the ONNX Model Zoo mirrors on Hugging Face, `onnxmodelzoo/{mosaic,candy,udnie,rain-princess,pointilism}-9`, about 6.7 MB each, into the user data folder. They are not part of the wheel. The model cards state Apache-2.0. Revisions and SHA-256 hashes are pinned in `src/vexa/style.py`. They run with OpenCV DNN, so no extra packages are needed. The six OpenCV styles need no model.
 
+## Depth model
+
+`vexa model download depth` fetches `onnx/model_quantized.onnx` from [onnx-community/depth-anything-v2-small](https://huggingface.co/onnx-community/depth-anything-v2-small) at revision `4472b736`, 27 MB, into the user data folder as `depth-anything-v2-small-int8.onnx`. It is the int8 export of Depth Anything V2 Small (Yang et al., 2024). It is not part of the wheel. The Small model is Apache-2.0 licensed; the larger Base and Large models are not, and Vexa does not use them. The SHA-256 hash is pinned in `src/vexa/depth.py`. On the street example its output correlates 0.9995 with the float32 export, which is 99 MB and about 1.6 times slower. It runs with ONNX Runtime on two CPU threads.
+
 ## Translation models
 
 `vexa model download horse2zebra` (and the other names listed by `vexa help translate`) fetches one of the original CycleGAN generators (Zhu, Park, Isola and Efros, 2017) from the authors' server, `efrosgans.eecs.berkeley.edu/cyclegan/pretrained_models/`, about 45 MB each, into the user data folder. They are not part of the wheel. The CycleGAN code and models are BSD licensed. SHA-256 hashes are pinned in `src/vexa/translate.py`.
