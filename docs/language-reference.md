@@ -241,6 +241,31 @@ show image
 
 A box also contains background. Without masks, an object's closeness is the 75th percentile inside its box, because the object is usually in front of what is behind it. After `segment detections`, `rank` uses the median of each object's mask instead, which is more exact when objects overlap. The point cloud maps closeness to depths 1 to 10 under an assumed field of view of about 53 degrees, so it has the scene's shape, not its real scale. Transforms, `style` and `translate` clear the depth map.
 
+## Poses
+
+```vexa
+load "street.jpg"
+detect person
+estimate poses
+count pose standing
+if count pose "hand up" > 0
+  print "someone is raising a hand"
+end
+record poses
+draw poses
+show image
+```
+
+`estimate poses` finds 17 COCO keypoints (nose, eyes, ears, shoulders, elbows, wrists, hips, knees, ankles) for every person in the latest detections with RTMPose-s, about 20 ms per person on CPU. It needs `detect person` (or `detect all`) first and `vexa model download pose` once (20 MB). Each person's line in the log lists their postures and joint angles, e.g. `person 1: standing; angles: left elbow 61°, left knee 179°, …`.
+
+| Command | Requires | Effect |
+| --- | --- | --- |
+| `count pose POSTURE` | `estimate poses` | Counts people in a posture: `standing`, `sitting`, `lying`, `"hand up"` (at least one wrist above its shoulder) or `"hands up"` (both). Also works in `if count pose … ` and `record count pose …`. |
+| `record poses` | `estimate poses` | Adds a `poses` column, e.g. `person 1: standing; person 2: sitting`. |
+| `draw poses` | `estimate poses` | Draws each skeleton on the image. |
+
+Postures are simple rules on the keypoints, not a trained classifier. Lying means the shoulder-to-hip line is more than 60 degrees from vertical. Standing means a thigh within 30 degrees of vertical and a straight knee (over 150 degrees). Sitting means a thigh more than 45 degrees from vertical or a knee bent under 120 degrees. A person matches no posture when the joints the rule needs are hidden or outside the frame, which the log shows as `posture unclear`. The JSON output (`--json`) holds every keypoint with its score, plus the elbow, knee and hip angles. A new `detect` or any transform clears the poses.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

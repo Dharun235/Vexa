@@ -21,6 +21,7 @@ class State:
     measured: bool = False
     depth: bool = False
     ranked: bool = False
+    posed: bool = False
 
 
 def validate_commands(
@@ -35,9 +36,19 @@ def validate_commands(
     measured=False,
     depth=False,
     ranked=False,
+    posed=False,
 ):
     state = State(
-        loaded, detected, ocr_done, segmented, codes_done, selection, measured, depth, ranked
+        loaded,
+        detected,
+        ocr_done,
+        segmented,
+        codes_done,
+        selection,
+        measured,
+        depth,
+        ranked,
+        posed,
     )
     _validate(commands, state, False)
 
@@ -60,6 +71,13 @@ def _need_subject(subject, state, command):
         _fail("Run segment detections before using masks.", command)
     elif subject == ":codes" and not state.codes_done:
         _fail("Run scan codes before using codes.", command)
+    elif subject.startswith(":pose:"):
+        from vexa.pose import POSTURES
+
+        if subject[6:] not in POSTURES:
+            _fail(f'Unknown pose "{subject[6:]}". Choose one of: {", ".join(POSTURES)}.', command)
+        if not state.posed:
+            _fail("Run estimate poses before counting poses.", command)
     elif not subject.startswith(":"):
         if not state.detected:
             _fail("Run detect before counting or drawing objects.", command)
@@ -179,10 +197,24 @@ def _check(command, state, in_loop):
         if kind == "scale" and command.argument[0] <= 0:
             _fail("scale needs a factor above 0, e.g. scale 0.5", command)
         return State(loaded=True)  # earlier results no longer match the pixels
+    if kind == "estimate_poses":
+        if not state.detected:
+            _fail("estimate poses works on people: detect person first.", command)
+        if state.selection not in ("person", "all"):
+            _fail(
+                f"estimate poses needs people, but detect {state.selection} found none. "
+                "Use detect person first.",
+                command,
+            )
+        return replace(state, posed=True)
+    if kind in {"draw_poses", "record_poses"} and not state.posed:
+        _fail("Run estimate poses first.", command)
     if kind == "estimate_depth":
         return replace(state, depth=True)
     if kind == "detect":
-        return replace(state, detected=True, segmented=False, selection=command.argument)
+        return replace(
+            state, detected=True, segmented=False, selection=command.argument, posed=False
+        )
     if kind == "segment":
         return replace(state, segmented=True)
     if kind == "ocr":

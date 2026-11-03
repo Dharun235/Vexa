@@ -10,6 +10,7 @@ body: _NL* (_statement _NL*)*
         | "text" -> text_subject
         | "masks" -> masks_subject
         | "codes" -> codes_subject
+        | "pose" target -> pose_subject
 ?command: "load" ESCAPED_STRING -> load
         | "detect" target ("confidence" NUMBER)? -> detect
         | "segment" "detections" -> segment
@@ -17,6 +18,10 @@ body: _NL* (_statement _NL*)*
         | "draw" "masks" -> draw_masks
         | "draw" "depth" -> draw_depth
         | "estimate" "depth" -> estimate_depth
+        | "estimate" "poses" -> estimate_poses
+        | "count" "pose" target -> count_pose
+        | "draw" "poses" -> draw_poses
+        | "record" "poses" -> record_poses
         | "rank" target "by" "distance" -> rank_distance
         | "record" "distances" -> record_distances
         | "export" "points" ESCAPED_STRING -> export_points

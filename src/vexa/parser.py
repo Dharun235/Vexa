@@ -19,6 +19,8 @@ def _value(node, token):
     if isinstance(token, Tree):
         if token.data in _SUBJECTS:
             return _SUBJECTS[token.data]
+        if token.data == "pose_subject":
+            return ":pose:" + _value(node, token.children[0])
         token = token.children[0]
     if token.type == "ESCAPED_STRING":
         try:
@@ -58,6 +60,8 @@ def _command(node):
         return Command(kind, argument, line, column)
     if kind in {"measure_gap", "translate"}:
         return Command(kind, tuple(_value(node, child) for child in children), line, column)
+    if kind == "count_pose":  # count pose "sitting" is count over the :pose:sitting subject
+        return Command("count", ":pose:" + _value(node, children[0]), line, column)
     if kind in TRANSFORMS:
         return Command(kind, tuple(float(child) for child in children), line, column)
     argument = _value(node, children[0]) if children else None

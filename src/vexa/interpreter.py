@@ -60,6 +60,7 @@ class Session:
         self.reference = None  # (units per pixel, unit name)
         self.depth = None  # closeness map, 1 is nearest
         self.distances = []
+        self.poses = []
         if self.segmenter is not None:
             self.segmenter.clear_image()
 
@@ -76,6 +77,7 @@ class Session:
             measured=bool(self.measurements),
             depth=self.depth is not None,
             ranked=bool(self.distances),
+            posed=bool(self.poses),
         )
         logs = []
         self._run(commands, logs)
@@ -107,7 +109,7 @@ class Session:
                     )
                     self.detections = detections
                     self.detected, self.selection = True, target
-                    self.masks, self.segmented = [], False
+                    self.masks, self.segmented, self.poses = [], False, []
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
                     logs.append(f"Detected {len(detections)} object(s) matching {target}.")
                 elif kind == "segment":
@@ -182,8 +184,9 @@ class Session:
                     logs.append(f"Drew {len(self.detections)} bounding box(es).")
                 elif kind in {"count", "print_count"}:
                     value = self._count(target)
-                    self.counts[target] = value
-                    logs.append(f"{target}: {value}")
+                    name = f"pose {target[6:]}" if target.startswith(":pose:") else target
+                    self.counts[name] = value
+                    logs.append(f"{name}: {value}")
                 elif kind in TRANSFORMS:
                     self.image = transforms.apply(self.image, kind, target)
                     self.clear_results()
@@ -227,6 +230,15 @@ class Session:
 
                     self.depth = estimate(self.image)
                     logs.append("Estimated depth (relative: closeness 1 is nearest, 0 farthest).")
+                elif kind == "estimate_poses":
+                    self._estimate_poses(logs)
+                elif kind == "draw_poses":
+                    from vexa.pose import draw
+
+                    self.image = draw(self.image, [p["keypoints"] for p in self.poses])
+                    logs.append(f"Drew {len(self.poses)} pose(s).")
+                elif kind == "record_poses":
+                    self._record("poses", "; ".join(_pose_text(p) for p in self.poses), logs)
                 elif kind == "rank_distance":
                     self._rank(target, logs)
                 elif kind == "record_distances":
@@ -247,7 +259,9 @@ class Session:
                     write_ply(self.base / target, xyz, rgb)
                     logs.append(f"Saved {len(xyz)} points to {target} (relative scale).")
                 elif kind == "record_count":
-                    column = _COLUMNS.get(target, target)
+                    column = (
+                        target[6:] if target.startswith(":pose:") else _COLUMNS.get(target, target)
+                    )
                     self._record(column, self._count(target), logs)
                 elif kind == "record_text":
                     self._record("text", " | ".join(r.text for r in self.text_regions), logs)
@@ -273,6 +287,8 @@ class Session:
             return len(self.masks)
         if subject == ":codes":
             return len(self.codes)
+        if subject.startswith(":pose:"):
+            return sum(subject[6:] in p["postures"] for p in self.poses)
         labels = getattr(self.vision, "labels", None)
         if (
             labels
@@ -406,6 +422,27 @@ class Session:
         self.measurements.append({"gap": f"{first} to {second}", "value": gap, "unit": unit})
         logs.append(self._describe(self.measurements[-1]))
 
+    def _estimate_poses(self, logs):
+        from vexa.pose import angles, estimate, postures
+
+        people = [d for d in self.detections if d.label == "person"]
+        found = estimate(self.image, [d.box for d in people])
+        self.poses = [
+            {
+                "object": f"person {number}",
+                "box": person.box,
+                "keypoints": keypoints,
+                "postures": postures(keypoints),
+                "angles": angles(keypoints),
+            }
+            for number, (person, keypoints) in enumerate(zip(people, found, strict=True), 1)
+        ]
+        self.counts = {k: v for k, v in self.counts.items() if not k.startswith("pose ")}
+        logs.append(f"Estimated {len(self.poses)} pose(s).")
+        for item in self.poses:
+            joints = ", ".join(f"{name} {value}°" for name, value in item["angles"].items())
+            logs.append(_pose_text(item) + (f"; angles: {joints}" if joints else ""))
+
     def _rank(self, label, logs):
         from vexa.depth import closeness, match_mask
 
@@ -456,7 +493,22 @@ class Session:
             "rows": [dict(row) for row in self.rows],
             "measurements": [dict(item) for item in self.measurements],
             "distances": [dict(item) for item in self.distances],
+            "poses": [_pose_result(item) for item in self.poses],
         }
+
+
+def _pose_text(item):
+    return f"{item['object']}: {', '.join(item['postures']) or 'posture unclear'}"
+
+
+def _pose_result(item):
+    from vexa.pose import KEYPOINTS
+
+    points = {
+        name: [round(float(x)), round(float(y)), round(float(score), 2)]
+        for name, (x, y, score) in zip(KEYPOINTS, item["keypoints"], strict=True)
+    }
+    return {**{k: v for k, v in item.items() if k != "keypoints"}, "keypoints": points}
 
 
 def _gap(a, b):

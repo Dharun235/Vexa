@@ -54,7 +54,7 @@ The same works on video with `for each frame in "clip.mp4" every 1 second`. Meas
 
 Restyle an image with `style cartoon`, `style sketch` or `style denoise`, or neural styles such as `style mosaic` after `vexa model download styles`. Change what an image shows with `translate horse to zebra`, `translate summer to winter` or `translate photo to monet` (CycleGAN, 45 MB per pair, NumPy on CPU, no PyTorch).
 
-Ask what is near and far with `estimate depth` and `rank all by distance`, or turn a photo into a 3D point cloud with `export points "scene.ply"` (Depth Anything V2 Small, `vexa model download depth`, 27 MB).
+Ask what is near and far with `estimate depth` and `rank all by distance`, or turn a photo into a 3D point cloud with `export points "scene.ply"` (Depth Anything V2 Small, `vexa model download depth`, 27 MB). Find body keypoints, joint angles and postures with `estimate poses` and `count pose sitting` (RTMPose-s, `vexa model download pose`, 20 MB).
 
 ## Ask in plain English
 
