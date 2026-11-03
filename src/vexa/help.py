@@ -25,6 +25,7 @@ TOPICS = {
     "crop": "crop 100 50 400 300 — keep the rectangle from x1 y1 to x2 y2 (pixels, clipped to the image). Clears earlier results.",
     "move": "move 20 -10 — shift the image right by 20 and up by 10 pixels; uncovered areas turn black. Clears earlier results.",
     "style": "style sketch — restyle the image: sketch, cartoon, paint, enhance, denoise or gray (OpenCV), or mosaic, candy, udnie, rain or pointillism (neural style transfer, after vexa model download styles). Use show image to save it. Clears earlier results.",
+    "translate": "translate horse to zebra — change what the image shows with a CycleGAN model: horse to zebra, zebra to horse, summer to winter, winter to summer, apple to orange, orange to apple, photo to monet / vangogh / cezanne / ukiyoe. Each needs vexa model download NAME once (45 MB, e.g. horse2zebra). Use show image to save it. Clears earlier results.",
     "help": "help / help ocr — show commands or details. Also available as vexa help [topic].",
     "exit": "exit / quit / :quit — leave the interactive console. Not a .vexa program command.",
     "reset": ":reset — clear session results; retain the original input image and loaded models.",

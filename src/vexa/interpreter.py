@@ -193,6 +193,12 @@ class Session:
                     self.image = apply(self.image, target)
                     self.clear_results()
                     logs.append(f"Style: {target}.")
+                elif kind == "translate":
+                    from vexa.translate import apply as translate
+
+                    self.image = translate(self.image, *target)
+                    self.clear_results()
+                    logs.append(f"Translated {target[0]} to {target[1]}.")
                 elif kind == "if_block":
                     branch = command.body if self._holds(command.condition) else command.orelse
                     self._run(branch, logs)

@@ -56,7 +56,7 @@ def _command(node):
     if kind == "reference":
         argument = (_value(node, children[0]), float(children[1]), str(children[2]))
         return Command(kind, argument, line, column)
-    if kind == "measure_gap":
+    if kind in {"measure_gap", "translate"}:
         return Command(kind, tuple(_value(node, child) for child in children), line, column)
     if kind in TRANSFORMS:
         return Command(kind, tuple(float(child) for child in children), line, column)

@@ -130,6 +130,16 @@ def _check(command, state, in_loop):
     if kind == "reference" and command.argument[1] <= 0:
         _fail('The reference size must be above 0, e.g. reference "coin" 23.25 mm', command)
 
+    if kind == "translate":
+        from vexa.translate import MODELS, pairs
+
+        if command.argument not in MODELS:
+            source, target = command.argument
+            _fail(
+                f'No translation from "{source}" to "{target}". Available: {", ".join(pairs())}.',
+                command,
+            )
+        return State(loaded=True)
     if kind == "style":
         from vexa.style import STYLES
 

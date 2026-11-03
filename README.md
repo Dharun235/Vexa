@@ -52,7 +52,7 @@ save csv "people.csv"
 
 The same works on video with `for each frame in "clip.mp4" every 1 second`. Measure objects with `measure bolt` or `measure gap between "bolt" and "nut"`, in pixels or, after `reference "coin" 23.25 mm`, in real units.
 
-Restyle an image with `style cartoon`, `style sketch` or `style denoise`, or neural styles such as `style mosaic` after `vexa model download styles`.
+Restyle an image with `style cartoon`, `style sketch` or `style denoise`, or neural styles such as `style mosaic` after `vexa model download styles`. Change what an image shows with `translate horse to zebra`, `translate summer to winter` or `translate photo to monet` (CycleGAN, 45 MB per pair, NumPy on CPU, no PyTorch).
 
 ## Ask in plain English
 

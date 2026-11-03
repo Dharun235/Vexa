@@ -58,27 +58,34 @@ def download(progress=print) -> Path:
 
 def fetch(directory, files, progress=print) -> Path:
     """Download pinned Hugging Face files, keeping only those whose SHA-256 matches."""
-    directory.mkdir(parents=True, exist_ok=True)
     for name, (repo, revision, path, sha256) in files.items():
-        destination = directory / name
-        if destination.is_file() and _sha256(destination) == sha256:
-            continue
-        progress(f"Downloading {name} from {repo} ...")
         url = _HF.format(repo=repo, revision=revision, path=path)
-        with tempfile.NamedTemporaryFile(dir=directory, delete=False) as stream:
-            temporary = Path(stream.name)
-        try:
-            with urllib.request.urlopen(url, timeout=60) as response, temporary.open("wb") as out:
-                while chunk := response.read(1 << 20):
-                    out.write(chunk)
-            if _sha256(temporary) != sha256:
-                raise VexaError(
-                    f"Checksum mismatch for {name}; nothing was installed.", kind="vision"
-                )
-            temporary.replace(destination)
-        finally:
-            temporary.unlink(missing_ok=True)
+        download_file(
+            url, directory / name, sha256, f"Downloading {name} from {repo} ...", progress
+        )
     return directory
+
+
+def download_file(url, destination, sha256, message, progress=print) -> Path:
+    """Fetch url to destination unless it is already there; install only on a SHA-256 match."""
+    if destination.is_file() and _sha256(destination) == sha256:
+        return destination
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    progress(message)
+    with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as stream:
+        temporary = Path(stream.name)
+    try:
+        with urllib.request.urlopen(url, timeout=60) as response, temporary.open("wb") as out:
+            while chunk := response.read(1 << 20):
+                out.write(chunk)
+        if _sha256(temporary) != sha256:
+            raise VexaError(
+                f"Checksum mismatch for {destination.name}; nothing was installed.", kind="vision"
+            )
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return destination
 
 
 def _sha256(path):

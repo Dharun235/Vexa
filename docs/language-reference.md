@@ -197,6 +197,27 @@ show image
 
 Neural styles run at up to 1024 pixels on the long side and are scaled back to the original size. Like the geometric operations, `style` clears earlier detections and other results. `load` restores the original.
 
+## Translate
+
+```text
+load "horse.jpg"
+translate horse to zebra
+detect zebra
+count zebra
+show image
+```
+
+`translate SOURCE to TARGET` changes what the image shows with a CycleGAN generator:
+
+| Pair | Download name |
+| --- | --- |
+| `horse to zebra`, `zebra to horse` | `horse2zebra`, `zebra2horse` |
+| `summer to winter`, `winter to summer` | `summer2winter_yosemite`, `winter2summer_yosemite` |
+| `apple to orange`, `orange to apple` | `apple2orange`, `orange2apple` |
+| `photo to monet`, `photo to vangogh`, `photo to cezanne`, `photo to ukiyoe` | `style_monet`, `style_vangogh`, `style_cezanne`, `style_ukiyoe` |
+
+Each pair needs `vexa model download NAME` once (45 MB). The generator runs in NumPy on CPU at up to 512 pixels on the long side, about 3 to 4 s per image on an M2, and the result is scaled back to the original size. These are 2017 models trained on narrow datasets: horse to zebra works best on side views of horses on grass, and summer to winter on landscapes like Yosemite. Other content passes through mostly unchanged or with artefacts. Like `style`, `translate` clears earlier results.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

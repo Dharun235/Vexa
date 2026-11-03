@@ -66,9 +66,9 @@ def arguments():
     download.add_argument(
         "what",
         nargs="?",
-        choices=["detector", "styles"],
         default="detector",
-        help="detector: open-vocabulary detection (about 175 MB); styles: neural styles (about 34 MB)",
+        help="detector: open-vocabulary detection (about 175 MB); styles: neural styles "
+        "(about 34 MB); or a translate model such as horse2zebra (45 MB, see vexa help translate)",
     )
     install = actions.add_parser("install", help="Validate and copy a YOLO11n ONNX model")
     install.add_argument("file", type=Path)
@@ -202,10 +202,14 @@ def main(argv=None):
             from vexa.style import download
 
             print(f"Neural styles ready in {download()}")
-        elif args.model_action == "download":
+        elif args.model_action == "download" and args.what == "detector":
             from vexa.openvocab import download
 
             print(f"Open-vocabulary models ready in {download()}")
+        elif args.model_action == "download":
+            from vexa.translate import download
+
+            print(f"Translation model ready: {download(args.what)}")
         elif args.model_action == "path":
             print(model_path())
         else:
