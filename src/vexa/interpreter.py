@@ -1,4 +1,5 @@
 import csv
+import math
 from dataclasses import asdict
 from pathlib import Path
 
@@ -55,6 +56,8 @@ class Session:
         self.blur = None
         self.masks = []
         self.segmented = False
+        self.measurements = []
+        self.reference = None  # (units per pixel, unit name)
         if self.segmenter is not None:
             self.segmenter.clear_image()
 
@@ -68,6 +71,7 @@ class Session:
             segmented=self.segmented,
             codes_done=self.codes_done,
             selection=self.selection,
+            measured=bool(self.measurements),
         )
         logs = []
         self._run(commands, logs)
@@ -187,7 +191,21 @@ class Session:
                     branch = command.body if self._holds(command.condition) else command.orelse
                     self._run(branch, logs)
                 elif kind == "for_each":
-                    self._for_each(target, command.body, logs)
+                    self._loop(self._folder_images(target), command.body, logs)
+                elif kind == "for_frames":
+                    self._loop(self._video_frames(*target), command.body, logs)
+                elif kind == "reference":
+                    self._set_reference(*target, logs)
+                elif kind == "measure":
+                    self._measure(target, logs)
+                elif kind == "measure_gap":
+                    self._measure_gap(*target, logs)
+                elif kind == "record_measurements":
+                    self._record(
+                        "measurements",
+                        "; ".join(self._describe(m) for m in self.measurements),
+                        logs,
+                    )
                 elif kind == "record_count":
                     column = _COLUMNS.get(target, target)
                     self._record(column, self._count(target), logs)
@@ -238,7 +256,7 @@ class Session:
         self.row[column] = value
         logs.append(f"Recorded {column}: {value}")
 
-    def _for_each(self, folder, body, logs):
+    def _folder_images(self, folder):
         directory = self.base / folder
         if not directory.is_dir():
             raise VexaError(f'Folder not found: "{folder}"', kind="input")
@@ -247,24 +265,112 @@ class Session:
             raise VexaError(f'No JPEG, PNG or WebP images in "{folder}".', kind="input")
         if len(files) > MAX_FOLDER_IMAGES:
             raise VexaError(f"A folder can hold at most {MAX_FOLDER_IMAGES} images.", kind="input")
-        outer = self.source_image  # load inside the loop reloads the loop's image
         for number, path in enumerate(files, 1):
             with path.open("rb") as stream:
                 try:
                     image = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
                 except VexaError as exc:
                     raise VexaError(f"{path.name}: {exc.message}", kind=exc.kind) from exc
-            self.reset()
-            self.source_image, self.image, self.image_name = image, image.copy(), path.name
-            self.row = {"image": path.name}
-            self.rows.append(self.row)
-            logs.append(f"Image {number}/{len(files)}: {path.name}")
-            try:
+            yield path.name, image, f"Image {number}/{len(files)}: {path.name}"
+
+    def _video_frames(self, video, every):
+        """One frame every `every` seconds, named by its time, e.g. "2s"."""
+        path = self.base / video
+        if not path.is_file():
+            raise VexaError(f'Video not found: "{video}"', kind="input")
+        capture = cv2.VideoCapture(str(path))
+        try:
+            fps = capture.get(cv2.CAP_PROP_FPS)
+            if not capture.isOpened() or not fps or fps <= 0:
+                raise VexaError(f'Could not read the video "{video}".', kind="input")
+            step = max(1, round(fps * every))
+            total = math.ceil(capture.get(cv2.CAP_PROP_FRAME_COUNT) / step) or "?"
+            if total != "?" and total > MAX_FOLDER_IMAGES:
+                raise VexaError(
+                    f"A video loop can visit at most {MAX_FOLDER_IMAGES} frames; use a larger every.",
+                    kind="input",
+                )
+            index = sampled = 0
+            while capture.grab():
+                if index % step == 0:
+                    ok, frame = capture.retrieve()
+                    if not ok:
+                        break
+                    sampled += 1
+                    if sampled > MAX_FOLDER_IMAGES:
+                        raise VexaError(
+                            f"A video loop can visit at most {MAX_FOLDER_IMAGES} frames; "
+                            "use a larger every.",
+                            kind="input",
+                        )
+                    name = f"{round(index / fps, 2):g}s"
+                    yield name, frame, f"Frame {sampled}/{total}: {name} of {path.name}"
+                index += 1
+            if not sampled:
+                raise VexaError(f'No frames could be read from "{video}".', kind="input")
+        finally:
+            capture.release()
+
+    def _loop(self, items, body, logs):
+        outer = self.source_image  # load inside the loop reloads the loop's image
+        try:
+            for name, image, message in items:
+                self.reset()
+                self.source_image, self.image, self.image_name = image, image.copy(), name
+                self.row = {"image": name}
+                self.rows.append(self.row)
+                logs.append(message)
                 self._run(body, logs)
-            finally:
-                self.source_image = outer
+        finally:
+            self.source_image = outer
         self.reset()
         self.row = None
+
+    def _set_reference(self, label, size, unit, logs):
+        found = self.vision.detect(self.image, label)
+        if not found:
+            raise VexaError(f'The reference "{label}" was not found in the image.')
+        x1, y1, x2, y2 = max(found, key=lambda item: item.confidence).box
+        side = max(x2 - x1, y2 - y1)
+        if side < 1:
+            raise VexaError(f'The reference "{label}" is too small to measure.')
+        self.reference = (size / side, unit)
+        logs.append(f"Reference {label}: {side} px = {size:g} {unit}.")
+
+    def _length(self, pixels):
+        factor, unit = self.reference or (1.0, "px")
+        return round(pixels * factor, 1), unit
+
+    def _measure(self, label, logs):
+        self._count(label)  # rejects labels the detector does not know
+        items = [d for d in self.detections if label == "all" or d.label == label]
+        if not items:
+            logs.append(f"No {label} to measure.")
+        for number, item in enumerate(items, 1):
+            x1, y1, x2, y2 = item.box
+            (width, unit), (height, _) = self._length(x2 - x1), self._length(y2 - y1)
+            entry = {"object": f"{item.label} {number}", "width": width, "height": height}
+            self.measurements.append({**entry, "unit": unit})
+            logs.append(self._describe(self.measurements[-1]))
+
+    def _measure_gap(self, first, second, logs):
+        for label in (first, second):
+            self._count(label)
+        a = [d for d in self.detections if first == "all" or d.label == first]
+        b = [d for d in self.detections if second == "all" or d.label == second]
+        pairs = [(p, q) for p in a for q in b if p is not q]
+        if not pairs:
+            logs.append(f"No gap: need two objects, found {len(a)} {first} and {len(b)} {second}.")
+            return
+        gap, unit = self._length(min(_gap(p.box, q.box) for p, q in pairs))
+        self.measurements.append({"gap": f"{first} to {second}", "value": gap, "unit": unit})
+        logs.append(self._describe(self.measurements[-1]))
+
+    @staticmethod
+    def _describe(item):
+        if "gap" in item:
+            return f"Gap {item['gap']}: {item['value']:g} {item['unit']}"
+        return f"{item['object']}: {item['width']:g} × {item['height']:g} {item['unit']}"
 
     def _save_csv(self, target, logs):
         columns = list(dict.fromkeys(key for row in self.rows for key in row))
@@ -289,7 +395,15 @@ class Session:
             "blur": self.blur,
             "masks": [item.summary(self.image.shape) for item in self.masks],
             "rows": [dict(row) for row in self.rows],
+            "measurements": [dict(item) for item in self.measurements],
         }
+
+
+def _gap(a, b):
+    """Shortest edge-to-edge distance between two boxes; 0 when they touch or overlap."""
+    dx = max(0, b[0] - a[2], a[0] - b[2])
+    dy = max(0, b[1] - a[3], a[1] - b[3])
+    return math.hypot(dx, dy)
 
 
 def execute(source, source_image, vision, reader=None, segmenter=None):

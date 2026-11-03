@@ -49,6 +49,15 @@ def _command(node):
         )
     if kind == "for_each":
         return Command(kind, _value(node, children[0]), line, column, body=_block(children[1]))
+    if kind == "for_frames":
+        every = float(children[1]) if len(children) > 2 else 1.0
+        argument = (_value(node, children[0]), every)
+        return Command(kind, argument, line, column, body=_block(children[-1]))
+    if kind == "reference":
+        argument = (_value(node, children[0]), float(children[1]), str(children[2]))
+        return Command(kind, argument, line, column)
+    if kind == "measure_gap":
+        return Command(kind, tuple(_value(node, child) for child in children), line, column)
     if kind in TRANSFORMS:
         return Command(kind, tuple(float(child) for child in children), line, column)
     argument = _value(node, children[0]) if children else None

@@ -50,6 +50,8 @@ save csv "people.csv"
 
 `vexa run people.vexa` needs no `--image` when all image work is inside the loop.
 
+The same works on video with `for each frame in "clip.mp4" every 1 second`. Measure objects with `measure bolt` or `measure gap between "bolt" and "nut"`, in pixels or, after `reference "coin" 23.25 mm`, in real units.
+
 ## Ask in plain English
 
 A local model can write the program for you. Install [Ollama](https://ollama.com), then:
@@ -57,6 +59,7 @@ A local model can write the program for you. Install [Ollama](https://ollama.com
 ```sh
 ollama pull qwen3:4b-instruct
 vexa ask "How many people and buses are there?" --image street.jpg
+vexa ask "At which second does a dog appear?" --video clip.mp4
 ```
 
 Vexa checks the program before running it and sends any error back to the model to fix. The answer comes with the program, which `--save` keeps for reuse without the model. `vexa bench` scores this on the [benchmark tasks](benchmarks/vision-qa/tasks.json).

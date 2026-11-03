@@ -2,6 +2,7 @@ start: _NL* (_statement _NL*)*
 _statement: command _NL | block
 ?block: "if" condition _NL body ("else" _NL body)? "end" _NL -> if_block
       | "for" "each" "image" "in" ESCAPED_STRING _NL body "end" _NL -> for_each
+      | "for" "each" "frame" "in" ESCAPED_STRING ("every" NUMBER ("second" | "seconds"))? _NL body "end" _NL -> for_frames
 body: _NL* (_statement _NL*)*
 ?condition: "count" subject COMPARE NUMBER -> count_condition
           | "text" "contains" ESCAPED_STRING -> text_condition
@@ -32,6 +33,10 @@ body: _NL* (_statement _NL*)*
         | "record" "text" -> record_text
         | "record" "codes" -> record_codes
         | "save" "csv" ESCAPED_STRING -> save_csv
+        | "record" "measurements" -> record_measurements
+        | "reference" target NUMBER UNIT -> reference
+        | "measure" "gap" "between" target "and" target -> measure_gap
+        | "measure" target -> measure
         | "rotate" SIGNED_NUMBER -> rotate
         | "flip" "horizontal" -> flip_horizontal
         | "flip" "vertical" -> flip_vertical
@@ -42,6 +47,7 @@ body: _NL* (_statement _NL*)*
 ?target: NAME -> bare_target
        | ESCAPED_STRING -> quoted_target
 COMPARE: "<=" | ">=" | "==" | "!=" | "<" | ">"
+UNIT: "mm" | "cm" | "m"
 NAME: /[a-zA-Z][a-zA-Z0-9_]*/
 _NL: /\r?\n/
 %import common.NUMBER

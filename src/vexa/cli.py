@@ -48,6 +48,7 @@ def arguments():
     source = ask_command.add_mutually_exclusive_group(required=True)
     source.add_argument("--image", type=Path)
     source.add_argument("--folder", help="Ask about every image in this folder")
+    source.add_argument("--video", help="Ask about frames of this video file")
     ask_command.add_argument("--save", type=Path, help="Save the generated program to this file")
     bench = commands.add_parser("bench", help="Score vexa ask on benchmark tasks")
     bench.add_argument("--tasks", type=Path, default=Path("benchmarks/vision-qa/tasks.json"))
@@ -138,6 +139,8 @@ def ask_file(args):
     question = args.question
     if args.folder:
         question += f'\nThe images are in the folder "{args.folder}"; use for each image in "{args.folder}".'
+    if args.video:
+        question += f'\nThe video is "{args.video}"; use for each frame in "{args.video}".'
     result = ask(
         question,
         lambda commands: execute_commands(commands, image, vision),

@@ -44,6 +44,7 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 | `feat/open-vocab` | M1: YOLO-World open-vocabulary detection, `vexa model download` |
 | `feat/lang-control` | M2: `if`/`else`, `for each image in`, `record`, `save csv`, folder benchmark tasks |
 | `feat/transforms` | `rotate`, `flip`, `resize`, `scale`, `crop`, `move`; two orientation tasks |
+| `feat/m3-measure-video` | `measure`, `measure gap`, `reference`, `record measurements`; `for each frame in` video files; `vexa ask --video` |
 
 Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
 
@@ -54,6 +55,7 @@ Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB
 | `feat/open-vocab` | 23/26 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 5.8 |
 | `feat/lang-control` (32 tasks, + batch 6/6) | 29/32 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 7.9 |
 | `feat/transforms` (34 tasks, + batch 6/6, transform 2/2)¹ | 31/34 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 10.7 |
+| `feat/m3-measure-video` (40 tasks, + batch 6/6, transform 2/2, measure 3/3, video 3/3) | 37/40 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 | 100% | 6.1 |
 
 ¹ The full run scored 30/34: the model fixed an upside-down label with `flip vertical`, which mirrors the text. After adding an orientation rule to the prompt, the transform, read, count, batch and codes suites were rerun: transform 2/2, everything else unchanged.
 
@@ -192,8 +194,8 @@ If (1) beats (3) on counting and inspection, that is the project's pitch.
 | Milestone | Done when |
 | --- | --- |
 | M1 Detector spike | Done: YOLO-World v2-S chosen, see open-vocabulary-benchmark.md |
-| M2 Language 0.5 | Done except `measure`: `if`, `for each`, `record`/`save csv`, validator and tests |
-| M3 Agent | `vexa ask` answers the README example offline with repair loop and tests |
+| M2 Language 0.5 | Done: `if`, `for each`, `record`/`save csv`, `measure` (in `feat/m3-measure-video`), validator and tests |
+| M3 Agent | Done: `vexa ask` with repair loop and tests; also video frames and measurement |
 | M4 Benchmark | Counting and reading suites, scores for the three configurations |
 | M5 Release | 0.7.0a1 wheel, README demo GIF, results table |
 

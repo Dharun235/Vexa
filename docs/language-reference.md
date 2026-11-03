@@ -148,6 +148,38 @@ show image
 
 Each operation changes the working image and clears detections, masks, OCR text, codes and other results, because their coordinates no longer match; counts already recorded stay. Run `detect` or `ocr` again afterwards. Results are limited to 20 megapixels. `load` restores the original image. Detectors expect upright scenes, so rotating a sideways photo upright first improves detection.
 
+## Measure sizes and gaps
+
+```vexa
+load "street.jpg"
+reference car 4.5 m
+detect all
+measure person
+measure gap between person and car
+record measurements
+```
+
+| Command | Effect |
+| --- | --- |
+| `measure LABEL` | Width × height of every `LABEL` box in the latest detections (`all` for every box). |
+| `measure gap between A and B` | Shortest edge-to-edge distance between any `A` box and any `B` box; 0 when they touch or overlap. With `A` and `B` the same label, the two closest objects. |
+| `reference LABEL SIZE UNIT` | Detects `LABEL`, takes its longest side as `SIZE` (`mm`, `cm` or `m`), and makes later `measure` commands report that unit instead of pixels. It does not change the current detections. |
+| `record measurements` | Adds every measurement so far to the current row, for `save csv`. |
+
+Measurements are taken from detection boxes, so they are only as tight as the boxes, and real units assume the reference lies in the same plane as the measured objects, facing the camera. Treat them as estimates, not metrology. `load` and every rotate, flip, resize, crop or move clear the measurements and the reference.
+
+## Video
+
+```vexa
+for each frame in "clip.mp4" every 1 second
+  detect person
+  record count person
+end
+save csv "people-per-second.csv"
+```
+
+`for each frame in "VIDEO" every N seconds` runs the block on one frame every `N` seconds (default 1) of an `.mp4`, `.mov`, `.avi`, `.mkv` or `.webm` file, decoded with OpenCV. It works like a folder loop: each frame starts loaded, cannot be nested, and gets a row named by its time, such as `0s`, `1s` or `2.5s`. At most 10,000 frames per loop.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

@@ -6,7 +6,8 @@ from pathlib import PurePath
 from vexa.ast_nodes import VexaError
 from vexa.parser import TRANSFORMS, parse
 
-NO_IMAGE_NEEDED = {"print_text", "save_csv", "for_each", "if_block"}
+NO_IMAGE_NEEDED = {"print_text", "save_csv", "for_each", "for_frames", "if_block"}
+VIDEO_SUFFIXES = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,7 @@ class State:
     segmented: bool = False
     codes_done: bool = False
     selection: str | None = None
+    measured: bool = False
 
 
 def validate_commands(
@@ -28,8 +30,10 @@ def validate_commands(
     segmented=False,
     codes_done=False,
     selection=None,
+    measured=False,
 ):
-    _validate(commands, State(loaded, detected, ocr_done, segmented, codes_done, selection), False)
+    state = State(loaded, detected, ocr_done, segmented, codes_done, selection, measured)
+    _validate(commands, state, False)
 
 
 def _fail(message, command):
@@ -54,6 +58,13 @@ def _need_subject(subject, state, command):
         if not state.detected:
             _fail("Run detect before counting or drawing objects.", command)
         if state.selection not in (None, "all", subject) and subject != "all":
+            if command.kind == "print_count":
+                _fail(
+                    f"print {subject} counts again, and after detect {state.selection} that gives 0. "
+                    "Earlier counts are already in the result: remove this print, or use "
+                    "detect all and count each label.",
+                    command,
+                )
             _fail(
                 f"count {subject} after detect {state.selection} always gives 0. "
                 f"Count {state.selection} instead, or detect {subject} first.",
@@ -72,9 +83,15 @@ def _check(command, state, in_loop):
 
     if kind == "load":
         return State(loaded=True)
-    if kind == "for_each":
+    if kind in {"for_each", "for_frames"}:
         if in_loop:
             _fail("for each cannot be nested inside another for each.", command)
+        if kind == "for_frames":
+            video, every = command.argument
+            if PurePath(video).suffix.lower() not in VIDEO_SUFFIXES:
+                _fail("for each frame needs a video file: .mp4, .mov, .avi, .mkv or .webm", command)
+            if every <= 0:
+                _fail("every needs a number of seconds above 0, e.g. every 1 second", command)
         _validate(command.body, State(loaded=True), True)
         return State()  # the loop leaves no current image or results behind
     if kind == "if_block":
@@ -103,6 +120,15 @@ def _check(command, state, in_loop):
         _need_subject(":masks", state, command)
     if kind == "record_codes":
         _need_subject(":codes", state, command)
+    if kind == "measure":
+        _need_subject(command.argument, state, command)
+    if kind == "measure_gap":
+        for label in command.argument:
+            _need_subject(label, state, command)
+    if kind == "record_measurements" and not state.measured:
+        _fail("Run measure before record measurements.", command)
+    if kind == "reference" and command.argument[1] <= 0:
+        _fail('The reference size must be above 0, e.g. reference "coin" 23.25 mm', command)
 
     if kind in TRANSFORMS:
         if kind == "scale" and command.argument[0] <= 0:
@@ -116,6 +142,8 @@ def _check(command, state, in_loop):
         return replace(state, ocr_done=True)
     if kind == "scan_codes":
         return replace(state, codes_done=True)
+    if kind in {"measure", "measure_gap"}:
+        return replace(state, measured=True)
     return state
 
 

@@ -28,7 +28,10 @@ def score(task, answer, rows=()):
         return all(_norm(item) in _norm(answer) for item in task["answer"])
     if task["type"] == "number":
         numbers = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", answer)]
-        return bool(numbers) and numbers[0] in task["answer"]
+        if not numbers:
+            return False
+        tolerance = task.get("tolerance", 0)  # relative, e.g. 0.1 for ±10%
+        return any(abs(numbers[0] - want) <= tolerance * abs(want) for want in task["answer"])
     if task["type"] == "yesno":
         return _norm(answer).startswith(task["answer"])
     return _norm(task["answer"]) in _norm(answer)
@@ -62,6 +65,9 @@ def run_bench(tasks, client, root=Path("."), out=None, vision=None):
             question += (
                 f'\nThe images are in the folder "{folder}"; use for each image in "{folder}".'
             )
+        elif "video" in task:
+            video = (root / task["video"]).resolve()
+            question += f'\nThe video is "{video}"; use for each frame in "{video}".'
         else:
             if task["image"] not in images:
                 images[task["image"]] = decode_image(

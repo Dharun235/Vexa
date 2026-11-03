@@ -86,3 +86,11 @@ if __name__ == "__main__":
     cv2.imwrite(str(OUT / "part_label_upside_down.png"), cv2.rotate(label, cv2.ROTATE_180))
     blurry = cv2.GaussianBlur(cv2.imread(str(EXAMPLES / "football.jpg")), (0, 0), 9)
     cv2.imwrite(str(OUT / "football_blurry.jpg"), blurry)
+    # A 3-second clip at 5 fps: porch (0-1 s), football (1-2 s), street (2-3 s).
+    size = (640, 480)
+    writer = cv2.VideoWriter(str(OUT / "clip.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), 5, size)
+    for name in ("dog-bicycle.jpg", "football.jpg", "street.jpg"):
+        frame = cv2.resize(cv2.imread(str(EXAMPLES / name)), size, interpolation=cv2.INTER_AREA)
+        for _ in range(5):
+            writer.write(frame)
+    writer.release()

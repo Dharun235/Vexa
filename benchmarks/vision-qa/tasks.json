@@ -32,5 +32,11 @@
   {"id": "batch-serials", "folder": "benchmarks/vision-qa/folders/labels", "question": "Make a CSV table with the text of every label.", "type": "rows", "answer": {"label_01.png": "SN77A12290", "label_02.png": "SN77A12291", "label_03.png": "SN44C00817", "label_04.png": "SN44C00818"}, "suite": "batch"},
   {"id": "batch-qr", "folder": "benchmarks/vision-qa/folders/codes", "question": "How many of these images contain a QR code or barcode?", "type": "number", "answer": [2], "suite": "batch"},
   {"id": "sideways-people", "image": "benchmarks/vision-qa/images/street_sideways.jpg", "question": "This photo was saved sideways (turned clockwise). How many people are in it?", "type": "number", "answer": [4], "suite": "transform"},
-  {"id": "upside-down-serial", "image": "benchmarks/vision-qa/images/part_label_upside_down.png", "question": "This label photo is upside down. What is the serial number?", "type": "text", "answer": "SN77A12290", "suite": "transform"}
+  {"id": "upside-down-serial", "image": "benchmarks/vision-qa/images/part_label_upside_down.png", "question": "This label photo is upside down. What is the serial number?", "type": "text", "answer": "SN77A12290", "suite": "transform"},
+  {"id": "measure-bus", "image": "examples/street.jpg", "question": "How wide is the bus in pixels?", "type": "number", "answer": [788], "tolerance": 0.05, "suite": "measure"},
+  {"id": "measure-tallest", "image": "examples/street.jpg", "question": "How tall is the tallest person, in pixels?", "type": "number", "answer": [507], "tolerance": 0.05, "suite": "measure"},
+  {"id": "measure-dog-cm", "image": "examples/dog-bicycle.jpg", "question": "The bicycle is 170 cm long. How tall is the dog, in cm?", "type": "number", "answer": [123.5], "tolerance": 0.1, "suite": "measure"},
+  {"id": "video-people-csv", "video": "benchmarks/vision-qa/images/clip.mp4", "question": "Save a CSV with the number of people in the video every second.", "type": "rows", "answer": {"0s": 0, "1s": 2, "2s": 4}, "suite": "video"},
+  {"id": "video-most-people", "video": "benchmarks/vision-qa/images/clip.mp4", "question": "At which second of the video are the most people visible?", "type": "number", "answer": [2], "suite": "video"},
+  {"id": "video-dog", "video": "benchmarks/vision-qa/images/clip.mp4", "question": "At what second does a dog appear in the video?", "type": "number", "answer": [0], "suite": "video"}
 ]

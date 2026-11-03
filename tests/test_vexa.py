@@ -69,9 +69,15 @@ def test_zero_counts_and_load_resets_state(image, fake_vision):
     assert result["counts"]["bus"] == 0
 
 
-@pytest.mark.parametrize("source", ["detect person\ncount car", "detect person\nprint car"])
-def test_count_must_match_latest_detection(source):
-    with pytest.raises(VexaError, match="count car after detect person always gives 0") as error:
+@pytest.mark.parametrize(
+    ("source", "message"),
+    [
+        ("detect person\ncount car", "count car after detect person always gives 0"),
+        ("detect person\nprint car", "print car counts again, and after detect person"),
+    ],
+)
+def test_count_must_match_latest_detection(source, message):
+    with pytest.raises(VexaError, match=message) as error:
         check_source(f'load "x"\n{source}')
     assert error.value.line == 3
 

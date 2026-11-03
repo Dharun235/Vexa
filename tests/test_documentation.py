@@ -24,5 +24,11 @@ def test_documented_program_executes(
     monkeypatch.chdir(tmp_path)
     (tmp_path / "photos").mkdir()
     cv2.imwrite(str(tmp_path / "photos" / "one.png"), image)
+    writer = cv2.VideoWriter(
+        str(tmp_path / "clip.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), 2, (120, 100)
+    )
+    for _ in range(4):
+        writer.write(image)
+    writer.release()
     result = execute(source, image, fake_vision, fake_reader, fake_segmenter)
     assert result["logs"]
