@@ -246,7 +246,8 @@ def ask(question, run, client, max_attempts=3):
         except VexaError as exc:
             error = describe_error(exc, program)
             outcome.errors.append(error)
-            if "detectable labels" in exc.message or "vexa model download" in exc.message:
+            missing_model = exc.kind == "vision" and "vexa model download" in exc.message
+            if "detectable labels" in exc.message or missing_model:
                 # Retrying cannot help when the object is outside the detector's labels.
                 outcome.answer = f"Vexa cannot answer this: {exc.message}"
                 return outcome

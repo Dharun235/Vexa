@@ -89,6 +89,12 @@ def _need_subject(subject, state, command):
                     "detect all and count each label.",
                     command,
                 )
+            if command.kind in {"blur", "pixelate", "measure"}:
+                _fail(
+                    f"{command.kind} {subject} after detect {state.selection} finds no "
+                    f"{subject}. Detect {subject} first.",
+                    command,
+                )
             if command.kind == "rank_distance":
                 _fail(
                     f"rank {subject} after detect {state.selection} finds no {subject}. "
@@ -165,7 +171,7 @@ def _check(command, state, in_loop):
         _need_subject(":masks", state, command)
     if kind == "record_codes":
         _need_subject(":codes", state, command)
-    if kind == "measure":
+    if kind in {"measure", "blur", "pixelate"}:
         _need_subject(command.argument, state, command)
     if kind == "measure_gap":
         for label in command.argument:

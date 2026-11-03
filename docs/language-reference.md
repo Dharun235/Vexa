@@ -266,6 +266,25 @@ show image
 
 Postures are simple rules on the keypoints, not a trained classifier. Lying means the shoulder-to-hip line is more than 60 degrees from vertical. Standing means a thigh within 30 degrees of vertical and a straight knee (over 150 degrees). Sitting means a thigh more than 45 degrees from vertical or a knee bent under 120 degrees. A person matches no posture when the joints the rule needs are hidden or outside the frame, which the log shows as `posture unclear`. The JSON output (`--json`) holds every keypoint with its score, plus the elbow, knee and hip angles. A new `detect` or any transform clears the poses.
 
+## Faces and privacy
+
+```vexa
+load "street.jpg"
+detect face
+count face
+blur face
+show image
+```
+
+`detect face` uses the YuNet face detector instead of the object detector, after `vexa model download faces` once (232 KB). Its default confidence is 0.6. Faces then work like any other label: `count face`, `draw boxes`, `measure face`, `rank face by distance`. YuNet finds frontal and turned faces down to about 10 pixels; faces seen from behind or heavily covered are missed.
+
+| Command | Requires | Effect |
+| --- | --- | --- |
+| `blur LABEL` | `detect` | Blurs every object of that label (or `all`) in the latest detections, strongly enough that faces cannot be recognised. Boxes grow by 15% on each side to cover hair, ears and chin. |
+| `pixelate LABEL` | `detect` | The same with square blocks, about 10 across each object. |
+
+After `segment detections`, both follow each object's mask instead of its box, e.g. `detect person`, `segment detections`, `blur person` hides people as soft silhouettes. Detections stay available after blurring, like after `draw boxes`. Blur `"license plate"` or any other object through open-vocabulary detection. Check the result before sharing: anything the detector misses stays visible.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

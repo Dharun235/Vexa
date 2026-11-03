@@ -104,24 +104,6 @@ def closeness(closeness_map, box, mask=None):
     return round(float(np.percentile(values, 75)), 2) if values.size else 0.0
 
 
-def match_mask(box, masks, label):
-    """The mask of this label that lies mostly inside the box, overlapping it most.
-
-    Masks are tighter than boxes and may skip empty results, so match by
-    geometry rather than by position in the list.
-    """
-    ax1, ay1, ax2, ay2 = box
-    best, best_overlap = None, 0.0
-    for mask in masks:
-        bx1, by1, bx2, by2 = mask.box
-        inter = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1))
-        area = (bx2 - bx1) * (by2 - by1)
-        overlap = inter / (area + (ax2 - ax1) * (ay2 - ay1) - inter)
-        if mask.label == label and inter > area / 2 and overlap > best_overlap:
-            best, best_overlap = mask, overlap
-    return best
-
-
 def colorize(closeness_map):
     """Inferno colours: bright yellow is near, dark purple is far."""
     return cv2.applyColorMap((closeness_map * 255).astype(np.uint8), cv2.COLORMAP_INFERNO)

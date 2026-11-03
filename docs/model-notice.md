@@ -45,6 +45,10 @@ SHA-256 hashes are pinned in `src/vexa/openvocab.py`; a mismatch installs nothin
 
 `vexa model download pose` fetches OpenMMLab's RTMPose-s release, `rtmpose-s_simcc-body7_pt-body7_420e-256x192-acd4a1ef_20230504.zip` from `download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/` (20 MB), verifies its pinned SHA-256 (in `src/vexa/pose.py`), keeps only its `end2end.onnx` as `rtmpose-s-body7.onnx` in the user data folder, and removes the zip. It is not part of the wheel. RTMPose (Jiang et al., 2023) and its weights are Apache-2.0 licensed. It is a top-down model: Vexa crops each detected person at 192 × 256 and decodes the 17 COCO keypoints from its SimCC outputs. It runs with ONNX Runtime on two CPU threads.
 
+## Face model
+
+`vexa model download faces` fetches `face_detection_yunet_2023mar.onnx` from [opencv/face_detection_yunet](https://huggingface.co/opencv/face_detection_yunet) at revision `3cc26e7f` (232 KB) into the user data folder. It is YuNet (Wu, Peng, Yu et al., 2023) from the OpenCV Zoo, MIT licensed. It is not part of the wheel. The SHA-256 hash is pinned in `src/vexa/privacy.py`. It runs with OpenCV's built-in `FaceDetectorYN`.
+
 ## Translation models
 
 `vexa model download horse2zebra` (and the other names listed by `vexa help translate`) fetches one of the original CycleGAN generators (Zhu, Park, Isola and Efros, 2017) from the authors' server, `efrosgans.eecs.berkeley.edu/cyclegan/pretrained_models/`, about 45 MB each, into the user data folder. They are not part of the wheel. The CycleGAN code and models are BSD licensed. SHA-256 hashes are pinned in `src/vexa/translate.py`.

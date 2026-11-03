@@ -2,12 +2,14 @@
 
 TOPICS = {
     "load": 'load "image.jpg" — start again from the original image (from --image, or the current image inside a for each loop) and clear prior results. The quoted name is only a label.',
-    "detect": "detect person / detect all — find objects in the current image using CPU inference. Optional: detect person confidence 0.7 (0 to 1; default 0.25).",
+    "detect": "detect person / detect all — find objects in the current image using CPU inference. Optional: detect person confidence 0.7 (0 to 1; default 0.25).\ndetect face — find faces with the YuNet face detector (after vexa model download faces, 232 KB; default confidence 0.6).",
     "count": 'count person / count all — count the latest object detections.\ncount text — count OCR text lines after ocr.\ncount masks — count nonempty masks after segment detections.\ncount pose standing — count people in a posture after estimate poses: standing, sitting, lying, "hand up" or "hands up".',
     "draw": "draw boxes — annotate object detections.\ndraw text — outline and number OCR text regions.\ndraw masks — overlay the latest segmentation masks.\ndraw depth — replace the image with its depth map (bright is near, dark is far) after estimate depth.\ndraw poses — draw each person's skeleton after estimate poses.",
     "print": 'print "Hello" — print literal text.\nprint person — count objects.\nprint text — print the latest OCR text.\nprint masks — count the latest nonempty masks.',
     "show": "show image — save the current image to the --output PNG path.",
     "ocr": "ocr — read text from the current image using offline ONNX CPU models.\nUse print text, count text, or draw text afterwards. Best tested with clear printed English.",
+    "blur": 'blur face / blur person / blur "license plate" — blur every object of that label in the latest detections so it cannot be recognised; follows the outline after segment detections. Use show image to save it.',
+    "pixelate": "pixelate face — like blur, with large square blocks.",
     "segment": "segment detections — turn the latest object boxes into masks with EfficientSAM on CPU (up to 32). Models load only when needed; image embeddings are reused.",
     "scan": "scan codes — decode QR codes and barcodes; print their format and content. Does not open links.",
     "find": 'find text "TOTAL" — case-insensitive literal search in the latest OCR lines; prints matches and positions. Run ocr first.',

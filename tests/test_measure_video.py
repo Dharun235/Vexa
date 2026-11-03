@@ -61,7 +61,7 @@ def test_record_measurements_and_validation(fake_vision, image):
     assert result["rows"] == [{"image": "a.png", "measurements": "car 1: 40 × 50 px"}]
     with pytest.raises(VexaError, match="Run measure before"):
         check_source('load "a.png"\nrecord measurements')
-    with pytest.raises(VexaError, match="count car after detect person"):
+    with pytest.raises(VexaError, match="measure car after detect person finds no car"):
         check_source('load "a.png"\ndetect person\nmeasure car')
     with pytest.raises(VexaError, match="above 0"):
         check_source('load "a.png"\nreference coin 0 mm')

@@ -19,6 +19,8 @@ body: _NL* (_statement _NL*)*
         | "draw" "depth" -> draw_depth
         | "estimate" "depth" -> estimate_depth
         | "estimate" "poses" -> estimate_poses
+        | "blur" target -> blur
+        | "pixelate" target -> pixelate
         | "count" "pose" target -> count_pose
         | "draw" "poses" -> draw_poses
         | "record" "poses" -> record_poses

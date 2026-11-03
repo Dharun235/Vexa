@@ -74,6 +74,10 @@ class Vision:
         self.labels, self.model = labels, session
 
     def detect(self, image, target, confidence=None):
+        if target == "face":  # a dedicated face detector beats a person box for privacy
+            from vexa.privacy import detect_faces
+
+            return detect_faces(image, confidence)
         with self.lock:
             if self.model is None:
                 self._load()

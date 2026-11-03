@@ -8,7 +8,7 @@ from vexa import depth
 from vexa.ast_nodes import VexaError
 from vexa.interpreter import Session, execute
 from vexa.parser import parse
-from vexa.segmentation import Mask
+from vexa.segmentation import Mask, match_mask
 from vexa.validation import check_source
 
 # FakeVision boxes: person (5, 10, 40, 50), car (50, 20, 90, 70) on a 120 × 100 image.
@@ -55,9 +55,9 @@ def test_match_mask_by_label_and_overlap():
         Mask("person", (50, 50, 60, 60), np.ones((10, 10), bool)),
         Mask("car", (48, 48, 62, 62), np.ones((14, 14), bool)),
     ]
-    assert depth.match_mask((49, 49, 61, 61), masks, "person") is masks[1]
-    assert depth.match_mask((49, 49, 61, 61), masks, "dog") is None
-    assert depth.match_mask((20, 20, 30, 30), masks, "person") is None
+    assert match_mask((49, 49, 61, 61), masks, "person") is masks[1]
+    assert match_mask((49, 49, 61, 61), masks, "dog") is None
+    assert match_mask((20, 20, 30, 30), masks, "person") is None
 
 
 def test_rank_orders_nearest_first(fake_vision, image, fake_depth):

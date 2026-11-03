@@ -230,6 +230,20 @@ class Session:
 
                     self.depth = estimate(self.image)
                     logs.append("Estimated depth (relative: closeness 1 is nearest, 0 farthest).")
+                elif kind in {"blur", "pixelate"}:
+                    from vexa.privacy import anonymise
+                    from vexa.segmentation import match_mask
+
+                    self._count(target)  # rejects labels the detector does not know
+                    regions = []
+                    for item in self.detections:
+                        if target in ("all", item.label):
+                            mask = match_mask(item.box, self.masks, item.label)
+                            regions.append((mask.box, mask) if mask else item.box)
+                    self.image = anonymise(self.image, regions, kind)
+                    verb = "Blurred" if kind == "blur" else "Pixelated"
+                    outline = " along their masks" if self.masks else ""
+                    logs.append(f"{verb} {len(regions)} object(s) matching {target}{outline}.")
                 elif kind == "estimate_poses":
                     self._estimate_poses(logs)
                 elif kind == "draw_poses":
@@ -444,7 +458,8 @@ class Session:
             logs.append(_pose_text(item) + (f"; angles: {joints}" if joints else ""))
 
     def _rank(self, label, logs):
-        from vexa.depth import closeness, match_mask
+        from vexa.depth import closeness
+        from vexa.segmentation import match_mask
 
         self._count(label)  # rejects labels the detector does not know
         numbers, ranked = {}, []
