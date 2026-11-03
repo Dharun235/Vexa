@@ -62,9 +62,13 @@ def arguments():
     model = commands.add_parser("model", help="Manage the model stored in your user data folder")
     actions = model.add_subparsers(dest="model_action", required=True)
     actions.add_parser("path", help="Print the model location")
-    actions.add_parser(
-        "download",
-        help="Download open-vocabulary detection models once (about 175 MB) for offline use",
+    download = actions.add_parser("download", help="Download optional models once for offline use")
+    download.add_argument(
+        "what",
+        nargs="?",
+        choices=["detector", "styles"],
+        default="detector",
+        help="detector: open-vocabulary detection (about 175 MB); styles: neural styles (about 34 MB)",
     )
     install = actions.add_parser("install", help="Validate and copy a YOLO11n ONNX model")
     install.add_argument("file", type=Path)
@@ -194,6 +198,10 @@ def main(argv=None):
             from vexa.repl import run_repl
 
             run_repl(args)
+        elif args.model_action == "download" and args.what == "styles":
+            from vexa.style import download
+
+            print(f"Neural styles ready in {download()}")
         elif args.model_action == "download":
             from vexa.openvocab import download
 

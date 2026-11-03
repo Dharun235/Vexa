@@ -130,6 +130,14 @@ def _check(command, state, in_loop):
     if kind == "reference" and command.argument[1] <= 0:
         _fail('The reference size must be above 0, e.g. reference "coin" 23.25 mm', command)
 
+    if kind == "style":
+        from vexa.style import STYLES
+
+        if command.argument not in STYLES:
+            _fail(
+                f'Unknown style "{command.argument}". Choose one of: {", ".join(STYLES)}.', command
+            )
+        return State(loaded=True)
     if kind in TRANSFORMS:
         if kind == "scale" and command.argument[0] <= 0:
             _fail("scale needs a factor above 0, e.g. scale 0.5", command)

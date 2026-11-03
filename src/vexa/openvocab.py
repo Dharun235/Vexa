@@ -53,9 +53,13 @@ def installed() -> bool:
 
 
 def download(progress=print) -> Path:
-    directory = models_dir()
+    return fetch(models_dir(), FILES, progress)
+
+
+def fetch(directory, files, progress=print) -> Path:
+    """Download pinned Hugging Face files, keeping only those whose SHA-256 matches."""
     directory.mkdir(parents=True, exist_ok=True)
-    for name, (repo, revision, path, sha256) in FILES.items():
+    for name, (repo, revision, path, sha256) in files.items():
         destination = directory / name
         if destination.is_file() and _sha256(destination) == sha256:
             continue

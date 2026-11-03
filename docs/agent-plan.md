@@ -45,6 +45,7 @@ saved: tray-check.vexa   # rerun: vexa run tray-check.vexa --images photos/
 | `feat/lang-control` | M2: `if`/`else`, `for each image in`, `record`, `save csv`, folder benchmark tasks |
 | `feat/transforms` | `rotate`, `flip`, `resize`, `scale`, `crop`, `move`; two orientation tasks |
 | `feat/m3-measure-video` | `measure`, `measure gap`, `reference`, `record measurements`; `for each frame in` video files; `vexa ask --video` |
+| `feat/style` | `style`: six OpenCV styles and five neural styles (`vexa model download styles`); not in the agent prompt, so the benchmark is unchanged |
 
 Benchmark (`vexa bench`, 26 tasks, qwen3:4b-instruct Q4_K_M via Ollama, M2 16 GB):
 

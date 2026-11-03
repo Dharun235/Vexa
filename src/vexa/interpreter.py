@@ -187,6 +187,12 @@ class Session:
                         f"{kind.replace('_', ' ').capitalize()}: now "
                         f"{self.image.shape[1]} × {self.image.shape[0]}."
                     )
+                elif kind == "style":
+                    from vexa.style import apply
+
+                    self.image = apply(self.image, target)
+                    self.clear_results()
+                    logs.append(f"Style: {target}.")
                 elif kind == "if_block":
                     branch = command.body if self._holds(command.condition) else command.orelse
                     self._run(branch, logs)

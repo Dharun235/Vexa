@@ -32,3 +32,7 @@ Vexa's preprocessing and prompt decoding adapt [Osam's EfficientSAM implementati
 - `onnx/text_model_fp16.onnx` and `tokenizer.json` from [Xenova/clip-vit-base-patch32](https://huggingface.co/Xenova/clip-vit-base-patch32) at revision `6b7c5237`: the OpenAI CLIP ViT-B/32 text encoder in fp16. MIT licensed.
 
 SHA-256 hashes are pinned in `src/vexa/openvocab.py`; a mismatch installs nothing. Vexa tokenizes prompts with its own CLIP BPE implementation and needs no extra Python packages for this feature.
+
+## Style models
+
+`vexa model download styles` fetches five fast-neural-style networks (Johnson et al., 2016, trained with the PyTorch examples) from the ONNX Model Zoo mirrors on Hugging Face, `onnxmodelzoo/{mosaic,candy,udnie,rain-princess,pointilism}-9`, about 6.7 MB each, into the user data folder. They are not part of the wheel. The model cards state Apache-2.0. Revisions and SHA-256 hashes are pinned in `src/vexa/style.py`. They run with OpenCV DNN, so no extra packages are needed. The six OpenCV styles need no model.

@@ -24,6 +24,7 @@ TOPICS = {
     "resize": "resize 640 480 — set the exact width and height in pixels. scale 0.5 — resize by a factor, keeping the shape. Clears earlier results.",
     "crop": "crop 100 50 400 300 — keep the rectangle from x1 y1 to x2 y2 (pixels, clipped to the image). Clears earlier results.",
     "move": "move 20 -10 — shift the image right by 20 and up by 10 pixels; uncovered areas turn black. Clears earlier results.",
+    "style": "style sketch — restyle the image: sketch, cartoon, paint, enhance, denoise or gray (OpenCV), or mosaic, candy, udnie, rain or pointillism (neural style transfer, after vexa model download styles). Use show image to save it. Clears earlier results.",
     "help": "help / help ocr — show commands or details. Also available as vexa help [topic].",
     "exit": "exit / quit / :quit — leave the interactive console. Not a .vexa program command.",
     "reset": ":reset — clear session results; retain the original input image and loaded models.",

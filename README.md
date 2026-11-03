@@ -52,6 +52,8 @@ save csv "people.csv"
 
 The same works on video with `for each frame in "clip.mp4" every 1 second`. Measure objects with `measure bolt` or `measure gap between "bolt" and "nut"`, in pixels or, after `reference "coin" 23.25 mm`, in real units.
 
+Restyle an image with `style cartoon`, `style sketch` or `style denoise`, or neural styles such as `style mosaic` after `vexa model download styles`.
+
 ## Ask in plain English
 
 A local model can write the program for you. Install [Ollama](https://ollama.com), then:

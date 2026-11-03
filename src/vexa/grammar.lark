@@ -44,6 +44,7 @@ body: _NL* (_statement _NL*)*
         | "scale" NUMBER -> scale
         | "crop" NUMBER NUMBER NUMBER NUMBER -> crop
         | "move" SIGNED_NUMBER SIGNED_NUMBER -> move
+        | "style" target -> style
 ?target: NAME -> bare_target
        | ESCAPED_STRING -> quoted_target
 COMPARE: "<=" | ">=" | "==" | "!=" | "<" | ">"

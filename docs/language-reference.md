@@ -180,6 +180,23 @@ save csv "people-per-second.csv"
 
 `for each frame in "VIDEO" every N seconds` runs the block on one frame every `N` seconds (default 1) of an `.mp4`, `.mov`, `.avi`, `.mkv` or `.webm` file, decoded with OpenCV. It works like a folder loop: each frame starts loaded, cannot be nested, and gets a row named by its time, such as `0s`, `1s` or `2.5s`. At most 10,000 frames per loop.
 
+## Styles
+
+```vexa
+load "photo.jpg"
+style cartoon
+show image
+```
+
+`style NAME` restyles the working image and keeps its size:
+
+| Style | How | Time for a 768 × 576 photo on an M2 |
+| --- | --- | --- |
+| `sketch`, `cartoon`, `paint`, `enhance`, `denoise`, `gray` | OpenCV filters; no download | under 0.5 s |
+| `mosaic`, `candy`, `udnie`, `rain`, `pointillism` | Fast neural style transfer, ONNX on CPU, after `vexa model download styles` (about 34 MB, once) | about 1.5 s |
+
+Neural styles run at up to 1024 pixels on the long side and are scaled back to the original size. Like the geometric operations, `style` clears earlier detections and other results. `load` restores the original.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.
