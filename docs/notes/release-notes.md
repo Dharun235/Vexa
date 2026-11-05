@@ -34,4 +34,4 @@ The full list, with migration notes, is in [CHANGELOG.md](https://github.com/Dha
 
 385 tests pass, covering the parser, checker, interpreter, compiler (the same programs through both back ends must give identical results), the tools and every documented example. CI runs them on Ubuntu and macOS, plus the VS Code extension test. The wheel was installed with an empty uv cache, tool folder and home folder, then used to run the examples, `vexa test`, a compiled program, the REPL, the language server and an optional model download, with real CPU inference on macOS Apple Silicon. Linux runs the test suite in CI; real-model inference on Linux and Windows is not yet verified.
 
-Published from `feat/language-gaps`; `main` is unchanged. The wheel, source archive, VS Code extension and checksums are attached. Earlier releases remain available.
+Published from `main`. The wheel, source archive, VS Code extension and checksums are attached. Earlier releases remain available.
