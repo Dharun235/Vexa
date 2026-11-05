@@ -1344,6 +1344,27 @@ def check_source(source):
     return commands
 
 
+def _syntax_diagnostics(source, base):
+    """Syntax errors, plus checker errors on the lines before the first one: those cannot be
+    caused by the stand-ins that replaced the bad lines."""
+    from vexa.parser import recover
+
+    errors, commands = recover(source)
+    if commands is not None and errors:
+        first = min(e.line or 0 for e in errors)
+        found = []
+        try:
+            validate_commands(commands, base=base, errors=found)
+        except VexaError:
+            found = []
+        errors += [
+            e
+            for e in found
+            if e.file is None and (e.line or 0) < first and "function" not in e.message
+        ]
+    return sorted(errors, key=lambda e: (e.line or 0, e.column or 0))
+
+
 def diagnose(source, base=None):
     """(errors, warnings) for a whole program: every checker error, not only the first."""
     from vexa.lint import lint
@@ -1351,9 +1372,7 @@ def diagnose(source, base=None):
     try:
         commands = parse(source)
     except VexaError:
-        from vexa.parser import parse_errors
-
-        return parse_errors(source), []
+        return _syntax_diagnostics(source, base), []
     errors = []
     validate_commands(commands, base=base, errors=errors)
     errors.sort(key=lambda e: (e.file is not None, e.line or 0, e.column or 0))

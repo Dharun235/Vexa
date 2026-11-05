@@ -1,4 +1,4 @@
-# Learn Vexa in 20 minutes
+# Learn Vexa in 25 minutes
 
 [Documentation home](README.md) · [Language reference](language-reference.md) · [Specification](specification.md)
 
@@ -135,7 +135,31 @@ expect count bus == 1, "exactly one bus"
 
 `expect` prints ✓ or ✗ for each check. `vexa test checks.vexa --image street.jpg` runs one or more programs and exits with status 1 if any check fails, so you can check a camera's view in a script or CI.
 
-## 9. Compile and format
+## 9. Maps, settings and errors
+
+```vexa
+param busy = 3
+
+load "street.jpg"
+detect all
+let counts = {}
+for each thing in detections
+  let counts = put(counts, thing.label, get(counts, thing.label, 0) + 1)
+end
+print counts
+if "person" in counts and counts.person >= busy
+  print "busy street"
+end
+try
+  print counts.bicycle
+else
+  print "no bicycles: {error}"
+end
+```
+
+A map pairs text keys with values: `counts.person` (or `counts["person"]`) reads one, and `put` gives a new map with one key set. `param` is a setting with a default: `vexa run lesson.vexa --image street.jpg --set busy=5` changes it without editing the program. `try … else` runs the `else` part when something fails while running, here a missing key, with `error` holding the message.
+
+## 10. Compile and format
 
 ```sh
 vexa fmt --write lesson.vexa        # tidy layout
@@ -143,7 +167,7 @@ vexa compile lesson.vexa            # writes lesson.py
 python lesson.py --image street.jpg
 ```
 
-The compiler turns a program into a standalone, optimised Python script that gives the same results. Editors with the language server (`vexa lsp`, or the [VS Code extension](../editors/vscode/README.md)) show errors as you type.
+The compiler turns a program into a standalone, optimised Python script that gives the same results. Editors with the language server (`vexa lsp`, or the [VS Code extension](../editors/vscode/README.md)) show errors as you type, jump to definitions and rename names; see [Editor support](editors.md). `vexa run --trace` prints every step when a program surprises you.
 
 ## Next
 

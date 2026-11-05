@@ -1,0 +1,12 @@
+# Deliberate mistakes for the demo: vexa check finds all of them before anything runs
+load "street.jpg"
+detect person
+count car
+let people = count person
+if people
+  print "someone"
+end
+print "{peopel} people"
+let first_person = first detections
+print first_person.colr
+detect

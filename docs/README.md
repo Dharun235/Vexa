@@ -5,10 +5,10 @@ Start with [Getting started](getting-started.md). It takes you from installation
 ## Using Vexa
 
 - [Getting started](getting-started.md): install, run a `.vexa` file, or use the interactive console.
-- [Tutorial](tutorial.md): learn the language in nine short, runnable lessons.
+- [Tutorial](tutorial.md): learn the language in ten short, runnable lessons.
 - [Language reference](language-reference.md): the commands, object names, and execution rules.
 - [Specification](specification.md): grammar, types, scoping and evaluation, precisely.
-- [VS Code extension](../editors/vscode/README.md): highlighting, live errors, completion; other editors can use `vexa lsp`.
+- [Editor support](editors.md): the VS Code extension, Vim syntax, and `vexa lsp` setup for Neovim, Helix and Emacs.
 - [Troubleshooting](troubleshooting.md): understand errors and report bugs.
 
 ## Working on Vexa

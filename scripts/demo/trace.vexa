@@ -1,0 +1,8 @@
+let total = 0
+for each n in range(6)
+  if n % 2 == 0
+    continue
+  end
+  let total = total + n
+end
+print "odd numbers add up to {total}"

@@ -2,7 +2,26 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
-## Unreleased — language 0.7
+## Unreleased — language 0.8
+
+- Maps with text keys: `{car: 2, "traffic light": 1}`, `m.car`, `m["car"]`, `+`, `keys`, `values`, `get`, `put`, `for each key in m`; lists of maps.
+- `in` and `not in` for list items, text (ignoring case) and map keys.
+- List building `[expr for each x in xs if condition]`, and `where` on any list with `it` as the current item.
+- `try … else … end`, with `error` holding the message.
+- `break` and `continue` in every loop.
+- `const` values that functions can read; `param` settings changed with `--set NAME=VALUE` on `vexa run`, `vexa test` and compiled scripts.
+- Default parameter values, `-> TYPE` return types and `let NAME: TYPE = …`.
+- `use "file.vexa" as name` with `name.function(…)`; `use` paths are relative to the program file.
+- Built-ins: `split`, `join`, `replace`, `trim`, `starts_with`, `ends_with`, `slice`, `index_of`, `keys`, `values`, `get`, `put`, `random`, `now`, `read_lines`, `read_csv`.
+- `detect … confidence EXPR` accepts a variable or `param`.
+- Zones (`zone`, `count X in zone NAME`, `.zone`, `draw zones`), tracking across video frames (`track`, `.id`, `count tracks`) and `compare with "photo.jpg"` with `image change`.
+- The compiler propagates constants and removes statements after `return`, `break` and `continue`.
+- `vexa check` reports several syntax errors at once; `vexa run --trace` shows each step.
+- Language server: go to definition, references, rename, document symbols, signature help. The VS Code extension uses them, shows warnings as warnings, and is tested in VS Code in CI. Vim syntax files and setup notes for Neovim, Helix and Emacs.
+
+Migration: `const`, `param`, `try`, `break`, `continue`, `as`, `zone`, `track`, `tracks`, `compare` and `change` are keywords; `use` paths are relative to the program file instead of the working directory.
+
+## Language 0.7
 
 - Lists of numbers, text or true/false (`[1, 2]`, `xs[1]`, `+`), and built-in functions: `round`, `floor`, `ceil`, `abs`, `sqrt`, `min`, `max`, `sum`, `average`, `length`, `as_text`, `as_number`, `upper`, `lower`, `sort`, `reverse`, `range`.
 - `repeat N times` and `while` loops, limited to 10,000 turns.

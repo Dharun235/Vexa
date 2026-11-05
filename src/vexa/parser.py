@@ -376,13 +376,17 @@ def _neutral(line):
 
 
 def parse_errors(source, limit=20):
-    """Every syntax error in a program, as far as they can be found: after each error the bad
-    line is replaced by a stand-in and parsing starts again."""
+    """Every syntax error in a program, as far as they can be found."""
+    return recover(source, limit)[0]
+
+
+def recover(source, limit=20):
+    """(syntax errors, commands or None): after each error the bad line is replaced by a stand-in
+    and parsing starts again; commands is the program that finally parsed, if one did."""
     errors, lines = [], source.splitlines()
     for _ in range(limit):
         try:
-            parse("\n".join(lines))
-            return errors
+            return errors, parse("\n".join(lines))
         except VexaError as exc:
             errors.append(exc)
             index = (exc.line or 0) - 1
@@ -398,8 +402,8 @@ def parse_errors(source, limit=20):
                 else (_neutral(lines[index]))
             )
             if replacement == lines[index]:
-                return errors
+                return errors, None
             lines[index] = replacement
             if not "".join(lines).strip():
-                return errors
-    return errors
+                return errors, None
+    return errors, None

@@ -20,7 +20,8 @@ def lint(commands):
                 warnings.append(_warning(f"{name} is set but never used.", command))
             seen.add(name)
     defines = [c for c in commands if c.kind == "define"]
-    for define in defines:
+    library = all(c.kind in ("define", "use") for c in commands)  # its functions are for others
+    for define in [] if library else defines:
         name = define.argument[0]
         others = [c for c in commands if c is not define]
         if name not in _calls(others):

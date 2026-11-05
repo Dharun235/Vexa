@@ -155,12 +155,15 @@ show image
 
 | Form | Meaning |
 | --- | --- |
-| `let NAME = EXPR` | Sets a variable. Setting an existing variable updates it; its type cannot change. |
+| `let NAME = EXPR` | Sets a variable. Setting an existing variable updates it; its type cannot change. `let NAME: TYPE = EXPR` also states the type. |
+| `const NAME = EXPR` | A value that never changes; functions can read it. |
+| `param NAME = VALUE` | A setting: `vexa run p.vexa --set NAME=VALUE` replaces the default. |
 | `12`, `0.5`, `"text"`, `true`, `false` | Numbers, text and true/false. |
 | `+ - * / %`, unary `-`, `( )` | Arithmetic on numbers. `+` also joins text: `"n=" + 3` is `"n=3"`. Division by zero is an error on that line. |
 | `== != < <= > >=` | Comparisons. Text compares ignoring case: `"Car" == "car"` is true. |
+| `in`, `not in` | Membership: an item of a list (`label in ["car", "bus"]`), part of a text (`"EXIT" in caption`, ignoring case), a key of a map (`"car" in counts`). |
 | `and`, `or`, `not` | Logic on true/false; `not` binds tighter than `and`, which binds tighter than `or`. |
-| `"{EXPR}"` | Placeholders in any string are replaced when it runs: `"{people} people, {people * 2} legs"`. Write `{{` and `}}` for literal braces. |
+| `"{EXPR}"` | Placeholders in any string are replaced when it runs: `"{people} people, {people * 2} legs"`. Write `{{` and `}}` for literal braces, and `\"` for a quote inside a placeholder: `"{join(xs, \", \")}"`. |
 | `count LABEL`, `count VARIABLE` | The number of matching detections, or of objects in a variable. All `count` forms (`count colour red car`, `count car in left`, `count text` …) are numbers. |
 | `text contains "X"`, `caption contains "X"`, `image dark`, `image bright`, `image blurry` | True/false checks on earlier results. `caption` alone is the caption text. |
 | `print EXPR` | Prints any value. `print LABEL` with no variable of that name still counts the label. |
@@ -180,6 +183,8 @@ show image
 | `distance` | number | Closeness 0 to 1 (1 nearest); runs depth estimation once when needed |
 | `posture` | text | `standing`, `sitting` … for people; runs pose estimation for that person |
 | `text` | text | OCR of the text inside the box |
+| `zone` | text | The first zone holding the box centre, or `none` |
+| `id` | number | The tracking id after `track`, 0 otherwise |
 
 | Form | Meaning |
 | --- | --- |
@@ -187,7 +192,7 @@ show image
 | `first`, `last`, `largest`, `smallest`, `nearest`, `farthest` `LIST` | One object (largest by area, nearest by distance). An empty list is an error. |
 | `for each NAME in LIST` … `end` | Runs the body once per object. The loop may not change the image. |
 | `OBJECT.PROPERTY` | One property: `car.colour`, `(first detections).width`. |
-| `blur`, `pixelate`, `measure`, `colour`, `where`, `draw`, `count` with a variable | Act on the objects in the variable instead of a label: `blur red_cars`, `draw big`. |
+| `blur`, `pixelate`, `measure`, `colour`, `where`, `draw`, `count`, `track` with a variable | Act on the objects in the variable instead of a label: `blur red_cars`, `draw big`. |
 
 Objects belong to the image they were found in. After `load`, a transform, `style`, `translate`, or in the next loop image, earlier object variables can no longer be used; the checker reports this.
 
@@ -204,7 +209,34 @@ print "{length(widths)} objects, widest {max(widths)}, mean {round(average(width
 print widths[1]
 ```
 
-`[1, 2, 3]`, `["a", "b"]` and `[]` are lists. A list holds one kind of value (numbers, text or true/false); `detections` and the result of `where` are lists of objects. `xs[1]` is the first item and `xs[-1]` the last, matching names like `car 1`; a position outside the list is an error. `+` joins two lists of the same kind. `for each x in xs`, `count xs`, `first`, `last`, `largest` and `smallest` work on any list.
+`[1, 2, 3]`, `["a", "b"]` and `[]` are lists. A list holds one kind of value (numbers, text or true/false); `detections` and the result of `where` are lists of objects. `xs[1]` is the first item and `xs[-1]` the last, matching names like `car 1`; a position outside the list is an error. `+` joins two lists of the same kind. `for each x in xs`, `count xs`, `first`, `last`, `largest` and `smallest` work on any list. A list may hold maps, but not lists.
+
+Build a list from another in one expression, and filter any list with `where`, where `it` is the current item:
+
+```vexa
+load "street.jpg"
+detect all
+let widths = [d.width for each d in detections if d.label == "person"]
+print widths where it > 150
+print [round(w / 10) for each w in widths]
+```
+
+### Maps
+
+```vexa
+load "street.jpg"
+detect all
+let counts = {}
+for each thing in detections
+  let counts = put(counts, thing.label, get(counts, thing.label, 0) + 1)
+end
+print counts
+if "bus" in counts and counts.person >= 2
+  print "{counts.person} people near a bus"
+end
+```
+
+`{car: 2, "traffic light": 1}` is a map: text keys and values of one kind (numbers, text, true/false or objects, not lists or maps). A bare name before `:` is a key; a computed key goes in brackets: `{(thing.label): 1}`. `m["car"]` and `m.car` read a value (a missing key is an error); `"car" in m` tests a key; `m + {bus: 2}` adds or replaces keys; `for each key in m` visits the keys in order. Maps print as `{car: 2, bus: 1}` and can be recorded in CSV columns.
 
 ### Built-in functions
 
@@ -212,17 +244,56 @@ print widths[1]
 | --- | --- |
 | `round(x)`, `round(x, digits)`, `floor(x)`, `ceil(x)`, `abs(x)`, `sqrt(x)` | Numbers |
 | `min(list)`, `max(list)`, `min(a, b, …)`, `max(a, b, …)`, `sum(list)`, `average(list)` | Numbers from numbers |
-| `length(list or text)` | How many items or characters |
+| `length(list, text or map)` | How many items, characters or keys |
 | `as_text(x)`, `as_number(text)` | Conversions; `as_number("abc")` is an error |
-| `upper(text)`, `lower(text)` | Text |
+| `upper(text)`, `lower(text)`, `trim(text)` | Text |
+| `split(text)`, `split(text, ",")`, `join(list, ", ")` | Text to a list (at spaces, or at a separator) and back |
+| `replace(text, old, new)`, `starts_with(text, x)`, `ends_with(text, x)` | Text; the tests ignore case |
+| `slice(list or text, start, end)`, `index_of(list or text, item)` | Part of a list or text (positions from 1, both ends included, `end` defaults to -1); the position of an item, or 0 |
 | `sort(list)`, `reverse(list)` | A new list |
 | `range(n)` | `[1, 2, … n]` |
+| `keys(map)`, `values(map)`, `get(map, key, default)`, `put(map, key, value)` | Map keys and values; a value or a default; a new map with one key set |
+| `random(low, high)`, `now()` | A whole number from low to high; the date and time as text |
+| `read_lines(file)`, `read_csv(file)` | A text file's lines; a CSV file as a list of maps (column → text). Relative paths, at most 5 MB |
 
 Functions you define cannot reuse these names.
 
 ### More loops
 
 `repeat N times` … `end` runs the body N times (a whole number). `while CONDITION` … `end` runs it while the condition holds. Both stop with an error after 10,000 turns, so a mistake cannot hang the program. As with `if`, variables first set inside the body are not available after `end`; update an outer variable instead.
+
+`break` leaves the loop around it at once and `continue` goes on with its next turn; both work in every loop, including image and video loops, and only inside a loop.
+
+### Errors with try
+
+```vexa
+load "street.jpg"
+try
+  compare with "empty-street.jpg"
+  print "changed {round(image change * 100)}%"
+else
+  print "skipped: {error}"
+end
+```
+
+`try` … `else` … `end` runs the first part; if a command fails at run time (a missing file, a position outside a list, an unknown map key, a model that is not downloaded), the rest of it is skipped and the `else` part runs with `error` holding the message. Mistakes the checker finds are reported before anything runs, as always.
+
+### Constants and settings
+
+```vexa
+param threshold = 0.5
+const BUSY = 4
+
+define busy(n: number) -> bool
+  return n >= BUSY
+end
+
+load "street.jpg"
+detect all confidence threshold
+print busy(count person)
+```
+
+`const` and `param` go at the top of the program (after any `use` and `define`). Functions can read both. A `param` has a written-out default whose type it keeps; `vexa run`, `vexa test` and compiled scripts accept `--set NAME=VALUE` to change it, and an unknown name or a value of the wrong type is an error. `vexa compile` replaces each use of a `const` by its value, so `const DEBUG = false` removes every `if DEBUG … end`.
 
 ### Tests with expect
 
@@ -237,7 +308,7 @@ expect count bus >= 1
 
 ### Libraries with use
 
-`use "helpers.vexa"` at the top level imports every `define` from a library file: a file holding only `define` blocks (and its own `use` lines). Paths are relative to the working directory, like folders and CSV files. Library files may use other libraries; a file that uses itself through others is an error, and so is defining the same function name twice. Errors inside a library name its file and line.
+`use "helpers.vexa"` at the top level imports every `define` from a library file: a file holding only `define` blocks (and its own `use` lines). Paths are relative to the program file's folder. `use "helpers.vexa" as h` keeps the library's names apart: call `h.crowd(3)`. Library files may use other libraries; a file that uses itself through others is an error, and so is defining the same function name twice. Errors inside a library name its file and line.
 
 ### Functions
 
@@ -253,7 +324,7 @@ detect person
 print crowd_level(count person)
 ```
 
-`define NAME` or `define NAME(PARAM, PARAM: TYPE …)` … `end` defines a function at the top level of the program; it can be called before its definition. Types are `number`, `text`, `bool`, `object` and `objects`; parameters without a type accept any value. `return EXPR` ends the call with a value; a function without `return` gives nothing. Call a function as a command (`anonymise`, `tag(car, 2)`) or inside an expression (`crowd_level(3)`). A function sees only its parameters and its own variables, but works on the current image, so `define find_faces` … `detect face` … `end` is fine. Recursion works up to 100 calls deep.
+`define NAME` or `define NAME(PARAM, PARAM: TYPE, PARAM = DEFAULT …) -> TYPE` … `end` defines a function at the top level of the program; it can be called before its definition. Types are `number`, `text`, `bool`, `object`, `objects`, `list` and `map`; parameters without a type accept any value. Parameters with a default (a written-out value or a `const`) come last and may be left out in a call. `-> TYPE` declares what the function returns, and the checker holds every `return` to it. `return EXPR` ends the call with a value; a function without `return` gives nothing. Call a function as a command (`anonymise`, `tag(car, 2)`) or inside an expression (`crowd_level(3)`). A function sees its parameters, its own variables and the program's `const` and `param` values, and works on the current image, so `define find_faces` … `detect face` … `end` is fine. Recursion works up to 100 calls deep.
 
 ### Types and the checker
 
@@ -268,17 +339,43 @@ print crowd_level(count person)
 
 Function bodies are checked once on their own and again at each call, with the caller's image state, so `define g` … `count person` … `end` called before any `detect` is an error at the call.
 
-`vexa check` and the editor list every error in a file, not only the first, and warn about variables that are set but never used, functions that are never called, and code after `return`. Warnings do not stop a program.
+`vexa check` and the editor list every error in a file, not only the first (several syntax errors too), and warn about variables, constants and params that are set but never used, functions that are never called, and code after `return`, `break` or `continue`. Warnings do not stop a program.
+
+`vexa run --trace` shows each line as it runs and every value `let` sets, between the program's own output:
+
+```text
+[3] let total = total + n
+[3]   total = 4
+```
 
 ### Compiling to Python
 
 `vexa compile program.vexa` writes `program.py`, a standalone script: Vexa variables, `if`, loops and functions become Python's own, and each vision command calls the same runtime the interpreter uses, so results are identical. Run it with `python program.py --image photo.jpg --output out.png [--json out.json]`; errors report the Vexa source line.
 
-The compiler optimises the checked program first: it folds constant expressions (`2 * 3 + 1` → `7`, `x and true` → `x`), drops branches that can never run (`if 1 > 2`), unused variables and functions, and repeated analyses on unchanged pixels (a second `estimate depth`, `ocr` or `caption`). Where types are known to be numbers or text, operators compile to plain Python operators. `vexa compile --emit ast` prints the optimised syntax tree; `--no-optimize` skips the optimiser.
+The compiler optimises the checked program first: it folds constant expressions (`2 * 3 + 1` → `7`, `x and true` → `x`), puts `const` values where they are used, drops branches that can never run (`if 1 > 2`, or `if DEBUG` with `const DEBUG = false`), statements after `return`, `break` or `continue`, unused variables and functions, and repeated analyses on unchanged pixels (a second `estimate depth`, `ocr` or `caption`). Where types are known to be numbers or text, operators compile to plain Python operators. `vexa compile --emit ast` prints the optimised syntax tree; `--no-optimize` skips the optimiser.
 
 ### Formatting and editors
 
-`vexa fmt program.vexa` prints the standard layout (two-space blocks, single spaces, spaced operators); `--write` rewrites the file and `--check` only reports. It refuses any change that would alter what the program means. `vexa lsp` is a language server: the [VS Code extension](../editors/vscode/README.md) and other editors use it for live errors, completion (including object properties after `.`), hover help and formatting.
+`vexa fmt program.vexa` prints the standard layout (two-space blocks, single spaces, spaced operators); `--write` rewrites the file and `--check` only reports. It refuses any change that would alter what the program means. `vexa lsp` is a language server: the [VS Code extension](../editors/vscode/README.md), Neovim, Helix, Emacs and other editors use it for live errors and warnings, completion, hover, go to definition, references, rename, an outline and signature help; see [Editor support](editors.md).
+
+## Zones, tracking and change
+
+```text
+zone door 0.6 0.2 1 1
+for each frame in "entrance.mp4" every 0.5 seconds
+  detect person
+  track person
+  record at_door = count person in zone door
+end
+print "{count tracks} different people"
+save csv "door.csv"
+```
+
+`zone NAME LEFT TOP RIGHT BOTTOM` names a rectangle in fractions of the image (0 to 1), so it fits every frame and photo size. `count LABEL in zone NAME` counts objects whose centre is inside; `thing.zone` names an object's zone; `draw zones` outlines them. Zones last for the whole program.
+
+`track LABEL` (after `detect`) gives each object an id that stays the same from one frame to the next, by matching it to the previous frame's object of the same label that overlaps it most. `thing.id` is that id, and `count tracks` is how many different objects have been followed so far, also after the loop. Tracking by overlap suits steady cameras and frames close together; fast motion or long gaps can give one object a new id.
+
+`compare with "empty.jpg"` measures the share of the current image that clearly differs from another photo of the same view (0 to 1, resized to match); `image change` is that share, e.g. `if image change > 0.05 … end` for a simple change alarm.
 
 ## Rotate, flip, resize, crop and move
 
