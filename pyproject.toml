@@ -44,8 +44,10 @@ artifacts = ["src/vexa/data/*.onnx"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vexa"]
+core-metadata-version = "2.4"  # PyPI's upload tool (twine) does not accept 2.5 yet
 
 [tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"
 include = ["src/vexa", "scripts", "tests", "examples", "docs/**/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSES", "pyproject.toml", "uv.lock"]
 
 [tool.pytest.ini_options]
