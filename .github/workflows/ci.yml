@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install
+        run: uv sync --python 3.12 --locked
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Test
+        run: uv run pytest -q
+      - name: Check and format the examples
+        run: |
+          for program in examples/*.vexa; do uv run vexa check "$program"; done
+          uv run vexa fmt --check examples/*.vexa
+      - name: Compile the examples
+        run: |
+          mkdir -p compiled
+          for program in examples/*.vexa; do
+            uv run vexa compile "$program" -o "compiled/$(basename "${program%.vexa}").py"
+          done
+          uv run python -m py_compile compiled/*.py
+
+  vscode:
+    name: VS Code extension
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Vexa
+        run: uv sync --python 3.12 --locked
+      - name: Test the extension in VS Code
+        working-directory: editors/vscode/test
+        run: |
+          npm ci
+          VEXA_PATH="$GITHUB_WORKSPACE/.venv/bin/vexa" npm test
+      - name: Package the extension
+        working-directory: editors/vscode
+        run: npx --yes @vscode/vsce@3.2.1 package --out vexa.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vexa-vscode-extension
+          path: editors/vscode/vexa.vsix

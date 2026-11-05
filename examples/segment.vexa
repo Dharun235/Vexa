@@ -1,0 +1,6 @@
+load "dog-bicycle.jpg"
+detect dog
+segment detections
+count masks
+draw masks
+show image

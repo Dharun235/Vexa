@@ -1,0 +1,11 @@
+const LIMIT = 3
+define crowd(n: number, limit: number = LIMIT) -> text
+  if n > limit
+    return "busy"
+  end
+  return "quiet"
+end
+let people = 4
+let unused = 1
+print crowd(people, 2)
+print totl

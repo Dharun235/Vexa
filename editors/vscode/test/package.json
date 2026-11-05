@@ -1,0 +1,7 @@
+{
+  "name": "vexa-vscode-test",
+  "private": true,
+  "description": "Integration test for the Vexa VS Code extension",
+  "scripts": { "test": "node run.js" },
+  "devDependencies": { "@vscode/test-electron": "2.4.1" }
+}

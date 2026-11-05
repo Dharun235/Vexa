@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vexa"
+version = "0.7.0a1"
+description = "A small interpreted language for computer vision on CPU"
+readme = "README.md"
+license = "MIT AND AGPL-3.0-only AND Apache-2.0"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [{name = "Dharunkumar Senthilkumar"}]
+requires-python = ">=3.12,<3.13"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Image Recognition",
+]
+dependencies = [
+  "lark>=1.2,<2",
+  "onnxruntime>=1.20,<2",
+  "numpy>=2,<3",
+  "opencv-python-headless>=4.10,<5",
+  "platformdirs>=4,<5",
+  "rapidocr==3.10.0",
+  "zxing-cpp>=3,<4",
+]
+
+[project.scripts]
+vexa = "vexa.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Dharun235/Vexa"
+Documentation = "https://github.com/Dharun235/Vexa/blob/main/docs/README.md"
+Issues = "https://github.com/Dharun235/Vexa/issues"
+
+[dependency-groups]
+export = ["ultralytics>=8.3,<9", "onnx>=1.17,<2"]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+
+[tool.hatch.build]
+artifacts = ["src/vexa/data/*.onnx"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vexa"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/vexa", "scripts", "tests", "examples", "docs/**/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSES", "pyproject.toml", "uv.lock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["D"]  # docstrings: PEP 257, Google convention
+ignore = ["D105", "D107"]  # magic methods and __init__ are described by their class
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"scripts/**" = ["D"]
+"editors/**" = ["D"]

@@ -1,0 +1,10 @@
+# Automated checks: run with vexa test checks.vexa --image street.jpg
+load "street.jpg"
+detect all
+expect count person >= 1, "someone is in the photo"
+expect count bus == 1, "exactly one bus"
+let widths = []
+for each person in detections where label == "person"
+  let widths = widths + [person.width]
+end
+expect max(widths) < 400, "nobody fills the frame"

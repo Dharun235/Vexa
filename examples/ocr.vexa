@@ -1,0 +1,6 @@
+load "ocr_sample.png"
+ocr
+print text
+count text
+draw text
+show image

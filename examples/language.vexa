@@ -1,0 +1,30 @@
+# Vexa as a programming language: variables, objects, functions and types
+define describe(thing: object)
+  return "{thing.name}: {thing.colour}, {thing.position}"
+end
+
+define crowd_level(people: number)
+  if people >= 4
+    return "crowded"
+  else if people >= 1
+    return "a few people"
+  end
+  return "empty"
+end
+
+load "street.jpg"
+detect all
+let people = count person
+print "{people} people: {crowd_level(people)}"
+
+for each thing in detections
+  print describe(thing)
+end
+
+let big = detections where area > 100000
+print "big objects: {big}"
+let closest = nearest (detections where label == "person")
+print "closest person: {closest.name} ({closest.distance})"
+blur closest
+draw big
+show image

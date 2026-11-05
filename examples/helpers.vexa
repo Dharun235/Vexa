@@ -1,0 +1,8 @@
+# A small library for street-report.vexa: use "helpers.vexa" as report
+
+define spread(values: list) -> text
+  if length(values) == 0
+    return "none"
+  end
+  return "{min(values)} to {max(values)} (average {round(average(values))})"
+end

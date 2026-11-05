@@ -1,0 +1,6 @@
+load "traffic.jpg"
+detect car
+count car
+print car
+draw boxes
+show image
