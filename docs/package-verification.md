@@ -1,6 +1,6 @@
 # Package verification
 
-**Package:** Vexa 0.6.0a1 · **Date:** 2 November 2026
+**Package:** Vexa 0.7.0a1 · **Date:** 5 November 2026
 
 ## Terminal-only package
 
@@ -14,7 +14,8 @@ The EfficientSAM ViT-T encoder/decoder are bundled and verified by SHA-256 durin
 
 ## Verification
 
-- 85 tests cover grammar, shared validation, command execution, model selection, real inference, PNG/JSON output, REPL persistence/recovery/reset, error locations, and release checksums.
+- 385 tests cover the grammar, checker, interpreter, compiler (identical results from both back ends), formatter, language server, model selection, real inference, PNG/JSON output, REPL persistence/recovery/reset, error locations, release checksums and every documented example. CI runs them on Ubuntu and macOS, and runs the VS Code extension in VS Code 1.95.
+- 0.7.0a1 fresh install: the wheel installed with `uv tool install` using an empty uv cache, tool folder, Python folder and home folder; then `vexa run` (demo and street report, with `--set`), `vexa test`, `vexa compile` and the compiled script, the REPL, `vexa lsp` and `vexa model download depth` all worked with real CPU inference.
 - Query checks cover real QR/Code 128 decoding, no-code images, literal text matching, confidence filtering before NMS, non-mutating image inspection and blur scoring, CLI/REPL behavior, reset and error locations.
 - Segmentation checks cover ordering, invalidation, failed-call recovery, zero detections, cropped mask areas/coordinates, storage/prompt limits, image-keyed embedding reuse, CLI/REPL, and real offline CPU masks. The source-weight downloader rejects bad checksums and removes partial files.
 - Real OCR tests prohibit network/download calls, recognize the bundled text fixture, handle blank images, and verify all three sessions use CPU only.
@@ -35,4 +36,4 @@ The EfficientSAM ViT-T encoder/decoder are bundled and verified by SHA-256 durin
 
 The Python wheel tag does not make native dependencies universal. This remains a still-image alpha using fixed-format YOLO11n inference.
 
-Releases are hosted on GitHub from `codex/installable-language`. Published history is preserved; no PyPI publication or merge into `main` is implied. The earlier browser implementation and its local artifacts are removed from the current version.
+Releases are hosted on GitHub from feature branches (0.7.0a1 from `feat/language-gaps`). Published history is preserved; no PyPI publication or merge into `main` is implied. The earlier browser implementation and its local artifacts are removed from the current version.

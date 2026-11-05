@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="842" height="499" viewBox="0 0 842 499" role="img" aria-label="Terminal: vexa check mistakes.vexa">
+<style>
+text { font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #d4d4d4; }
+.prompt { fill: #6a9955; } .command { fill: #ffffff; font-weight: bold; }
+.place { fill: #9cdcfe; } .error { fill: #f48771; font-weight: bold; } .warn { fill: #dcdcaa; font-weight: bold; }
+.caret { fill: #f48771; } .code { fill: #ce9178; } .summary { fill: #ffffff; font-weight: bold; }
+</style>
+<rect width="100%" height="100%" rx="10" fill="#1e1e1e"/>
+<circle cx="24" cy="22" r="6" fill="#ff5f57"/><circle cx="44" cy="22" r="6" fill="#febc2e"/><circle cx="64" cy="22" r="6" fill="#28c840"/>
+<text x="18" y="58" xml:space="preserve"><tspan class="prompt">$ </tspan><tspan class="command">vexa check mistakes.vexa</tspan></text>
+<text x="18" y="77" xml:space="preserve"><tspan class="place">mistakes.vexa:4:1: </tspan><tspan class="error">check</tspan>: count car after detect person always gives 0. Count person instead, or</text>
+<text x="18" y="96" xml:space="preserve">    detect car first.</text>
+<text x="18" y="115" xml:space="preserve"><tspan class="code">  count car</tspan></text>
+<text x="18" y="134" xml:space="preserve"><tspan class="caret">  ^~~~~</tspan></text>
+<text x="18" y="153" xml:space="preserve"><tspan class="place">mistakes.vexa:6:4: </tspan><tspan class="error">check</tspan>: if needs true or false, but this is a number. Compare it, e.g. … &gt; 0.</text>
+<text x="18" y="172" xml:space="preserve"><tspan class="code">  if people</tspan></text>
+<text x="18" y="191" xml:space="preserve"><tspan class="caret">     ^~~~~~</tspan></text>
+<text x="18" y="210" xml:space="preserve"><tspan class="place">mistakes.vexa:9:9: </tspan><tspan class="error">check</tspan>: Unknown name &quot;peopel&quot;. Set it first with let peopel = … Did you mean</text>
+<text x="18" y="229" xml:space="preserve">    &quot;people&quot;?</text>
+<text x="18" y="248" xml:space="preserve"><tspan class="code">  print &quot;{peopel} people&quot;</tspan></text>
+<text x="18" y="267" xml:space="preserve"><tspan class="caret">          ^~~~~~</tspan></text>
+<text x="18" y="286" xml:space="preserve"><tspan class="place">mistakes.vexa:11:7: </tspan><tspan class="error">check</tspan>: Objects have no property &quot;colr&quot;. Did you mean &quot;color&quot;? Properties:</text>
+<text x="18" y="305" xml:space="preserve">    label, name, confidence, x, y, width, height, area, colour, color, position, distance,</text>
+<text x="18" y="324" xml:space="preserve">    posture, text, zone, id.</text>
+<text x="18" y="343" xml:space="preserve"><tspan class="code">  print first_person.colr</tspan></text>
+<text x="18" y="362" xml:space="preserve"><tspan class="caret">        ^~~~~~~~~~~~</tspan></text>
+<text x="18" y="381" xml:space="preserve"><tspan class="place">mistakes.vexa:12:7: </tspan><tspan class="error">syntax</tspan>: Invalid detect command. Use: detect person / detect all — find</text>
+<text x="18" y="400" xml:space="preserve">    objects in the current image using CPU inference. Optional: detect person confidence 0.7 (0</text>
+<text x="18" y="419" xml:space="preserve">    to 1; default 0.25). (vexa help detect for more)</text>
+<text x="18" y="438" xml:space="preserve"><tspan class="code">  detect</tspan></text>
+<text x="18" y="457" xml:space="preserve"><tspan class="caret">        ^</tspan></text>
+<text x="18" y="476" xml:space="preserve"><tspan class="summary">5 error(s), 0 warning(s).</tspan></text>
+</svg>

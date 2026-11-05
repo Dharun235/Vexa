@@ -10,13 +10,29 @@ draw boxes
 show image
 ```
 
+<p align="center">
+  <img src="docs/images/street-report.jpg" width="300" alt="The street photo with boxes around a bus and four people, and two named zones, pavement and road">
+  <img src="docs/images/report.svg" width="520" alt="Terminal output of examples/street-report.vexa: counts per label, people on the road, a busy-street verdict and a passed expect check">
+</p>
+
+**Try it in a minute** (needs [uv](https://docs.astral.sh/uv/getting-started/installation/); everything runs offline after this):
+
+```sh
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.7.0a1/vexa-0.7.0a1-py3-none-any.whl
+git clone --depth 1 https://github.com/Dharun235/Vexa && cd Vexa/examples
+vexa run street-report.vexa --image street.jpg --set busy=2
+```
+
 ## Why a language?
 
 Computer vision today means Python, PyTorch, model zoos and a GPU. Most real questions are simpler: *how many people are in each photo, is the car red, blur every face, which frame shows a dog*. Vexa makes those one-line commands.
 
 - **Readable:** `count colour red car`, `blur face`, `rank all by distance`, `count person left of car`.
 - **A real language:** variables, arithmetic, `{…}` text placeholders, detected objects as values with properties (`car.colour`, `car.distance`), lists and maps, `where` filters and list building, loops with `break`/`continue`, functions with defaults and declared types, `try`/`else`, constants, settings from the command line and libraries.
-- **Checked before it runs:** a static type checker catches mistakes such as counting cars after detecting only people, `if count person` (a number, not true/false) or a misspelt `car.colr`, with no image and no model. Errors name the line, underline the word and say how to fix it.
+- **Checked before it runs:** a static type checker catches mistakes such as counting cars after detecting only people, `if count person` (a number, not true/false) or a misspelt `car.colr`, with no image and no model. It reports every mistake at once; errors name the line, underline the word and say how to fix it:
+
+  <img src="docs/images/check.svg" width="760" alt="vexa check mistakes.vexa reporting five errors at once: count car after detect person, a number used as true/false, a misspelt name with a suggestion, an unknown property with a suggestion, and a syntax error">
+
 - **Interpreted or compiled:** `vexa run` interprets (`--trace` shows each step); `vexa compile` turns a program into an optimised standalone Python script with identical results.
 - **Good tools:** every error at once, a formatter, `vexa test` for vision checks in CI, and a language server with go to definition, rename and signature help, tested in a real VS Code.
 - **Safe:** a program can only look at images and write the files it names, so it is safe to run programs from others.
@@ -75,10 +91,12 @@ Learn it in the [25-minute tutorial](docs/tutorial.md); the [language reference]
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.6.0a1/vexa-0.6.0a1-py3-none-any.whl
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.7.0a1/vexa-0.7.0a1-py3-none-any.whl
 ```
 
-The package includes the interpreter and object-detection model; its pinned OCR dependency includes the OCR models. No separate model setup is needed. After installation, detection works offline.
+Add `--force` to upgrade an earlier version. The package includes the interpreter, the object-detection and segmentation models; its pinned OCR dependency includes the OCR models. No separate model setup is needed, and detection works offline from the first run. Optional models (depth, poses, faces, captions, background removal, styles) are downloaded once with `vexa model download NAME`; a program that needs one says which.
+
+**VS Code:** download `vexa-0.2.0.vsix` from the [v0.7.0a1 release](https://github.com/Dharun235/Vexa/releases/tag/v0.7.0a1) and run **Extensions: Install from VSIX…**. Other editors: see [editor support](docs/editors.md).
 
 ## Run a file or start the console
 

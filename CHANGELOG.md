@@ -2,7 +2,7 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
-## Unreleased — language 0.8
+## 0.7.0a1 — language 0.8
 
 - Maps with text keys: `{car: 2, "traffic light": 1}`, `m.car`, `m["car"]`, `+`, `keys`, `values`, `get`, `put`, `for each key in m`; lists of maps.
 - `in` and `not in` for list items, text (ignoring case) and map keys.

@@ -21,4 +21,4 @@ Start with [Getting started](getting-started.md). It takes you from installation
 - [Segmentation comparison](segmentation-benchmark.md): local CPU measurements and why EfficientSAM was selected.
 - [Package verification](package-verification.md): what was tested and what remains unverified.
 
-The package is currently **0.6.0a1**. These pages describe that alpha. They are plain Markdown and work locally or on GitHub; no documentation server is needed.
+The package is currently **0.7.0a1** (language 0.8). These pages describe that alpha. They are plain Markdown and work locally or on GitHub; no documentation server is needed.

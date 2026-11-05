@@ -99,12 +99,22 @@ def _string(node, token):
             raise VexaError(
                 f'Cannot read "{{{inner}}}" in this string.', line, "syntax", column
             ) from exc
-        parts.append(_relocate(_expr(tree), line, column))
+        if "\\" in str(token):  # escapes shift positions: point at the string
+            parts.append(_relocate(_expr(tree), line, column))
+        else:  # point at the name inside the placeholder
+            start = column + 1 + match.start(1) + len(match.group(1)) - len(match.group(1).lstrip())
+            parts.append(_shift(_expr(tree), line, start))
     parts.append(text[end:])
     parts = tuple(part for part in parts if part != "")
     if all(isinstance(part, str) for part in parts):
         return Expr("string", "".join(parts), line=line, column=column)
     return Expr("template", None, parts, line, column)
+
+
+def _shift(expr, line, start):
+    """Expressions inside a placeholder, moved to their place in the source line."""
+    args = tuple(_shift(a, line, start) if isinstance(a, Expr) else a for a in expr.args)
+    return Expr(expr.kind, expr.value, args, line, start + expr.column - 1)
 
 
 def _relocate(expr, line, column):
@@ -330,7 +340,8 @@ def _syntax_hint(source, line):
     if words and words[0] in {"end", "else"}:
         return f"{words[0]} without a matching if, try, loop or define."
     if words and words[0] in TOPICS:
-        return f"Invalid {words[0]} command. Use: {TOPICS[words[0]]}"
+        usage = TOPICS[words[0]].split("\n")[0]
+        return f"Invalid {words[0]} command. Use: {usage} (vexa help {words[0]} for more)"
     return "Invalid command. Run vexa help for supported syntax."
 
 

@@ -1,6 +1,6 @@
 # Vexa language specification
 
-**Language 0.8 (in development).** [Documentation home](README.md) · [Language reference](language-reference.md) · [Tutorial](tutorial.md)
+**Language 0.8 (package 0.7.0a1).** [Documentation home](README.md) · [Language reference](language-reference.md) · [Tutorial](tutorial.md)
 
 This document defines the Vexa language precisely: its lexical structure, grammar, types, scoping and evaluation. The [language reference](language-reference.md) explains each command and what it does to an image; this specification covers the language around them. The executable grammar is [src/vexa/grammar.lark](../src/vexa/grammar.lark) (an LALR(1) grammar); the checker is [src/vexa/validation.py](../src/vexa/validation.py).
 
