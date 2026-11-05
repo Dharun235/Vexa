@@ -3,8 +3,8 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vexa"
-version = "0.7.0a1"
+name = "vexa-language"  # the PyPI name; the command and the Python package are both vexa
+version = "0.7.0"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"
 license = "MIT AND AGPL-3.0-only AND Apache-2.0"
@@ -44,8 +44,10 @@ artifacts = ["src/vexa/data/*.onnx"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vexa"]
+core-metadata-version = "2.4"  # PyPI's upload tool (twine) does not accept 2.5 yet
 
 [tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"
 include = ["src/vexa", "scripts", "tests", "examples", "docs/**/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSES", "pyproject.toml", "uv.lock"]
 
 [tool.pytest.ini_options]

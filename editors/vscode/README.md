@@ -1,6 +1,6 @@
 # Vexa for VS Code
 
-Language support for `.vexa` files, powered by `vexa lsp`:
+Language support for [Vexa](https://github.com/Dharun235/Vexa), a small language for computer vision, powered by `vexa lsp`:
 
 - syntax highlighting, including types, `const`/`param` and the vision commands;
 - errors and warnings as you type (every checker error, not only the first);
@@ -12,11 +12,19 @@ Language support for `.vexa` files, powered by `vexa lsp`:
 - formatting (`vexa fmt`);
 - **Vexa: Restart Language Server** in the command palette.
 
-The extension has no dependencies. It runs `vexa lsp`, so install Vexa first and make sure `vexa` is on your `PATH`, or set **Vexa: Path** in the settings (for example to `/path/to/Vexa/.venv/bin/vexa`).
+## Setup
 
-## Install
+The extension runs `vexa lsp`, so install Vexa first:
 
-Download `vexa-vscode-extension` (a `.vsix` file) from the latest CI run, or build it:
+```sh
+uv tool install --python 3.12 vexa-language
+```
+
+If `vexa` is not on your `PATH`, set **Vexa: Path** in the settings (for example to `/path/to/Vexa/.venv/bin/vexa`).
+
+## Install without the Marketplace
+
+Download the `.vsix` file from a [GitHub release](https://github.com/Dharun235/Vexa/releases), or build it:
 
 ```sh
 cd editors/vscode
@@ -26,7 +34,7 @@ npx @vscode/vsce package
 Then run **Extensions: Install from VSIX…** in VS Code. For development, link the folder instead:
 
 ```sh
-ln -s "$(pwd)" ~/.vscode/extensions/vexa-0.2.0
+ln -s "$(pwd)" ~/.vscode/extensions/vexa-0.2.1
 ```
 
 ## Test

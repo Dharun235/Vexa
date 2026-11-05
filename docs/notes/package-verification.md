@@ -1,6 +1,6 @@
 # Package verification
 
-**Package:** Vexa 0.7.0a1 · **Date:** 5 November 2026
+**Package:** Vexa 0.7.0 · **Date:** 5 November 2026
 
 ## Terminal-only package
 

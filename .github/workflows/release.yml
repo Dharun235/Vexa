@@ -1,0 +1,34 @@
+# Publish a GitHub release to PyPI as vexa-language.
+#
+# It uploads the exact files attached to the release (built and tested by
+# scripts/build-release.sh), after checking them against the release's SHA256SUMS.
+# PyPI trusts this workflow (trusted publishing, environment pypi), so no token is stored.
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    name: PyPI
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # trusted publishing
+    steps:
+      - name: Download the release's Python files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern '*.whl' --pattern '*.tar.gz' --pattern SHA256SUMS
+          cd dist
+          grep -E '\.(whl|tar\.gz)$' SHA256SUMS | sha256sum --check
+          rm SHA256SUMS
+      - uses: pypa/gh-action-pypi-publish@v1.12.4

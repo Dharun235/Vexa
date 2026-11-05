@@ -7,7 +7,7 @@
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then Vexa and the example photos:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.7.0a1/vexa-0.7.0a1-py3-none-any.whl
+uv tool install --python 3.12 vexa-language
 git clone --depth 1 https://github.com/Dharun235/Vexa && cd Vexa/examples
 ```
 
