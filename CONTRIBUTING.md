@@ -17,6 +17,8 @@ The model scripts export or download into `src/vexa/data/` in an isolated enviro
 
 ## Check a change
 
+Set up the pre-commit hook once (`uvx pre-commit install`); it runs ruff and `vexa fmt` before every commit. Before pushing, run:
+
 ```sh
 uv run pytest                 # all tests, offline
 uv run ruff check .           # lint, including docstrings
@@ -27,6 +29,8 @@ uv run vexa check examples/street-report.vexa
 CI runs the same on Ubuntu and macOS, checks, formats and compiles every example, and tests the VS Code extension in VS Code.
 
 ## Code style
+
+The same rules, with a step-by-step workflow for coding agents, are in [AGENTS.md](AGENTS.md).
 
 - **Simple first.** Write the least code that solves the problem; no abstractions or options nobody asked for. Small modules, plain functions, standard library where it is enough.
 - **Surgical changes.** Touch only what the change needs and match the style around it. Remove what your change made unused; leave unrelated code alone.
@@ -51,4 +55,4 @@ gh release create vX.Y.Z dist/vexa-X.Y.Z-py3-none-any.whl dist/vexa-X.Y.Z.tar.gz
   --target COMMIT_SHA --prerelease --title "Vexa X.Y.Z" --notes-file docs/notes/release-notes.md
 ```
 
-Never reuse a version number. During 0.x, a change in what existing programs mean needs a new minor version and a migration note in the changelog. Keep the licence files and the [model notices](docs/notes/model-notice.md) with every release.
+Never reuse a version number. During 0.x, a change in what existing programs mean needs a new minor version and a migration note in the changelog. Keep [LICENSE](LICENSE), the [LICENSES](LICENSES/README.md) folder and the [model notices](docs/notes/model-notice.md) with every release.

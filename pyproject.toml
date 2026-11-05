@@ -8,7 +8,7 @@ version = "0.7.0a1"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"
 license = "MIT AND AGPL-3.0-only AND Apache-2.0"
-license-files = ["LICENSE", "LICENSE-MODEL", "LICENSE-SEGMENTATION", "LICENSE-THIRD-PARTY"]
+license-files = ["LICENSE", "LICENSES/*.txt"]
 authors = [{name = "Dharunkumar Senthilkumar"}]
 requires-python = ">=3.12,<3.13"
 classifiers = [
@@ -46,7 +46,7 @@ artifacts = ["src/vexa/data/*.onnx"]
 packages = ["src/vexa"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/vexa", "scripts", "tests", "examples", "docs/**/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSE-MODEL", "LICENSE-SEGMENTATION", "LICENSE-THIRD-PARTY", "pyproject.toml", "uv.lock"]
+include = ["src/vexa", "scripts", "tests", "examples", "docs/**/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSES", "pyproject.toml", "uv.lock"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

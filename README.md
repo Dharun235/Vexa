@@ -55,4 +55,6 @@ The object detector, segmenter and OCR models are included. Other models downloa
 - [Specification](docs/specification.md): grammar, types and rules, precisely.
 - [Editors](docs/editors.md), [How Vexa works](docs/architecture.md), [Examples](examples/), [Changelog](CHANGELOG.md), [Contributing](CONTRIBUTING.md).
 
-Vexa is [MIT licensed](LICENSE). Bundled and downloadable models keep their own licences; see [model notices](docs/notes/model-notice.md).
+Built by Dharunkumar Senthilkumar, with [Claude Code](https://claude.com/claude-code) as a co-author on the commits.
+
+Vexa's code is [MIT licensed](LICENSE). The bundled models keep their own licences (YOLO11n is AGPL-3.0, EfficientSAM is Apache-2.0); see [LICENSES](LICENSES/README.md).

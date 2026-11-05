@@ -8,7 +8,7 @@ Starting in 0.1.0a2, the Vexa wheel includes `data/yolo11n.onnx`, an ONNX export
 - Export settings: CPU, opset 17, fixed 640×640 input, float32, no simplification, no embedded NMS.
 - Model terms: [Ultralytics licensing](https://www.ultralytics.com/license) and [upstream AGPL-3.0 license text](https://github.com/ultralytics/ultralytics/blob/v8.4.198/LICENSE).
 
-The wheel and source archive include the upstream license as `LICENSE-MODEL` and a model notice in `vexa/data/NOTICE.md`. Release checksums cover the complete distributions. The export changes the model's file format; it does not retrain it or change its weights. Retain the model notice and upstream license when redistributing the model. Vexa's MIT license does not replace the model's terms.
+The wheel and source archive include the upstream license as `LICENSES/AGPL-3.0-yolo11n.txt` and a model notice in `vexa/data/NOTICE.md`. Release checksums cover the complete distributions. The export changes the model's file format; it does not retrain it or change its weights. Retain the model notice and upstream license when redistributing the model. Vexa's MIT license does not replace the model's terms.
 
 Runtime compatibility is intentionally narrow for this alpha: one float32 input of shape `[1, 3, 640, 640]`, one detection output of shape `[1, 84, 8400]`, and 80 named classes in model metadata. Other YOLO generations, dynamic shapes, segmentation models, or quantised exports are not supported by this adapter.
 
@@ -20,9 +20,9 @@ RapidOCR code and the included PaddleOCR-derived models are Apache-2.0 licensed,
 
 ## Segmentation models
 
-The wheel and source archive bundle EfficientSAM ViT-T's encoder and decoder from the [official ONNX release](https://github.com/labelmeai/efficient-sam/releases/tag/onnx-models-20231225), without retraining. SHA-256 hashes and provenance are recorded in `vexa/data/NOTICE.md` and `scripts/setup-segmentation.py`. These models are Apache-2.0 licensed; the complete license is `LICENSE-SEGMENTATION`.
+The wheel and source archive bundle EfficientSAM ViT-T's encoder and decoder from the [official ONNX release](https://github.com/labelmeai/efficient-sam/releases/tag/onnx-models-20231225), without retraining. SHA-256 hashes and provenance are recorded in `vexa/data/NOTICE.md` and `scripts/setup-segmentation.py`. These models are Apache-2.0 licensed; the complete license is `LICENSES/Apache-2.0-efficientsam.txt`.
 
-Vexa's preprocessing and prompt decoding adapt [Osam's EfficientSAM implementation](https://github.com/wkentaro/osam/tree/748ac296612b2a1f86cd56a107ece705547d7d9c/osam/_models/efficientsam), copyright 2024 Kentaro Wada, MIT licensed (`LICENSE-THIRD-PARTY`). The selected pair totals 41,365,489 bytes. SAM2 benchmark weights are not shipped. Runtime does not depend on Osam, PyTorch, or a download service.
+Vexa's preprocessing and prompt decoding adapt [Osam's EfficientSAM implementation](https://github.com/wkentaro/osam/tree/748ac296612b2a1f86cd56a107ece705547d7d9c/osam/_models/efficientsam), copyright 2024 Kentaro Wada, MIT licensed (`LICENSES/MIT-osam.txt`). The selected pair totals 41,365,489 bytes. SAM2 benchmark weights are not shipped. Runtime does not depend on Osam, PyTorch, or a download service.
 
 ## Open-vocabulary models
 
