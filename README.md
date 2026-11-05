@@ -61,9 +61,12 @@ vexa check street.vexa              # syntax, types and command order; no image 
 vexa run street.vexa --image street.jpg
 vexa compile street.vexa            # → street.py, optimised standalone Python
 vexa fmt --write street.vexa        # standard layout
+vexa test street.vexa --image street.jpg   # report expect checks
 ```
 
-Editors get live errors, completion and hover help from `vexa lsp`; see the [VS Code extension](editors/vscode/README.md). The [language reference](docs/language-reference.md#programming-with-vexa) covers variables, objects, functions, types and the compiler.
+Lists (`[1, 2, 3]`, `xs[1]`), built-in functions (`round`, `average`, `max`, `sort` …), `repeat` and `while` loops, `expect` checks with `vexa test`, and libraries with `use "helpers.vexa"` round it out. Editors get live errors, warnings, completion and hover help from `vexa lsp`; see the [VS Code extension](editors/vscode/README.md).
+
+Learn it in the [20-minute tutorial](docs/tutorial.md); the [language reference](docs/language-reference.md#programming-with-vexa) and the [specification](docs/specification.md) give the details.
 
 ## Install
 

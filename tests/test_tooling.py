@@ -89,7 +89,10 @@ def test_language_server_session():
         },
         {
             "method": "textDocument/didChange",
-            "params": {"textDocument": {"uri": uri}, "contentChanges": [{"text": "let  x=1\nprint x\n"}]},
+            "params": {
+                "textDocument": {"uri": uri},
+                "contentChanges": [{"text": "let  x=1\nprint x\n"}],
+            },
         },
         {"id": 4, "method": "textDocument/formatting", "params": {"textDocument": {"uri": uri}}},
         {"id": 5, "method": "shutdown"},

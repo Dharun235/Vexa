@@ -10,6 +10,26 @@ from vexa.interpreter import Session
 from vexa.parser import parse
 from vexa.vision import MAX_IMAGE_BYTES, Vision, decode_image
 
+_OPENERS = {"if", "for", "define", "repeat", "while"}
+
+
+def depth_change(line):
+    """+1 when a line opens a block, -1 when it ends one, else 0."""
+    words = line.split("#", 1)[0].split()
+    if not words:
+        return 0
+    return 1 if words[0] in _OPENERS else -1 if words[0] == "end" else 0
+
+
+def read_entry(first, ask=input):
+    """One console entry: a single line, or a whole block up to its matching end."""
+    lines, depth = [first], depth_change(first)
+    while depth > 0:
+        line = ask("...   ")
+        lines.append(line)
+        depth += depth_change(line)
+    return "\n".join(lines)
+
 
 def run_repl(args):
     # Optional standard-library editing; never read or write a history file.
@@ -43,6 +63,7 @@ def run_repl(args):
             if control.startswith(":"):
                 print("Unknown console command. Type help.")
                 continue
+            source = read_entry(source)
             commands = parse(source)
             result = session.execute(commands)
             for line in result["logs"]:

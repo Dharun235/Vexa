@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.6.0a1 — language 0.6 (in development).** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.6.0a1 — language 0.7 (in development).** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -124,7 +124,7 @@ save csv "screws.csv"
 | `record count LABEL` | Adds a column to the current row: also `record count text` (`text_lines`), `record count masks`, `record count codes` (`codes_found`), `record text` (OCR lines joined with ` \| `) and `record codes`. Inside a loop each image has its own row; outside, records go to one row. |
 | `save csv "FILE.csv"` | Writes all rows recorded so far, one column per recorded name plus `image`. The path must be relative and end in `.csv`; it is not allowed inside a loop. |
 
-Folder paths and CSV files are relative to the current directory. A program whose only image work happens in a loop needs no `--image`. Rows also appear in `--json` output under `rows`. Blocks span several lines, so use them in program files rather than the interactive console.
+Folder paths and CSV files are relative to the current directory. A program whose only image work happens in a loop needs no `--image`. Rows also appear in `--json` output under `rows`. In the interactive console, a line that opens a block (`if`, `for`, `define`, `repeat`, `while`) keeps reading lines until its matching `end`.
 
 ## Programming with Vexa
 
@@ -191,6 +191,54 @@ show image
 
 Objects belong to the image they were found in. After `load`, a transform, `style`, `translate`, or in the next loop image, earlier object variables can no longer be used; the checker reports this.
 
+### Lists
+
+```vexa
+let widths = []
+load "street.jpg"
+detect all
+for each thing in detections
+  let widths = widths + [thing.width]
+end
+print "{length(widths)} objects, widest {max(widths)}, mean {round(average(widths), 1)}"
+print widths[1]
+```
+
+`[1, 2, 3]`, `["a", "b"]` and `[]` are lists. A list holds one kind of value (numbers, text or true/false); `detections` and the result of `where` are lists of objects. `xs[1]` is the first item and `xs[-1]` the last, matching names like `car 1`; a position outside the list is an error. `+` joins two lists of the same kind. `for each x in xs`, `count xs`, `first`, `last`, `largest` and `smallest` work on any list.
+
+### Built-in functions
+
+| Function | Result |
+| --- | --- |
+| `round(x)`, `round(x, digits)`, `floor(x)`, `ceil(x)`, `abs(x)`, `sqrt(x)` | Numbers |
+| `min(list)`, `max(list)`, `min(a, b, …)`, `max(a, b, …)`, `sum(list)`, `average(list)` | Numbers from numbers |
+| `length(list or text)` | How many items or characters |
+| `as_text(x)`, `as_number(text)` | Conversions; `as_number("abc")` is an error |
+| `upper(text)`, `lower(text)` | Text |
+| `sort(list)`, `reverse(list)` | A new list |
+| `range(n)` | `[1, 2, … n]` |
+
+Functions you define cannot reuse these names.
+
+### More loops
+
+`repeat N times` … `end` runs the body N times (a whole number). `while CONDITION` … `end` runs it while the condition holds. Both stop with an error after 10,000 turns, so a mistake cannot hang the program. As with `if`, variables first set inside the body are not available after `end`; update an outer variable instead.
+
+### Tests with expect
+
+```vexa
+load "street.jpg"
+detect all
+expect count person == 4, "four people"
+expect count bus >= 1
+```
+
+`expect CONDITION` or `expect CONDITION, "message"` records a check, prints `✓` or `✗`, and keeps going. `vexa run` exits with status 1 when any check failed, and `vexa test a.vexa b.vexa --image photo.jpg` runs several programs and prints a summary, so vision checks can run in CI. Results also appear under `expectations` in `--json` output.
+
+### Libraries with use
+
+`use "helpers.vexa"` at the top level imports every `define` from a library file: a file holding only `define` blocks (and its own `use` lines). Paths are relative to the working directory, like folders and CSV files. Library files may use other libraries; a file that uses itself through others is an error, and so is defining the same function name twice. Errors inside a library name its file and line.
+
 ### Functions
 
 ```vexa
@@ -219,6 +267,8 @@ print crowd_level(count person)
 - every earlier rule, such as `count car` after `detect person`.
 
 Function bodies are checked once on their own and again at each call, with the caller's image state, so `define g` … `count person` … `end` called before any `detect` is an error at the call.
+
+`vexa check` and the editor list every error in a file, not only the first, and warn about variables that are set but never used, functions that are never called, and code after `return`. Warnings do not stop a program.
 
 ### Compiling to Python
 
@@ -516,7 +566,7 @@ The upper-left corner is the coordinate origin. Inference uses fixed 640×640 le
 The terminal shows a filename (or `<repl>`), one-based line and column, message, source excerpt, and caret when available:
 
 ```text
-demo.vexa:2:7: runtime: Unknown name "totl". Set it first with let totl = … Did you mean "total"?
+demo.vexa:2:7: check: Unknown name "totl". Set it first with let totl = … Did you mean "total"?
   print totl + 1
         ^~~~
 ```

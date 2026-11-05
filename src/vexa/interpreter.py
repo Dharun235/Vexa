@@ -518,9 +518,9 @@ class Session:
         return {
             name: type_of(value)
             for name, value in self.scopes[0].items()
-            if not (isinstance(value, VObject) and value.generation != self.generation)
-            and not (
-                isinstance(value, list) and any(v.generation != self.generation for v in value)
+            if not any(
+                isinstance(item, VObject) and item.generation != self.generation
+                for item in (value if isinstance(value, list) else [value])
             )
         }
 

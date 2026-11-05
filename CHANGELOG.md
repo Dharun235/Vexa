@@ -2,7 +2,19 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
-## Unreleased — language 0.6
+## Unreleased — language 0.7
+
+- Lists of numbers, text or true/false (`[1, 2]`, `xs[1]`, `+`), and built-in functions: `round`, `floor`, `ceil`, `abs`, `sqrt`, `min`, `max`, `sum`, `average`, `length`, `as_text`, `as_number`, `upper`, `lower`, `sort`, `reverse`, `range`.
+- `repeat N times` and `while` loops, limited to 10,000 turns.
+- `expect CONDITION, "message"` checks; `vexa run` exits 1 when one fails; `vexa test` summarises them.
+- `use "helpers.vexa"` imports library functions.
+- `vexa check` and the language server report every error, plus warnings (unused variables and functions, code after `return`). Checker errors are labelled `check`.
+- The console reads multi-line blocks.
+- Specification, tutorial, and a CI workflow.
+
+Migration: `repeat`, `times`, `while`, `expect` and `use` are keywords.
+
+## Language 0.6
 
 - Variables (`let`), arithmetic, comparisons, `and`/`or`/`not`, `true`/`false`, `else if`, and `{expression}` placeholders in strings.
 - Detected objects as values: `detections`, properties (`label`, `colour`, `position`, `distance`, `posture`, `text`, `width` …) measured on first use, `where` filters, `first`/`largest`/`nearest` …, `for each NAME in LIST`, and object variables in `count`, `blur`, `measure`, `colour`, `draw`.
