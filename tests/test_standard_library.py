@@ -82,12 +82,10 @@ def test_expect_records_checks(image, fake_vision):
     assert result["logs"][-1] == "✗ expect line 4 FAILED"
 
 
-def test_vexa_test_and_run_exit_codes(tmp_path, capsys, monkeypatch):
+def test_vexa_test_and_run_exit_codes(tmp_path, capsys, monkeypatch, fake_vision):
     import cv2
 
-    from tests.conftest import FakeVision
-
-    monkeypatch.setattr("vexa.vision.Vision", lambda model=None: FakeVision())
+    monkeypatch.setattr("vexa.vision.Vision", lambda model=None: fake_vision)
     image = tmp_path / "a.png"
     cv2.imwrite(str(image), np.zeros((100, 120, 3), np.uint8))
     good, bad = tmp_path / "good.vexa", tmp_path / "bad.vexa"
