@@ -4,7 +4,7 @@
 # scripts/build-release.sh), after checking them against the release's SHA256SUMS.
 #
 # One-time setup:
-#   PyPI: a trusted publisher for project vexa-lang, workflow release.yml,
+#   PyPI: a trusted publisher for project vexa-lang, workflow release.yaml,
 #         environment pypi (no token needed).
 #   VS Code Marketplace: repository secret VSCE_PAT.
 #   Open VSX: repository secret OVSX_PAT.
