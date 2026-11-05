@@ -10,4 +10,4 @@
 
 Background and maintainer notes are in [notes](notes/): benchmarks, model licences, release notes, package verification and the Syntax Summit kit. Development and releases are in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-These pages describe package 0.7.0 (language 0.8).
+These pages describe package 0.7.1 (language 0.8).

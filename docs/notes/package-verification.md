@@ -1,6 +1,6 @@
 # Package verification
 
-**Package:** Vexa 0.7.0 · **Date:** 5 November 2026
+**Package:** Vexa 0.7.1 · **Date:** 5 November 2026
 
 ## Terminal-only package
 
@@ -30,10 +30,10 @@ The EfficientSAM ViT-T encoder/decoder are bundled and verified by SHA-256 durin
 | Platform | Evidence | Status |
 | --- | --- | --- |
 | macOS, Apple Silicon, Python 3.12 | Clean install, file execution, REPL, and CPU inference | Runtime verified |
-| Linux x86-64, Python 3.12 | Binary dependency resolution in an earlier alpha | Runtime unverified |
+| Linux x86-64 (Ubuntu), Python 3.12 | Every release: the release workflow installs the wheel and runs the examples, a compiled program and `vexa test` with real CPU inference before uploading to PyPI | Runtime verified |
 | Windows x86-64, Python 3.12 | Binary dependency resolution in an earlier alpha | Runtime unverified |
 | Other versions, 32-bit CPUs, mobile devices, other architectures | Not tested | No compatibility claim |
 
 The Python wheel tag does not make native dependencies universal. This remains a still-image alpha using fixed-format YOLO11n inference.
 
-Releases are hosted on GitHub from feature branches (0.7.0a1 from `feat/language-gaps`). Published history is preserved; no PyPI publication or merge into `main` is implied. The earlier browser implementation and its local artifacts are removed from the current version.
+Releases are published from `main` to GitHub and to PyPI as `vexa-language`. Published history is preserved. The earlier browser implementation and its local artifacts are removed from the current version.
