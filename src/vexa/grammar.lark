@@ -7,11 +7,15 @@ body: _NL* (_statement _NL*)*
 ?condition: "count" subject COMPARE NUMBER -> count_condition
           | "text" "contains" ESCAPED_STRING -> text_condition
           | "caption" "contains" ESCAPED_STRING -> caption_condition
+          | "image" QUALITY -> image_condition
 ?subject: target
         | "text" -> text_subject
         | "masks" -> masks_subject
         | "codes" -> codes_subject
         | "pose" target -> pose_subject
+        | ("colour" | "color") NAME target -> colour_subject
+        | target "in" AREA -> area_subject
+        | target RELATION target -> relation_subject
 ?command: "load" ESCAPED_STRING -> load
         | "detect" target ("confidence" NUMBER)? -> detect
         | "segment" "detections" -> segment
@@ -33,6 +37,14 @@ body: _NL* (_statement _NL*)*
         | "record" "distances" -> record_distances
         | "export" "points" ESCAPED_STRING -> export_points
         | "scan" "codes" -> scan_codes
+        | ("colour" | "color") target -> colour
+        | "record" ("colours" | "colors") -> record_colours
+        | "count" ("colour" | "color") NAME target -> count_colour
+        | "count" target "in" AREA -> count_area
+        | "count" target RELATION target -> count_relation
+        | "where" target -> where
+        | "remove" "background" -> remove_background
+        | "check" "exposure" -> check_exposure
         | "find" "text" ESCAPED_STRING -> find_text
         | "inspect" "image" -> inspect_image
         | "check" "blur" -> check_blur
@@ -67,6 +79,9 @@ body: _NL* (_statement _NL*)*
        | ESCAPED_STRING -> quoted_target
 COMPARE: "<=" | ">=" | "==" | "!=" | "<" | ">"
 UNIT: "mm" | "cm" | "m"
+AREA: "left" | "right" | "top" | "bottom" | "centre" | "center"
+RELATION: /(left|right)[ \t]+of|above|below/
+QUALITY: "blurry" | "dark" | "bright"
 NAME: /[a-zA-Z][a-zA-Z0-9_]*/
 _NL: /\r?\n/
 %import common.NUMBER

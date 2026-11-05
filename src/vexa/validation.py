@@ -23,6 +23,10 @@ class State:
     ranked: bool = False
     posed: bool = False
     captioned: bool = False
+    coloured: bool = False
+    blur_checked: bool = False
+    exposure_checked: bool = False
+    cutout: bool = False
 
 
 def validate_commands(
@@ -39,6 +43,10 @@ def validate_commands(
     ranked=False,
     posed=False,
     captioned=False,
+    coloured=False,
+    blur_checked=False,
+    exposure_checked=False,
+    cutout=False,
 ):
     state = State(
         loaded,
@@ -52,6 +60,10 @@ def validate_commands(
         ranked,
         posed,
         captioned,
+        coloured,
+        blur_checked,
+        exposure_checked,
+        cutout,
     )
     _validate(commands, state, False)
 
@@ -67,8 +79,10 @@ def _validate(commands, state, in_loop):
 
 
 def _need_subject(subject, state, command):
-    """Requirements for counting a label, :text, :masks or :codes."""
-    if subject == ":text" and not state.ocr_done:
+    """Requirements for counting a label, :text, :masks, :codes, a pose or a compound subject."""
+    if isinstance(subject, tuple):
+        _need_compound(subject, state, command)
+    elif subject == ":text" and not state.ocr_done:
         _fail("Run ocr before using text results.", command)
     elif subject == ":masks" and not state.segmented:
         _fail("Run segment detections before using masks.", command)
@@ -92,7 +106,7 @@ def _need_subject(subject, state, command):
                     "detect all and count each label.",
                     command,
                 )
-            if command.kind in {"blur", "pixelate", "measure"}:
+            if command.kind in {"blur", "pixelate", "measure", "colour", "where"}:
                 _fail(
                     f"{command.kind} {subject} after detect {state.selection} finds no "
                     f"{subject}. Detect {subject} first.",
@@ -109,6 +123,22 @@ def _need_subject(subject, state, command):
                 f"Count {state.selection} instead, or detect {subject} first.",
                 command,
             )
+
+
+def _need_compound(subject, state, command):
+    from vexa.analysis import COLOURS
+
+    kind, word, *labels = subject
+    if kind == "colour":
+        if word not in COLOURS:
+            _fail(f'Unknown colour "{word}". Choose one of: {", ".join(COLOURS)}.', command)
+        if not state.coloured:
+            _fail(f"Run colour {labels[0]} before counting by colour.", command)
+    for label in labels:
+        _need_subject(label, state, command)
+
+
+_IMAGE_CHECKS = {"blurry": ("blur_checked", "check blur"), "dark": ("exposure_checked", "check exposure"), "bright": ("exposure_checked", "check exposure")}  # fmt: skip
 
 
 def _check(command, state, in_loop):
@@ -139,6 +169,10 @@ def _check(command, state, in_loop):
         elif command.condition[0] == "caption":
             if not state.captioned:
                 _fail("Run caption before if caption contains.", command)
+        elif command.condition[0] == "image":
+            field, needed = _IMAGE_CHECKS[command.condition[1]]
+            if not getattr(state, field):
+                _fail(f"Run {needed} before if image {command.condition[1]}.", command)
         else:
             _need_subject(command.condition[1], state, command)
         # Results produced inside a branch are not available after it.
@@ -187,6 +221,13 @@ def _check(command, state, in_loop):
     if kind == "reference" and command.argument[1] <= 0:
         _fail('The reference size must be above 0, e.g. reference "coin" 23.25 mm', command)
 
+    if state.cutout and (kind in TRANSFORMS or kind in {"style", "translate"}):
+        word = kind.split("_")[0]
+        _fail(
+            f"{word} after remove background would lose the transparency. "
+            f"Remove the background last, after {word}.",
+            command,
+        )
     if kind == "translate":
         from vexa.translate import MODELS, pairs
 
@@ -217,7 +258,12 @@ def _check(command, state, in_loop):
         if not command.argument.strip():
             _fail('locate needs a phrase, e.g. locate "red tie"', command)
         return replace(
-            state, detected=True, segmented=False, selection=command.argument, posed=False
+            state,
+            detected=True,
+            segmented=False,
+            selection=command.argument,
+            posed=False,
+            coloured=False,
         )
     if kind == "estimate_poses":
         if not state.detected:
@@ -233,9 +279,25 @@ def _check(command, state, in_loop):
         _fail("Run estimate poses first.", command)
     if kind == "estimate_depth":
         return replace(state, depth=True)
+    if kind in {"colour", "where"}:
+        _need_subject(command.argument, state, command)
+        return replace(state, coloured=state.coloured or kind == "colour")
+    if kind == "record_colours" and not state.coloured:
+        _fail("Run colour LABEL before record colours.", command)
+    if kind == "check_blur":
+        return replace(state, blur_checked=True)
+    if kind == "check_exposure":
+        return replace(state, exposure_checked=True)
+    if kind == "remove_background":
+        return replace(state, cutout=True)
     if kind == "detect":
         return replace(
-            state, detected=True, segmented=False, selection=command.argument, posed=False
+            state,
+            detected=True,
+            segmented=False,
+            selection=command.argument,
+            posed=False,
+            coloured=False,
         )
     if kind == "segment":
         return replace(state, segmented=True)

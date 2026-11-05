@@ -38,6 +38,7 @@ class Session:
 
     def reset(self):
         self.image = None
+        self.alpha = None  # transparency after remove background, 255 is kept
         self.counts = {}
         self.shown = None
         self.clear_results()
@@ -62,6 +63,9 @@ class Session:
         self.distances = []
         self.poses = []
         self.caption = None
+        self.colours = None  # None until colour runs
+        self.positions = []
+        self.exposure = None
         if self.segmenter is not None:
             self.segmenter.clear_image()
 
@@ -80,6 +84,10 @@ class Session:
             ranked=bool(self.distances),
             posed=bool(self.poses),
             captioned=self.caption is not None,
+            coloured=self.colours is not None,
+            blur_checked=self.blur is not None,
+            exposure_checked=self.exposure is not None,
+            cutout=self.alpha is not None,
         )
         logs = []
         self._run(commands, logs)
@@ -111,7 +119,7 @@ class Session:
                     )
                     self.detections = detections
                     self.detected, self.selection = True, target
-                    self.masks, self.segmented, self.poses = [], False, []
+                    self.masks, self.segmented, self.poses, self.colours = [], False, [], None
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
                     logs.append(f"Detected {len(detections)} object(s) matching {target}.")
                 elif kind == "segment":
@@ -169,6 +177,46 @@ class Session:
                     logs.append(
                         f"Blur score: {self.blur['score']:.2f} — {'possibly blurry' if self.blur['possibly_blurry'] else 'detail detected'} (heuristic, threshold 100)."
                     )
+                elif kind == "check_exposure":
+                    from vexa.analysis import check_exposure
+
+                    self.exposure = check_exposure(self.image)
+                    verdict = (
+                        "dark"
+                        if self.exposure["dark"]
+                        else "bright"
+                        if self.exposure["bright"]
+                        else "balanced"
+                    )
+                    logs.append(
+                        f"Brightness {self.exposure['brightness']:.2f} (0 black, 1 white): {verdict}; "
+                        f"{self.exposure['dark_share']:.0%} near black, "
+                        f"{self.exposure['bright_share']:.0%} near white."
+                    )
+                elif kind == "colour":
+                    self._colour(target, logs)
+                elif kind == "record_colours":
+                    self._record(
+                        "colours",
+                        "; ".join(f"{c['object']} {c['colour']}" for c in self.colours),
+                        logs,
+                    )
+                elif kind == "where":
+                    self._where(target, logs)
+                elif kind == "remove_background":
+                    from vexa import background
+
+                    if self.masks:
+                        self.alpha = background.from_masks(self.image.shape, self.masks)
+                        how = f"kept {len(self.masks)} segmented object(s)"
+                    else:
+                        self.alpha = background.foreground(self.image)
+                        how = "kept the main subject"
+                    kept = float((self.alpha > 127).mean())
+                    logs.append(
+                        f"Removed the background: {how}, {kept:.0%} of the image. "
+                        "show image saves it as a transparent PNG."
+                    )
                 elif kind == "print_ocr":
                     logs.extend(region.text for region in self.text_regions)
                     if not self.text_regions:
@@ -186,7 +234,7 @@ class Session:
                     logs.append(f"Drew {len(self.detections)} bounding box(es).")
                 elif kind in {"count", "print_count"}:
                     value = self._count(target)
-                    name = f"pose {target[6:]}" if target.startswith(":pose:") else target
+                    name = _subject_name(target)
                     self.counts[name] = value
                     logs.append(f"{name}: {value}")
                 elif kind in TRANSFORMS:
@@ -244,7 +292,7 @@ class Session:
 
                     self.detections = locate(self.image, target)
                     self.detected, self.selection = True, target
-                    self.masks, self.segmented, self.poses = [], False, []
+                    self.masks, self.segmented, self.poses, self.colours = [], False, [], None
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
                     logs.append(f'Located {len(self.detections)} region(s) matching "{target}".')
                 elif kind in {"blur", "pixelate"}:
@@ -291,7 +339,9 @@ class Session:
                     logs.append(f"Saved {len(xyz)} points to {target} (relative scale).")
                 elif kind == "record_count":
                     column = (
-                        target[6:] if target.startswith(":pose:") else _COLUMNS.get(target, target)
+                        target[6:]
+                        if isinstance(target, str) and target.startswith(":pose:")
+                        else _COLUMNS.get(target, _subject_name(target))
                     )
                     self._record(column, self._count(target), logs)
                 elif kind == "record_text":
@@ -301,7 +351,10 @@ class Session:
                 elif kind == "save_csv":
                     self._save_csv(target, logs)
                 elif kind == "show":
-                    success, encoded = cv2.imencode(".png", self.image)
+                    pixels = self.image
+                    if self.alpha is not None:
+                        pixels = cv2.merge([*cv2.split(pixels), self.alpha])
+                    success, encoded = cv2.imencode(".png", pixels)
                     if not success:
                         raise VexaError("Could not encode the result image.")
                     self.shown = encoded.tobytes()
@@ -312,6 +365,8 @@ class Session:
                 raise
 
     def _count(self, subject):
+        if isinstance(subject, tuple):
+            return len(self._matching(subject))
         if subject == ":text":
             return len(self.text_regions)
         if subject == ":masks":
@@ -330,7 +385,70 @@ class Session:
             raise VexaError(unknown_label(subject, labels.values()))
         return sum(subject == "all" or item.label == subject for item in self.detections)
 
+    def _matching(self, subject):
+        """Detections that satisfy a colour, area or relation subject."""
+        from vexa import analysis
+
+        kind, word, label, *other = subject
+        self._count(label)  # rejects labels the detector does not know
+        items = [d for d in self.detections if label in ("all", d.label)]
+        if kind == "colour":
+            named = {id(c["detection"]) for c in self.colours if c["colour"] == word}
+            return [d for d in items if id(d) in named]
+        if kind == "area":
+            height, width = self.image.shape[:2]
+            return [d for d in items if analysis.in_area(d.box, word, width, height)]
+        self._count(other[0])
+        others = [d for d in self.detections if other[0] in ("all", d.label)]
+        return [
+            d
+            for d in items
+            if any(o is not d and analysis.related(d.box, o.box, word) for o in others)
+        ]
+
+    def _numbered(self, label):
+        """(name, detection) pairs such as ("car 2", …) for one label or all."""
+        self._count(label)  # rejects labels the detector does not know
+        numbers = {}
+        for item in self.detections:
+            if label in ("all", item.label):
+                numbers[item.label] = numbers.get(item.label, 0) + 1
+                yield f"{item.label} {numbers[item.label]}", item
+
+    def _colour(self, label, logs):
+        from vexa.analysis import colour_of
+        from vexa.segmentation import match_mask
+
+        self.colours = []
+        for name, item in self._numbered(label):
+            mask = match_mask(item.box, self.masks, item.label) if self.masks else None
+            colour, bgr = colour_of(self.image, item.box, mask)
+            if colour:
+                rgb = [bgr[2], bgr[1], bgr[0]]
+                self.colours.append(
+                    {"object": name, "colour": colour, "rgb": rgb, "detection": item}
+                )
+        if not self.colours:
+            logs.append(f"No {label} to name a colour for.")
+        logs.extend(f"{c['object']}: {c['colour']}" for c in self.colours)
+
+    def _where(self, label, logs):
+        from vexa.analysis import where
+
+        height, width = self.image.shape[:2]
+        self.positions = [
+            {"object": name, "position": where(item.box, width, height)}
+            for name, item in self._numbered(label)
+        ]
+        if not self.positions:
+            logs.append(f"No {label} to place.")
+        logs.extend(f"{p['object']}: {p['position']}" for p in self.positions)
+
     def _holds(self, condition):
+        if condition[0] == "image":
+            if condition[1] == "blurry":
+                return self.blur["possibly_blurry"]
+            return self.exposure[condition[1]]
         if condition[0] == "caption":
             return condition[1].casefold() in (self.caption or "").casefold()
         if condition[0] == "contains":
@@ -529,7 +647,25 @@ class Session:
             "distances": [dict(item) for item in self.distances],
             "poses": [_pose_result(item) for item in self.poses],
             "caption": self.caption,
+            "colours": [
+                {k: v for k, v in c.items() if k != "detection"} for c in self.colours or []
+            ],
+            "positions": [dict(item) for item in self.positions],
+            "exposure": self.exposure,
+            "cutout": None if self.alpha is None else round(float((self.alpha > 127).mean()), 3),
         }
+
+
+def _subject_name(subject):
+    """Count and column name: "pose sitting", "red car", "car in left", "person left of car"."""
+    if isinstance(subject, tuple):
+        kind, word, label, *other = subject
+        if kind == "colour":
+            return f"{word} {label}"
+        if kind == "area":
+            return f"{label} in {word}"
+        return f"{label} {word} {other[0]}"
+    return f"pose {subject[6:]}" if subject.startswith(":pose:") else subject
 
 
 def _pose_text(item):

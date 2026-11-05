@@ -311,6 +311,51 @@ These commands use Florence-2-base, a 230-million-parameter image-to-text model,
 
 `locate` understands descriptions the object detector cannot: colours, parts, materials and objects outside its 80 labels. It is grounding, not exhaustive detection: it usually returns every instance of common things like people, but may return only one of several small objects. For counting many objects of a known label, `detect` is faster and more complete. Captions are generated text: they can name the wrong vehicle or miss details, so check `if caption contains …` filters on a few images first. Transforms clear the caption.
 
+## Colours, positions and image checks
+
+```vexa
+for each image in "photos/"
+  check exposure
+  if image dark
+    print "too dark to judge"
+  else
+    detect car
+    colour car
+    record count colour red car
+    record count car in left
+  end
+end
+save csv "cars.csv"
+```
+
+These commands need no model and run in milliseconds.
+
+| Command | Requires | Effect |
+| --- | --- | --- |
+| `colour LABEL` / `color LABEL` | `detect` | Names the main colour of each object: red, orange, yellow, green, blue, purple, pink, brown, black, gray or white. |
+| `count colour red car` | `colour` | Counts objects of that label and colour. Also in `if` and `record count`. |
+| `record colours` | `colour` | Adds a `colours` column, e.g. `car 1 red; car 2 white`. |
+| `where LABEL` | `detect` | Places each object on a 3 × 3 grid: `top left`, `top`, `top right`, `left`, `centre`, `right`, `bottom left`, `bottom`, `bottom right`. |
+| `count car in left` | `detect` | Counts objects whose centre lies in the `left`, `right`, `top` or `bottom` half, or the middle third both ways (`centre` or `center`). |
+| `count person left of car` | `detect` | Counts people whose centre lies past the left edge of some car. Also `right of`, `above`, `below`. |
+| `check exposure` | `load` | Reports brightness (0 black, 1 white) and the share of near-black and near-white pixels. |
+| `if image dark` / `if image bright` | `check exposure` | Dark: brightness below 0.25 or over half the pixels near black; bright likewise. |
+| `if image blurry` | `check blur` | The blur score is below 100. |
+
+The colour is the largest k-means cluster of the object's pixels: its mask after `segment detections`, otherwise the middle 60% of its box, which holds less background. Simple hue, saturation and brightness rules name it, so shadows, tinted light and patterned objects can shift the answer; check a few images first. A new `detect` or `locate` clears colours.
+
+## Background removal
+
+```vexa
+load "dog.jpg"
+detect dog
+segment detections
+remove background
+show image
+```
+
+`remove background` makes everything except the subject transparent; `show image` saves a PNG with an alpha channel. After `segment detections` it keeps exactly the segmented objects, with no extra model. Otherwise it keeps the most prominent subject predicted by U²-Net-p (4.6 MB, `vexa model download background`, about 50 ms on CPU at 320 × 320, so fine hair edges are soft). Detection, drawing and counting still work afterwards on the full image. Rotate, crop, style and translate must come before it, since they would move the pixels under the transparency.
+
 ## Supported object labels
 
 The bundled YOLO11 nano ONNX model recognises these 80 COCO labels. Use the spellings exactly as listed; some spellings are intentionally unusual. `all` is Vexa's selector for every class, not a model label. Quote labels containing spaces.

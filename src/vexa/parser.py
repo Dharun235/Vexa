@@ -14,6 +14,28 @@ TRANSFORMS = {"rotate", "flip_horizontal", "flip_vertical", "resize", "scale", "
 _SUBJECTS = {"text_subject": ":text", "masks_subject": ":masks", "codes_subject": ":codes"}
 
 
+_COMPOUND = {
+    "colour_subject": "colour",
+    "count_colour": "colour",
+    "area_subject": "area",
+    "count_area": "area",
+    "relation_subject": "relation",
+    "count_relation": "relation",
+}
+
+
+def _compound(node, data, children):
+    """A subject such as ("colour", "red", "car"), ("area", "left", "car") or
+    ("relation", "left of", "person", "car")."""
+    kind = _COMPOUND[data]
+    if kind == "colour":
+        return (kind, str(children[0]).lower(), _value(node, children[1]))
+    if kind == "area":
+        return (kind, str(children[1]), _value(node, children[0]))
+    relation = " ".join(str(children[1]).split())
+    return (kind, relation, _value(node, children[0]), _value(node, children[2]))
+
+
 def _value(node, token):
     """A label, string or number from a token or a target/subject subtree."""
     if isinstance(token, Tree):
@@ -21,6 +43,8 @@ def _value(node, token):
             return _SUBJECTS[token.data]
         if token.data == "pose_subject":
             return ":pose:" + _value(node, token.children[0])
+        if token.data in _COMPOUND:
+            return _compound(node, token.data, token.children)
         token = token.children[0]
     if token.type == "ESCAPED_STRING":
         try:
@@ -60,6 +84,8 @@ def _command(node):
         return Command(kind, argument, line, column)
     if kind in {"measure_gap", "translate"}:
         return Command(kind, tuple(_value(node, child) for child in children), line, column)
+    if kind in _COMPOUND:  # count red car, count car in left, count person left of car
+        return Command("count", _compound(node, kind, children), line, column)
     if kind == "count_pose":  # count pose "sitting" is count over the :pose:sitting subject
         return Command("count", ":pose:" + _value(node, children[0]), line, column)
     if kind in TRANSFORMS:
@@ -78,6 +104,8 @@ def _condition(node):
         return ("contains", _value(node, node.children[0]))
     if node.data == "caption_condition":
         return ("caption", _value(node, node.children[0]))
+    if node.data == "image_condition":
+        return ("image", str(node.children[0]))
     subject, operator, number = node.children
     return ("count", _value(node, subject), str(operator), float(number))
 

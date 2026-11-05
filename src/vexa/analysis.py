@@ -3,6 +3,7 @@
 import logging
 
 import cv2
+import numpy as np
 
 from vexa.ast_nodes import VexaError
 
@@ -66,3 +67,116 @@ def check_blur(image):
         "analysis_width": image.shape[1],
         "analysis_height": image.shape[0],
     }
+
+
+def check_exposure(image):
+    """Mean brightness and the share of near-black and near-white pixels."""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    brightness = float(gray.mean()) / 255
+    dark_share = float((gray < 30).mean())
+    bright_share = float((gray > 225).mean())
+    return {
+        "brightness": round(brightness, 3),
+        "dark_share": round(dark_share, 3),
+        "bright_share": round(bright_share, 3),
+        "dark": brightness < 0.25 or dark_share > 0.5,
+        "bright": brightness > 0.8 or bright_share > 0.5,
+    }
+
+
+COLOURS = ("red", "orange", "yellow", "green", "blue", "purple", "pink", "brown", "black", "gray", "white")  # fmt: skip
+MAX_COLOUR_PIXELS = 4000
+
+
+def name_colour(bgr):
+    """A plain colour name for one BGR value, from simple hue, saturation and value rules."""
+    hue, saturation, value = (
+        int(v) for v in cv2.cvtColor(np.uint8([[bgr]]), cv2.COLOR_BGR2HSV)[0, 0]
+    )
+    degrees = hue * 2
+    if value < 50:
+        return "black"
+    if saturation < 45:
+        return "white" if value > 190 else "black" if value < 70 else "gray"
+    if degrees < 12 or degrees >= 340:
+        return "pink" if saturation < 130 and value > 170 else "red"
+    if degrees < 40:
+        return "brown" if value < 150 else "orange"
+    if degrees < 70:
+        return "brown" if value < 110 else "yellow"
+    if degrees < 165:
+        return "green"
+    if degrees < 260:
+        return "blue"
+    if degrees < 290:
+        return "purple"
+    return "pink"
+
+
+def colour_of(image, box, mask=None):
+    """Main colour of an object: the largest k-means cluster of its pixels, named.
+
+    Uses the mask's pixels when there is one, otherwise the middle 60% of the box,
+    which holds less background.
+    """
+    if mask is not None:
+        x1, y1, x2, y2 = mask.box
+        pixels = image[y1:y2, x1:x2][mask.pixels[: y2 - y1, : x2 - x1]]
+    else:
+        x1, y1, x2, y2 = box
+        dx, dy = (x2 - x1) // 5, (y2 - y1) // 5
+        pixels = image[y1 + dy : max(y1 + dy + 1, y2 - dy), x1 + dx : max(x1 + dx + 1, x2 - dx)]
+        pixels = pixels.reshape(-1, 3)
+    if not len(pixels):
+        return None, None
+    step = max(1, len(pixels) // MAX_COLOUR_PIXELS)
+    samples = np.float32(pixels[::step])
+    clusters = min(3, len(samples))
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
+    cv2.setRNGSeed(0)  # the same image always gives the same colour
+    _, labels, centres = cv2.kmeans(samples, clusters, None, criteria, 2, cv2.KMEANS_PP_CENTERS)
+    main = centres[np.bincount(labels.ravel(), minlength=clusters).argmax()]
+    bgr = tuple(round(float(v)) for v in main)
+    return name_colour(bgr), bgr
+
+
+AREAS = ("left", "right", "top", "bottom", "centre", "center")
+RELATIONS = ("left of", "right of", "above", "below")
+
+
+def _centre(box):
+    return (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+
+
+def in_area(box, area, width, height):
+    """Halves for left, right, top and bottom; the middle third both ways for centre."""
+    x, y = _centre(box)
+    if area in ("centre", "center"):
+        return width / 3 <= x <= 2 * width / 3 and height / 3 <= y <= 2 * height / 3
+    return {
+        "left": x < width / 2,
+        "right": x > width / 2,
+        "top": y < height / 2,
+        "bottom": y > height / 2,
+    }[area]
+
+
+def related(box, other, relation):
+    """True when the centre of box lies past the matching edge of other."""
+    x, y = _centre(box)
+    return {
+        "left of": x < other[0],
+        "right of": x > other[2],
+        "above": y < other[1],
+        "below": y > other[3],
+    }[relation]
+
+
+def where(box, width, height):
+    """Position on a 3 × 3 grid in words, e.g. "top left" or "centre"."""
+    x, y = _centre(box)
+    row = ("top", "middle", "bottom")[min(2, int(3 * y / height))]
+    column = ("left", "centre", "right")[min(2, int(3 * x / width))]
+    if row == "middle":
+        return column
+    return row if column == "centre" else f"{row} {column}"

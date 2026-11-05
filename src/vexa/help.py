@@ -3,7 +3,7 @@
 TOPICS = {
     "load": 'load "image.jpg" — start again from the original image (from --image, or the current image inside a for each loop) and clear prior results. The quoted name is only a label.',
     "detect": "detect person / detect all — find objects in the current image using CPU inference. Optional: detect person confidence 0.7 (0 to 1; default 0.25).\ndetect face — find faces with the YuNet face detector (after vexa model download faces, 232 KB; default confidence 0.6).",
-    "count": 'count person / count all — count the latest object detections.\ncount text — count OCR text lines after ocr.\ncount masks — count nonempty masks after segment detections.\ncount pose standing — count people in a posture after estimate poses: standing, sitting, lying, "hand up" or "hands up".',
+    "count": 'count person / count all — count the latest object detections.\ncount text — count OCR text lines after ocr.\ncount masks — count nonempty masks after segment detections.\ncount pose standing — count people in a posture after estimate poses: standing, sitting, lying, "hand up" or "hands up".\ncount colour red car — count objects of a colour after colour car.\ncount car in left — count objects whose centre is in the left, right, top or bottom half, or the centre third.\ncount person left of car — count objects left of, right of, above or below another object.',
     "draw": "draw boxes — annotate object detections.\ndraw text — outline and number OCR text regions.\ndraw masks — overlay the latest segmentation masks.\ndraw depth — replace the image with its depth map (bright is near, dark is far) after estimate depth.\ndraw poses — draw each person's skeleton after estimate poses.",
     "print": 'print "Hello" — print literal text.\nprint person — count objects.\nprint text — print the latest OCR text.\nprint masks — count the latest nonempty masks.',
     "show": "show image — save the current image to the --output PNG path.",
@@ -16,15 +16,18 @@ TOPICS = {
     "scan": "scan codes — decode QR codes and barcodes; print their format and content. Does not open links.",
     "find": 'find text "TOTAL" — case-insensitive literal search in the latest OCR lines; prints matches and positions. Run ocr first.',
     "inspect": "inspect image — report working-image dimensions, channels, color order and pixel type.",
-    "check": "check blur — report a Laplacian detail score and a rough blur assessment; not a quality guarantee.",
-    "if": 'if count person > 3 … end — run the indented commands only when the condition holds; optional else. Conditions: count LABEL / count text / count masks / count codes / count pose POSTURE compared with < <= > >= == !=, or text contains "TOTAL", or caption contains "dog".',
+    "check": "check blur — report a Laplacian detail score and a rough blur assessment; not a quality guarantee.\ncheck exposure — report brightness (0 black, 1 white) and whether the image looks dark or bright. Then if image blurry / if image dark / if image bright … end.",
+    "colour": "colour car / colour all — name the main colour of each detected object: red, orange, yellow, green, blue, purple, pink, brown, black, gray or white (also spelled color). Uses masks after segment detections. Then count colour red car or record colours. Lighting and shadows can shift colours.",
+    "where": "where car / where all — say where each detected object is on a 3 × 3 grid: top left, top, top right, left, centre, right, bottom left, bottom or bottom right.",
+    "remove": "remove background — make everything but the main subject transparent with U²-Net-p on CPU (after vexa model download background, 4.6 MB). After segment detections it keeps exactly the segmented objects instead, with no model. show image saves a transparent PNG. Use it after rotate, crop and style.",
+    "if": 'if count person > 3 … end — run the indented commands only when the condition holds; optional else. Conditions: count LABEL / count text / count masks / count codes / count pose POSTURE compared with < <= > >= == !=, or text contains "TOTAL", or caption contains "dog", or image blurry / image dark / image bright. Counts can use colour, area and relation subjects: count colour red car, count car in left, count person left of car.',
     "for": 'for each image in "photos/" … end — run the commands once per JPEG, PNG or WebP image in the folder; each image starts loaded. Not nested.\nfor each frame in "clip.mp4" every 1 second — the same for video frames, closed with end (.mp4, .mov, .avi, .mkv, .webm); each row is named by its time, e.g. 2s.',
     "reference": 'reference "coin" 23.25 mm — detect a reference object of known size (its longest side; units mm, cm or m) so measure reports real units instead of pixels.',
     "measure": 'measure bolt — width × height of every bolt in the latest detections.\nmeasure gap between "bolt" and "nut" — shortest edge-to-edge gap between them (two of the same label works too). Pixels, or real units after reference.',
     "estimate": "estimate depth — predict how far every pixel is from the camera with Depth Anything V2 Small on CPU (after vexa model download depth, 27 MB). Relative only: closeness 1 is the nearest point, 0 the farthest; no metres. Cleared by transforms.\nestimate poses — find 17 body keypoints for every detected person with RTMPose-s on CPU (after detect person, and vexa model download pose, 20 MB). Reports joint angles and postures: standing, sitting, lying, hand up, hands up. Postures are simple rules on the keypoints.",
     "rank": "rank person by distance / rank all by distance — order the latest detections nearest first by closeness (0 to 1), after estimate depth and detect. Uses masks after segment detections, which is more exact for overlapping objects.",
     "export": 'export points "scene.ply" — save the image as a coloured 3D point cloud from its depth (relative scale; opens in MeshLab or Blender), after estimate depth.',
-    "record": "record count person / record count text / record text / record codes / record measurements / record distances / record poses / record count pose sitting / record caption — add a column to the current image's row of results.",
+    "record": "record count person / record count text / record text / record codes / record measurements / record distances / record poses / record count pose sitting / record caption / record colours / record count colour red car — add a column to the current image's row of results.",
     "save": 'save csv "results.csv" — write all recorded rows to a CSV file (relative path). Use after a for each loop.',
     "rotate": "rotate 90 — turn the image counterclockwise by any angle (negative turns clockwise). 90, 180 and 270 are lossless; other angles enlarge the canvas. Clears earlier results.",
     "flip": "flip horizontal / flip vertical — mirror the image, which also mirrors text. For an upside-down image use rotate 180 instead. Clears earlier results.",
@@ -40,6 +43,7 @@ TOPICS = {
 
 
 TOPICS["scale"] = TOPICS["resize"]
+TOPICS["color"] = TOPICS["colour"]
 
 
 def help_text(topic=None):
