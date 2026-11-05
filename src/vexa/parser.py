@@ -15,12 +15,19 @@ _PARSER = Lark(
 
 
 TRANSFORMS = {"rotate", "flip_horizontal", "flip_vertical", "resize", "scale", "crop", "move"}
-_SUBJECTS = {"text_subject": ":text", "masks_subject": ":masks", "codes_subject": ":codes"}
+_SUBJECTS = {
+    "text_subject": ":text",
+    "masks_subject": ":masks",
+    "codes_subject": ":codes",
+    "tracks_subject": ":tracks",
+}
 _COMPOUND = {
     "colour_subject": "colour",
     "count_colour": "colour",
     "area_subject": "area",
     "count_area": "area",
+    "zone_subject": "zone",
+    "count_zone": "zone",
     "relation_subject": "relation",
     "count_relation": "relation",
 }
@@ -34,7 +41,7 @@ def _compound(node, data, children):
     kind = _COMPOUND[data]
     if kind == "colour":
         return (kind, str(children[0]).lower(), _value(node, children[1]))
-    if kind == "area":
+    if kind in ("area", "zone"):
         return (kind, str(children[1]), _value(node, children[0]))
     relation = " ".join(str(children[1]).split())
     return (kind, relation, _value(node, children[0]), _value(node, children[2]))
@@ -130,6 +137,39 @@ def _expr(node):
         name, *arguments = children
         arguments = tuple(_expr(a) for a in arguments if a is not None)
         return Expr("call", str(name), arguments, line, column)
+    if kind == "method_call":  # helpers.f(x): a function of a library used "as helpers"
+        base, name, *arguments = children
+        base = _expr(base)
+        if base.kind != "variable":
+            raise VexaError(
+                'Only functions of a library (use "file.vexa" as name) are called with a dot.',
+                line,
+                "syntax",
+                column,
+            )
+        arguments = tuple(_expr(a) for a in arguments if a is not None)
+        return Expr("call", f"{base.value}.{name}", arguments, line, column)
+    if kind in ("contains", "not_contains"):
+        return Expr(kind, None, (_expr(children[0]), _expr(children[1])), line, column)
+    if kind == "comprehension":  # [expr for each name in source if condition]
+        value, name, source, *condition = children
+        args = (_expr(value), _expr(source)) + ((_expr(condition[0]),) if condition else ())
+        return Expr("comprehension", str(name), args, line, column)
+    if kind == "map_literal":
+        entries = []
+        for entry in children:
+            if entry is None:
+                continue
+            key, value = entry.children
+            if entry.data == "computed_entry":
+                key = _expr(key)
+            else:
+                key_line, key_column = _position(key)
+                key = Expr("string", _value(node, key), line=key_line, column=key_column)
+            entries.append(Expr("entry", None, (key, _expr(value)), line, column))
+        return Expr("map", None, tuple(entries), line, column)
+    if kind == "image_change":
+        return Expr("image_change", line=line, column=column)
     if kind == "count_value":
         return Expr("count", _value(node, children[0]), line=line, column=column)
     if kind in ("text_contains", "caption_contains"):
@@ -157,13 +197,17 @@ def _expr(node):
 
 
 def _params(node):
-    params = []
+    """((name, type), …) and the default expression of each parameter (or None)."""
+    params, defaults = [], []
     for param in node.children if node is not None else ():
         if param is None:
             continue
-        name, *annotation = param.children
-        params.append((str(name), str(annotation[0]) if annotation else None))
-    return tuple(params)
+        name, *rest = param.children
+        annotation = next((str(t) for t in rest if isinstance(t, Token)), None)
+        default = next((_expr(t) for t in rest if isinstance(t, Tree)), None)
+        params.append((str(name), annotation))
+        defaults.append(default)
+    return tuple(params), tuple(defaults)
 
 
 def _command(node):
@@ -181,8 +225,31 @@ def _command(node):
         argument = (str(children[0]), _expr(children[1]))
         return Command(kind, argument, line, column, body=_block(children[2]))
     if kind == "define":
-        params = _params(children[1]) if len(children) > 2 else ()
-        return Command(kind, (str(children[0]), params), line, column, body=_block(children[-1]))
+        name, *rest, body = children
+        header = next((c for c in rest if isinstance(c, Tree)), None)
+        params, defaults = _params(header)
+        returns = next((str(c) for c in rest if isinstance(c, Token)), None)
+        return Command(
+            kind, (str(name), params), line, column, body=_block(body), extra=(returns, defaults)
+        )
+    if kind == "try_block":
+        return Command(
+            kind, None, line, column, body=_block(children[0]), orelse=_block(children[1])
+        )
+    if kind in ("break_loop", "continue_loop"):
+        return Command(kind.removesuffix("_loop"), None, line, column)
+    if kind == "use":
+        alias = str(children[1]) if len(children) > 1 else None
+        return Command(kind, _value(node, children[0]), line, column, extra=alias)
+    if kind == "library_call":
+        base, name, *arguments = children
+        arguments = tuple(_expr(a) for a in arguments if a is not None)
+        return Command("call_statement", (f"{base}.{name}", arguments), line, column)
+    if kind == "zone":
+        name, *numbers = children
+        return Command(kind, (str(name), *(float(n) for n in numbers)), line, column)
+    if kind == "count_tracks":
+        return Command("count", ":tracks", line, column)
     if kind in ("repeat", "while_loop"):
         return Command(
             kind.removesuffix("_loop"), _expr(children[0]), line, column, body=_block(children[1])
@@ -190,8 +257,14 @@ def _command(node):
     if kind == "expect":
         message = _value(node, children[1]) if len(children) > 1 else None
         return Command(kind, (_expr(children[0]), message), line, column)
-    if kind in ("let", "record_value"):
-        return Command(kind, (str(children[0]), _expr(children[1])), line, column)
+    if kind == "let":
+        annotation = str(children[1]) if len(children) > 2 else None
+        return Command(
+            kind, (str(children[0]), _expr(children[-1])), line, column, extra=annotation
+        )
+    if kind in ("record_value", "const", "parameter"):
+        name = "param" if kind == "parameter" else kind
+        return Command(name, (str(children[0]), _expr(children[1])), line, column)
     if kind == "return":
         return Command(kind, _expr(children[0]) if children else None, line, column)
     if kind == "call_statement":
@@ -215,7 +288,9 @@ def _command(node):
     if kind in TRANSFORMS:
         return Command(kind, tuple(float(child) for child in children), line, column)
     argument = _value(node, children[0]) if children else None
-    confidence = float(children[1]) if len(children) > 1 else None
+    confidence = _expr(children[1]) if len(children) > 1 else None
+    if confidence is not None and confidence.kind == "number":
+        confidence = confidence.value  # detect person confidence 0.7
     return Command(kind, argument, line, column, confidence)
 
 
@@ -253,7 +328,7 @@ def _syntax_hint(source, line):
     lines = source.splitlines()
     words = lines[line - 1].split() if 0 < line <= len(lines) else []
     if words and words[0] in {"end", "else"}:
-        return f"{words[0]} without a matching if, for each or define."
+        return f"{words[0]} without a matching if, try, loop or define."
     if words and words[0] in TOPICS:
         return f"Invalid {words[0]} command. Use: {TOPICS[words[0]]}"
     return "Invalid command. Run vexa help for supported syntax."
@@ -275,7 +350,7 @@ def parse(source: str) -> list[Command]:
                 _syntax_hint(source, exc.line), exc.line, "syntax", column=exc.column
             ) from exc
         raise VexaError(
-            "A block is missing its end. Close every if, for each and define with end.",
+            "A block is missing its end. Close every if, try, loop and define with end.",
             len(source.splitlines()),
             "syntax",
         ) from exc
@@ -283,3 +358,48 @@ def parse(source: str) -> list[Command]:
     if not commands:
         raise VexaError("Program contains no commands.", kind="syntax")
     return commands
+
+
+_OPENING = {"if", "for", "define", "repeat", "while", "try"}
+
+
+def _neutral(line):
+    """A stand-in for a bad line that keeps the block structure around it."""
+    indent = line[: len(line) - len(line.lstrip())]
+    words = line.split()
+    first = words[0] if words else ""
+    if first in _OPENING:
+        return indent + ("try" if first == "try" else "if true")
+    if first == "else" and len(words) > 1 and words[1] == "if":
+        return indent + "else if true"
+    return ""
+
+
+def parse_errors(source, limit=20):
+    """Every syntax error in a program, as far as they can be found: after each error the bad
+    line is replaced by a stand-in and parsing starts again."""
+    errors, lines = [], source.splitlines()
+    for _ in range(limit):
+        try:
+            parse("\n".join(lines))
+            return errors
+        except VexaError as exc:
+            errors.append(exc)
+            index = (exc.line or 0) - 1
+            if (
+                exc.kind != "syntax"
+                or not 0 <= index < len(lines)
+                or "missing its end" in exc.message
+            ):
+                return errors
+            replacement = (
+                ""
+                if exc.message.endswith("matching if, try, loop or define.")
+                else (_neutral(lines[index]))
+            )
+            if replacement == lines[index]:
+                return errors
+            lines[index] = replacement
+            if not "".join(lines).strip():
+                return errors
+    return errors

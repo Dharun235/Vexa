@@ -6,6 +6,9 @@ Three passes over the AST:
 2. optimise: fold constant expressions, drop branches that can never run,
    unused variables and functions, and repeated analyses (a second
    estimate depth, ocr or caption on unchanged pixels);
+   It also puts the values of const declarations where they are used, so
+   `const DEBUG = false` removes `if DEBUG … end`, and drops statements
+   after return, break or continue;
 3. generate: Vexa control flow, variables and functions become Python's own;
    vision commands call the shared runtime. Where types are known to be
    numbers, operators compile to plain Python operators.
@@ -62,9 +65,12 @@ _READS = {
     "rank_distance",
     "reference",
     "estimate_poses",
+    "zone",
+    "track",
+    "compare_image",
 }
 _OBJECT_TARGETS = {"blur", "pixelate", "measure", "colour", "where", "draw_objects", "count",
-                   "record_count", "rank_distance"}  # fmt: skip
+                   "record_count", "rank_distance", "track"}  # fmt: skip
 
 
 @dataclass
@@ -74,6 +80,8 @@ class Stats:
     variables: int = 0
     functions: int = 0
     analyses: int = 0
+    constants: int = 0
+    unreachable: int = 0
     notes: list = field(default_factory=list)
 
     def summary(self):
@@ -83,6 +91,8 @@ class Stats:
             (self.variables, "unused variable(s) removed"),
             (self.functions, "unused function(s) removed"),
             (self.analyses, "repeated analysis step(s) removed"),
+            (self.constants, "constant use(s) replaced by their value"),
+            (self.unreachable, "unreachable statement(s) removed"),
         ]
         done = [f"{count} {text}" for count, text in parts if count]
         return "; ".join(done) if done else "nothing to optimise"
@@ -118,14 +128,18 @@ def _command_exprs(command):
     argument = command.argument
     if command.condition is not None:
         yield command.condition
+    if isinstance(command.confidence, Expr):
+        yield command.confidence
     if isinstance(argument, Expr):
         yield argument
-    elif command.kind in ("let", "record_value", "for_objects"):
+    elif command.kind in ("let", "record_value", "for_objects", "const", "param"):
         yield argument[1]
     elif command.kind == "expect":
         yield argument[0]
     elif command.kind == "call_statement":
         yield from argument[1]
+    if command.kind == "define" and command.extra:
+        yield from (d for d in command.extra[1] if d is not None)
 
 
 def _walk(commands):
@@ -226,19 +240,95 @@ def _fold_command(command, stats):
     argument = command.argument
     if isinstance(argument, Expr):
         argument = fold(argument, stats)
-    elif command.kind in ("let", "record_value", "for_objects"):
+    elif command.kind in ("let", "record_value", "for_objects", "const", "param"):
         argument = (argument[0], fold(argument[1], stats))
     elif command.kind == "call_statement":
         argument = (argument[0], tuple(fold(a, stats) for a in argument[1]))
     elif command.kind == "expect":
         argument = (fold(argument[0], stats), argument[1])
     condition = fold(command.condition, stats) if command.condition is not None else None
-    return replace(command, argument=argument, condition=condition)
+    confidence = command.confidence
+    if isinstance(confidence, Expr):
+        confidence = fold(confidence, stats)
+    return replace(command, argument=argument, condition=condition, confidence=confidence)
+
+
+def _substitute(expr, values_, stats, row=False):
+    """expr with the constants in values_ replaced by their literal values."""
+    if expr.kind == "variable" and expr.value in values_:
+        if not (row and (expr.value == "it" or expr.value in PROPERTIES)):
+            stats.constants += 1
+            return replace(values_[expr.value], line=expr.line, column=expr.column)
+        return expr
+    if expr.kind == "comprehension" and expr.value in values_:
+        values_ = {k: v for k, v in values_.items() if k != expr.value}
+    args = []
+    for position, arg in enumerate(expr.args):
+        inner = row or (expr.kind == "where" and position == 1)
+        args.append(_substitute(arg, values_, stats, inner) if isinstance(arg, Expr) else arg)
+    return replace(expr, args=tuple(args))
+
+
+def _map_exprs(command, change):
+    """A command with change applied to each expression directly inside it."""
+    argument = command.argument
+    if isinstance(argument, Expr):
+        argument = change(argument)
+    elif command.kind in ("let", "record_value", "for_objects", "const", "param"):
+        argument = (argument[0], change(argument[1]))
+    elif command.kind == "call_statement":
+        argument = (argument[0], tuple(change(a) for a in argument[1]))
+    elif command.kind == "expect":
+        argument = (change(argument[0]), argument[1])
+    extra = command.extra
+    if command.kind == "define" and extra:
+        extra = (extra[0], tuple(change(d) if d is not None else None for d in extra[1]))
+    condition = change(command.condition) if command.condition is not None else None
+    confidence = command.confidence
+    if isinstance(confidence, Expr):
+        confidence = change(confidence)
+    return replace(
+        command, argument=argument, condition=condition, extra=extra, confidence=confidence
+    )
+
+
+def _propagate(commands, stats):
+    """Replace uses of const values that fold to a literal; the const lines then go."""
+    known = {}
+    for command in commands:
+        if command.kind == "const":
+            value = fold(_substitute(command.argument[1], known, Stats()), Stats())
+            name = command.argument[0]
+            if value.kind in _LITERALS and name not in PROPERTIES and name != "it":
+                known[name] = value
+    if not known:
+        return commands
+
+    def block(items, values_):
+        out = []
+        for command in items:
+            if command.kind == "const" and command.argument[0] in known:
+                continue
+            inner = values_
+            if command.kind == "define":
+                shadow = {p for p, _ in command.argument[1]}
+                inner = {k: v for k, v in values_.items() if k not in shadow}
+            command = _map_exprs(command, lambda e, v=inner: _substitute(e, v, stats))
+            out.append(
+                replace(command, body=tuple(block(command.body, inner)),
+                        orelse=tuple(block(command.orelse, inner)))
+            )  # fmt: skip
+        return out
+
+    return block(commands, known)
 
 
 def _optimise_block(commands, stats, unused):
     out, done = [], set()
-    for command in commands:
+    for position, command in enumerate(commands):
+        if out and out[-1].kind in ("return", "break", "continue"):
+            stats.unreachable += len(commands) - position
+            break
         command = _fold_command(command, stats)
         command = replace(
             command,
@@ -286,6 +376,7 @@ def optimise(commands):
         if command.kind == "let":
             unused.add(command.argument[0])
     unused -= _reads(kept)
+    kept = _propagate(kept, stats)
     return _optimise_block(kept, stats, unused), stats
 
 
@@ -297,7 +388,7 @@ def _var(name):
 
 
 def _function(name):
-    return f"f_{name}"
+    return f"f_{name.replace('.', '__')}"
 
 
 class _Emitter:
@@ -349,15 +440,18 @@ def _assigned(commands):
     """Names a block of code sets with let or for each … in, ignoring nested defines."""
     names = set()
     for command in _walk(commands):
-        if command.kind in ("let", "for_objects"):
+        if command.kind in ("let", "for_objects", "const", "param"):
             names.add(command.argument[0])
+        if command.kind == "try_block":
+            names.add("error")
     return names
 
 
 class _Generator:
-    def __init__(self, functions):
+    def __init__(self, functions, constants=()):
         self.out = _Emitter()
         self.functions = functions
+        self.constants = set(constants)  # const and param names, readable in functions too
         self.names = set()  # variables of the code being generated: the program or a function
 
     def expr(self, expr, types, row=None):
@@ -378,13 +472,38 @@ class _Generator:
             ]
             return "(" + " + ".join(parts) + ")"
         if kind == "variable":
+            if row is not None and expr.value == "it":
+                return row
             if row is not None and expr.value in PROPERTIES:
+                if expr.value in self.names:  # where over numbers or text: the variable
+                    return f"({row}.get({expr.value!r}) if isinstance({row}, v.VObject) else {_var(expr.value)})"
                 return f"{row}.get({expr.value!r})"
             return _var(expr.value)
         if kind == "attribute":
-            return f"{self.expr(args[0], types, row)}.get({expr.value!r})"
+            base = self.expr(args[0], types, row)
+            if _type_of(args[0], types, row is not None) == "object":
+                return f"{base}.get({expr.value!r})"
+            return f"v.attribute({base}, {expr.value!r})"  # an object or a map
         if kind == "list":
             return "[" + ", ".join(self.expr(a, types, row) for a in args) + "]"
+        if kind == "map":
+            entries = (
+                f"{self.expr(e.args[0], types, row)}: {self.expr(e.args[1], types, row)}"
+                for e in args
+            )
+            return "{" + ", ".join(entries) + "}"
+        if kind == "comprehension":
+            name, source = _var(expr.value), self.expr(args[1], types, row)
+            outer, self.names = self.names, self.names | {expr.value}
+            value = self.expr(args[0], types, row)
+            condition = f" if {self.expr(args[2], types, row)}" if len(args) > 2 else ""
+            self.names = outer
+            return f"[{value} for {name} in list({source}){condition}]"
+        if kind in ("contains", "not_contains"):
+            test = f"v.contains({self.expr(args[0], types, row)}, {self.expr(args[1], types, row)})"
+            return test if kind == "contains" else f"(not {test})"
+        if kind == "image_change":
+            return "rt.image_change()"
         if kind == "index":
             return f"v.index({self.expr(args[0], types, row)}, {self.expr(args[1], types, row)})"
         if kind == "call":
@@ -447,6 +566,23 @@ class _Generator:
             name, expr = argument
             out.emit(f"{_var(name)} = {self.expr(expr, types)}", line)
             types[name] = _type_of(expr, types) if name not in types else types[name]
+        elif kind == "const":
+            out.emit(f"{_var(argument[0])} = {self.expr(argument[1], types)}", line)
+        elif kind == "param":
+            name = argument[0]
+            out.emit(f"{_var(name)} = rt.param({name!r}, {self.expr(argument[1], types)})", line)
+        elif kind in ("break", "continue"):
+            out.emit(kind, line)
+        elif kind == "try_block":
+            out.emit("try:", line)
+            out.indent += 1
+            self.block(command.body, dict(types))
+            out.indent -= 1
+            out.emit("except VexaError as _error:")
+            out.indent += 1
+            out.emit(f"{_var('error')} = _error.message")
+            self.block(command.orelse, dict(types))
+            out.indent -= 1
         elif kind == "record_value":
             out.emit(f"rt.record({argument[0]!r}, {self.expr(argument[1], types)})", line)
         elif kind == "print_text":
@@ -467,7 +603,8 @@ class _Generator:
         elif kind == "for_objects":
             name, source = argument
             out.emit(f"for {_var(name)} in list({self.expr(source, types)}):", line)
-            inner = {**types, name: "object"}
+            element = "object" if _type_of(source, types) == "objects" else None
+            inner = {**types, name: element}
             out.indent += 1
             self.block(command.body, inner)
             out.indent -= 1
@@ -497,7 +634,12 @@ class _Generator:
         elif kind in ("define", "use"):
             pass  # functions are emitted first, by generate
         else:
-            extra = f", confidence={command.confidence!r}" if command.confidence is not None else ""
+            confidence = command.confidence
+            if isinstance(confidence, Expr):
+                confidence = self.expr(confidence, types)
+            else:
+                confidence = repr(confidence)
+            extra = f", confidence={confidence}" if command.confidence is not None else ""
             extra += self._bind(argument if kind in _OBJECT_TARGETS | {"measure_gap"} else None)
             out.emit(f"rt.do({kind!r}, {argument!r}{extra}, line={line})", line)
 
@@ -525,11 +667,19 @@ class _Generator:
 
     def function(self, command):
         name, params = command.argument
-        self.out.emit(
-            f"def {_function(name)}({', '.join(_var(p) for p, _ in params)}):", command.line
-        )
+        defaults = (command.extra or (None, (None,) * len(params)))[1]
+        names = [
+            _var(p) if d is None else f"{_var(p)}=None"
+            for (p, _), d in zip(params, defaults, strict=True)
+        ]
+        self.out.emit(f"def {_function(name)}({', '.join(names)}):", command.line)
         self.out.indent += 1
-        outer, self.names = self.names, {p for p, _ in params} | _assigned(command.body)
+        for (param, _), default in zip(params, defaults, strict=True):
+            if default is not None:  # defaults are filled in when called, like the interpreter
+                self.out.emit(f"if {_var(param)} is None:")
+                self.out.emit(f"    {_var(param)} = {self.expr(default, {})}")
+        outer = self.names
+        self.names = {p for p, _ in params} | _assigned(command.body) | self.constants
         self.block(command.body, {param: kind for param, kind in params})
         self.names = outer
         self.out.indent -= 1
@@ -538,7 +688,8 @@ class _Generator:
 def generate(commands, source_name="program.vexa"):
     """Python source for checked (and usually optimised) commands."""
     functions = [c for c in commands if c.kind == "define"]
-    generator = _Generator({c.argument[0] for c in functions})
+    constants = {c.argument[0] for c in commands if c.kind in ("const", "param")}
+    generator = _Generator({c.argument[0] for c in functions}, constants)
     out = generator.out
     for text in (
         "#!/usr/bin/env python3",
@@ -550,6 +701,7 @@ def generate(commands, source_name="program.vexa"):
         "import sys",
         "",
         "from vexa import values as v",
+        "from vexa.ast_nodes import VexaError",
         "from vexa.runtime import main",
         "",
         "",
@@ -572,10 +724,12 @@ def generate(commands, source_name="program.vexa"):
     return "\n".join(out.lines) + "\n"
 
 
-def compile_source(source, source_name="program.vexa", optimize=True):
-    """(python source, Stats) for a Vexa program; raises VexaError when it is invalid."""
+def compile_source(source, source_name="program.vexa", optimize=True, base=None):
+    """(python source, Stats) for a Vexa program; raises VexaError when it is invalid.
+
+    base is the folder that use paths are relative to (the program's folder)."""
     commands = parse(source)
-    functions = validate_commands(commands)
+    functions = validate_commands(commands, base=base)
     # Used libraries become part of the program: their defines first, the use lines go.
     library = [f for f in functions.values() if f.origin]
     commands = library + [c for c in commands if c.kind != "use"]

@@ -73,7 +73,7 @@ def replies(output):
 
 def test_language_server_session():
     uri = "file:///t.vexa"
-    text = 'load "a"\ndetect all\nlet car = first detections\nprint car.wid\n'
+    text = 'load "a"\ndetect all\nlet car = first detections\nprint car.widht\n'
     requests = [
         {"id": 1, "method": "initialize", "params": {}},
         {"method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "text": text}}},

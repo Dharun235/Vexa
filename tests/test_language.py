@@ -142,7 +142,7 @@ def test_runtime_errors(fake_vision, scene):
         ('print "a" < 2', "compares numbers"),
         ("print not 3", "not needs true or false"),
         ('load "a"\ndetect all\nlet o = first detections\nprint o.colr', 'Did you mean "color"'),
-        ("let n = 3\nprint n.width", ".width needs an object, but this is a number"),
+        ("let n = 3\nprint n.width", ".width needs an object or a map, but this is a number"),
         ('define f(a: number)\n  return a\nend\nprint f("x")', "f expects a to be a number"),
         ("define f(a)\n  return a\nend\nprint f()", "f takes 1 value"),
         ("define f\n  print 1\nend\nlet x = f()", "returns no value"),

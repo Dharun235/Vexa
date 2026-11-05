@@ -1,0 +1,48 @@
+# A street report: counts per label, zones, settings from the command line and
+# checks that do not stop the program when something is missing.
+# vexa run examples/street-report.vexa --image examples/street.jpg
+# vexa run examples/street-report.vexa --image examples/street.jpg --set busy=2
+
+use "helpers.vexa" as report
+
+param busy = 4
+param minimum = 0.4
+const ROAD = "road"
+
+zone pavement 0 0.55 0.35 1
+zone road 0.35 0.45 1 1
+
+load "street.jpg"
+detect all confidence minimum
+
+# Count every label into a map
+let counts = {}
+for each thing in detections
+  let counts = put(counts, thing.label, get(counts, thing.label, 0) + 1)
+end
+print "counts: {counts}"
+
+# Which objects are on the road, and how wide are the people?
+let on_road = [d.name for each d in detections if d.zone == ROAD]
+print "on the road: {join(on_road, \", \")}"
+let widths = [d.width for each d in detections where label == "person"]
+print "people are {report.spread(widths)} px wide"
+
+if "person" in counts and counts.person >= busy
+  print "busy street ({counts.person} people)"
+else
+  print "quiet street"
+end
+
+# Optional extra: a missing comparison photo must not stop the report
+try
+  compare with "street-empty.jpg"
+  print "changed: {round(image change * 100)}%"
+else
+  print "no comparison photo: {error}"
+end
+
+expect "bus" in keys(counts), "the bus is found"
+draw zones
+draw boxes
+show image

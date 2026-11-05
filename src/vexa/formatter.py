@@ -13,9 +13,9 @@ from vexa.ast_nodes import VexaError
 from vexa.parser import parse
 
 INDENT = "  "
-_OPENERS = re.compile(r"(if|for|define)\b")
+_OPENERS = re.compile(r"(if|for|define|repeat|while|try)\b")
 _STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
-_OPERATORS = re.compile(r"\s*(==|!=|<=|>=|<|>|\+|\*|/|%|=)\s*")
+_OPERATORS = re.compile(r"\s*(->|==|!=|<=|>=|<|>|\+|\*|/|%|=)\s*")
 
 
 def _split_comment(line):

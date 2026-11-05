@@ -31,9 +31,17 @@ NO_IMAGE_NEEDED = {
     "while",
     "expect",
     "use",
+    "const",
+    "param",
+    "break",
+    "continue",
+    "try_block",
+    "zone",
 }
+_LOOPS = {"for_objects", "repeat", "while", "for_each", "for_frames"}
 VIDEO_SUFFIXES = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
-TYPES = ("number", "text", "bool", "object", "objects", "list")
+TYPES = ("number", "text", "bool", "object", "objects", "list", "map")
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_USE_DEPTH = 10
 _OBJECT_TARGETS = {"blur", "pixelate", "measure", "colour", "where", "draw_objects"}
 _IMAGE_CHECKS = {"blurry": ("blur_checked", "check blur"), "dark": ("exposure_checked", "check exposure"), "bright": ("exposure_checked", "check exposure")}  # fmt: skip
@@ -57,6 +65,9 @@ class State:
     blur_checked: bool = False
     exposure_checked: bool = False
     cutout: bool = False
+    compared: bool = False
+    tracking: bool = False  # track has run: objects have ids, count tracks works
+    zones: tuple | None = ()  # zone names defined so far; None when any name may exist
     variables: tuple = ()  # (name, type, generation) for every variable in scope
     generation: int = 0  # increases whenever the pixels move; old objects become stale
 
@@ -76,6 +87,9 @@ _ANYTHING = State(
     coloured=True,
     blur_checked=True,
     exposure_checked=True,
+    compared=True,
+    tracking=True,
+    zones=None,
 )
 
 
@@ -88,6 +102,9 @@ class _Context:
         self.returns = None  # list of return types while checking a function body
         self.pending = None  # state after a function called inside an expression
         self.errors = None  # a list when collecting every error instead of stopping at the first
+        self.constants = {}  # const and param names → type; functions can read them
+        self.loops = 0  # loops around the statement being checked, for break and continue
+        self.started = False  # a top-level command other than use, define, const, param ran
 
     def report(self, error):
         """Raise, or keep the error and carry on when collecting."""
@@ -120,6 +137,7 @@ def validate_commands(
     functions=None,
     base=None,
     errors=None,
+    constants=None,
 ):
     state = State(
         loaded,
@@ -137,10 +155,11 @@ def validate_commands(
         blur_checked,
         exposure_checked,
         cutout,
-        tuple((name, kind, 0) for name, kind in (variables or {}).items()),
+        variables=tuple((name, kind, 0) for name, kind in (variables or {}).items()),
     )
     context = _Context(functions or {})
     context.errors = errors
+    context.constants = dict(constants or {})
     defined = []
     try:
         library = _load_uses(commands, Path(base or "."), [])
@@ -155,19 +174,16 @@ def validate_commands(
             names = [param for param, _ in params]
             if len(set(names)) != len(names):
                 _fail(f"{name} has two parameters with the same name.", command)
-            for param, annotation in params:
-                if annotation not in (None, *TYPES):
-                    _fail(f'Unknown type "{annotation}". Use one of: {", ".join(TYPES)}.', command)
             context.functions[name] = command
             defined.append(command)
+    _constants(commands, state, context)
     for command in defined:  # check every body once, even if it is never called
-        params = tuple(
-            (name, kind or "any", state.generation) for name, kind in command.argument[1]
-        )
         try:
+            params = _param_types(command, context)
+            local = (*_constant_variables(context, state), *params)
             _check_body(
                 command,
-                replace(_ANYTHING, variables=params, generation=state.generation),
+                replace(_ANYTHING, variables=local, generation=state.generation),
                 context,
                 False,
             )
@@ -176,6 +192,68 @@ def validate_commands(
             context.report(exc)
     _validate(commands, state, False, context, top=True)
     return context.functions
+
+
+def _constants(commands, state, context):
+    """Types of the program's const and param values, which functions can read."""
+    for command in commands:
+        if command.kind not in ("const", "param"):
+            continue
+        name, expr = command.argument
+        try:
+            if command.kind == "param" and not _literal(expr, scalar=True):
+                _fail(f"param {name} needs a number, text or true/false as its default.", expr)
+            visible = replace(state, variables=_constant_variables(context, state))
+            context.constants[name] = _value_type(expr, visible, context, False, "")
+            context.pending = None
+        except VexaError as exc:
+            context.report(exc)
+            context.constants[name] = "any"
+
+
+def _constant_variables(context, state):
+    return tuple((name, kind, state.generation) for name, kind in context.constants.items())
+
+
+def _literal(expr, scalar=False):
+    """Is expr a value written out in full: 3, -2, "car", true, [1, 2], {a: 1}?"""
+    if expr.kind in ("number", "string", "bool"):
+        return True
+    if expr.kind == "negate":
+        return expr.args[0].kind == "number"
+    if scalar:
+        return False
+    if expr.kind in ("list", "map", "entry"):
+        return all(_literal(a) for a in expr.args)
+    return False
+
+
+def _param_types(function, context):
+    """(name, type, generation) for each parameter; checks annotations and defaults."""
+    params = function.argument[1]
+    returns, defaults = function.extra or (None, (None,) * len(params))
+    found, seen_default = [], False
+    for (param, annotation), default in zip(params, defaults, strict=True):
+        if annotation not in (None, *TYPES):
+            _fail(f'Unknown type "{annotation}". Use one of: {", ".join(TYPES)}.', function)
+        kind = annotation or "any"
+        if default is not None:
+            seen_default = True
+            constant = default.kind == "variable" and default.value in context.constants
+            if not (_literal(default) or constant):
+                _fail(
+                    f'The default of {param} must be a value written out, e.g. 2 or "car".', default
+                )
+            given = _type(default, State(variables=_constant_variables(context, State())), context)
+            if annotation and not _fits(annotation, given):
+                _fail(f"{param} is {_a(annotation)}, but its default is {_a(given)}.", default)
+            kind = annotation or given
+        elif seen_default:
+            _fail(f"{param} needs a default too: parameters with defaults come last.", function)
+        found.append((param, kind, 0))
+    if returns not in (None, *TYPES):
+        _fail(f'Unknown type "{returns}". Use one of: {", ".join(TYPES)}.', function)
+    return tuple(found)
 
 
 def _fail(message, node):
@@ -218,8 +296,37 @@ def _load_uses(commands, base, stack):
                 raise error
         library = [_from(item, str(target)) for item in library]
         found += _load_uses(library, target.parent, [*stack, str(target)])
-        found += [item for item in library if item.kind == "define"]
+        defines = [item for item in library if item.kind == "define"]
+        if command.extra:  # use "file.vexa" as name: its functions become name.function
+            names = {item.argument[0]: f"{command.extra}.{item.argument[0]}" for item in defines}
+            defines = [_rename(item, names) for item in defines]
+        found += defines
     return found
+
+
+def _rename(node, names):
+    """A command or expression with calls to these functions renamed."""
+    if isinstance(node, Expr):
+        value = names.get(node.value, node.value) if node.kind == "call" else node.value
+        return replace(node, value=value, args=tuple(_rename(a, names) for a in node.args))
+    if isinstance(node, tuple):
+        return tuple(_rename(item, names) for item in node)
+    if isinstance(node, Command):
+        argument = node.argument
+        if node.kind == "define":
+            argument = (names.get(argument[0], argument[0]), argument[1])
+        elif node.kind == "call_statement":
+            argument = (names.get(argument[0], argument[0]), _rename(argument[1], names))
+        else:
+            argument = _rename(argument, names)
+        return replace(
+            node,
+            argument=argument,
+            condition=_rename(node.condition, names),
+            body=_rename(node.body, names),
+            orelse=_rename(node.orelse, names),
+        )
+    return node
 
 
 def _from(command, origin):
@@ -304,11 +411,15 @@ def _type(expr, state, context, row=False):
     if kind == "bool":
         return "bool"
     if kind == "variable":
-        if row and expr.value in PROPERTIES:
+        if row and expr.value == "it":
+            return row
+        if row in ("object", "any") and expr.value in PROPERTIES:
             return PROPERTIES[expr.value]
         found = _lookup(state, expr.value, expr)
         if found is None:
             names = [*_variables(state), *context.functions] + (list(PROPERTIES) if row else [])
+            if expr.value == "it":
+                _fail("it means the current item, inside … where …; here there is none.", expr)
             if expr.value in context.functions:
                 _fail(f"{expr.value} is a function: call it with {expr.value}(…).", expr)
             _fail(
@@ -330,16 +441,66 @@ def _type(expr, state, context, row=False):
                 )
             element = _specific(element, found)
         return _list_of(element)
+    if kind == "map":
+        value = "any"
+        for entry in expr.args:
+            key, item = entry.args
+            _expect(key, "text", state, context, row, "A map key needs")
+            found = _value_type(item, state, context, row, "")
+            if _is_list(found) or _is_map(found):
+                _fail("A map holds single values (numbers, text, true/false or objects).", item)
+            if not _fits(value, found):
+                _fail(
+                    f"A map holds one kind of value; this one mixes {_a(value)} and {_a(found)}.",
+                    item,
+                )
+            value = _specific(value, found)
+        return f"map[{value}]"
+    if kind == "comprehension":
+        value, source = expr.args[:2]
+        found = _type(source, state, context, row)
+        if found != "any" and not (_is_list(found) or _is_map(found)):
+            _fail(f"for each {expr.value} in … needs a list, but this is {_a(found)}.", source)
+        element = "text" if _is_map(found) else _element(found)
+        inner = _assign(state, expr.value, element)
+        if len(expr.args) > 2:
+            _need_bool(expr.args[2], inner, context, "if", row)
+        result = _value_type(value, inner, context, row, "")
+        if _is_list(result):
+            _fail("Lists cannot hold lists.", value)
+        return _list_of(result)
+    if kind in ("contains", "not_contains"):
+        item = _value_type(expr.args[0], state, context, row, "")
+        container = _value_type(expr.args[1], state, context, row, "")
+        if container == "text" or _is_map(container):
+            if item not in ("text", "any"):
+                where = "a map's keys" if _is_map(container) else "text"
+                _fail(f"in looks for text in {where}, but this is {_a(item)}.", expr.args[0])
+        elif _is_list(container):
+            if not _fits(_element(container), item):
+                _fail(f"{_a(container).capitalize()} never holds {_a(item)}.", expr)
+        elif container != "any":
+            _fail(f"in looks inside a list, text or map, but this is {_a(container)}.", expr)
+        return "bool"
+    if kind == "image_change":
+        if not state.compared:
+            _fail('Run compare with "other.jpg" before image change.', expr)
+        return "number"
     if kind == "index":
         base = _type(expr.args[0], state, context, row)
+        if _is_map(base):
+            _expect(expr.args[1], "text", state, context, row, "A map key needs")
+            return _map_value(base)
         if base != "any" and not _is_list(base):
-            _fail(f"[…] picks from a list, but this is {_a(base)}.", expr)
+            _fail(f"[…] picks from a list or map, but this is {_a(base)}.", expr)
         _expect(expr.args[1], "number", state, context, row, "A list position needs")
         return _element(base) if base != "any" else "any"
     if kind == "attribute":
         base = _type(expr.args[0], state, context, row)
+        if _is_map(base):
+            return _map_value(base)
         if base not in ("object", "any"):
-            _fail(f".{expr.value} needs an object, but this is {_a(base)}.", expr)
+            _fail(f".{expr.value} needs an object or a map, but this is {_a(base)}.", expr)
         if expr.value not in PROPERTIES:
             _fail(
                 f'Objects have no property "{expr.value}".'
@@ -389,10 +550,11 @@ def _type(expr, state, context, row=False):
         return _element(source) if source != "any" else "any"
     if kind == "where":
         source = _type(expr.args[0], state, context, row)
-        if source not in ("objects", "any"):
-            _fail(f"where filters a list of objects, but this is {_a(source)}.", expr)
-        _need_bool(expr.args[1], state, context, "where", row=True)
-        return "objects"
+        if source != "any" and not _is_list(source):
+            _fail(f"where filters a list, but this is {_a(source)}.", expr)
+        element = _element(source) if source != "any" else "any"
+        _need_bool(expr.args[1], state, context, "where", row=element)
+        return source if source != "any" else "any"
     if kind == "negate":
         _expect(expr.args[0], "number", state, context, row, "- needs")
         return "number"
@@ -408,6 +570,10 @@ def _type(expr, state, context, row=False):
         if _is_list(left) and _is_list(right):
             if not _fits(left, right):
                 _fail(f"+ joins lists of the same kind, not {_a(left)} and {_a(right)}.", expr)
+            return _specific(left, right)
+        if _is_map(left) and _is_map(right):
+            if not _fits(left, right):
+                _fail(f"+ joins maps of the same kind, not {_a(left)} and {_a(right)}.", expr)
             return _specific(left, right)
         if "text" in (left, right):
             return "text"
@@ -437,6 +603,10 @@ def _type(expr, state, context, row=False):
 
 
 def _a(kind):
+    if kind.startswith("list[") and kind not in ("list[any]",):
+        return f"a list of {_plural(_element(kind))}"
+    if kind.startswith("map["):
+        return f"a map of {_plural(_map_value(kind))}" if kind != "map[any]" else "an empty map"
     return {
         "number": "a number",
         "text": "text",
@@ -449,7 +619,22 @@ def _a(kind):
         "list[bool]": "a list of true/false",
         "list[any]": "an empty list",
         "list": "a list",
+        "map": "a map",
     }.get(kind, "an unknown value")
+
+
+def _plural(kind):
+    return {"number": "numbers", "text": "text", "bool": "true/false", "object": "objects"}.get(
+        kind, "maps" if kind.startswith("map") else "values"
+    )
+
+
+def _is_map(kind):
+    return kind.startswith("map")
+
+
+def _map_value(kind):
+    return kind[4:-1] if kind.startswith("map[") else "any"
 
 
 def _is_list(kind):
@@ -474,15 +659,23 @@ def _fits(wanted, found):
         return True
     if wanted == "list":
         return _is_list(found)
+    if wanted == "map":
+        return _is_map(found)
     if _is_list(wanted) and _is_list(found):
-        return "any" in (_element(wanted), _element(found))
+        return _fits(_element(wanted), _element(found))
+    if _is_map(wanted) and _is_map(found):
+        return _fits(_map_value(wanted), _map_value(found))
     return False
 
 
 def _specific(first, second):
     """The more specific of two fitting types: list[number] over list[any]."""
-    if first == "any" or (_is_list(first) and _element(first) == "any"):
+    if first == "any" or first in ("list", "map"):
         return second
+    if _is_list(first) and _is_list(second):
+        return _list_of(_specific(_element(first), _element(second)))
+    if _is_map(first) and _is_map(second):
+        return f"map[{_specific(_map_value(first), _map_value(second))}]"
     return first
 
 
@@ -534,9 +727,55 @@ def _builtin(name, kinds, node):
         need(len(kinds) == 1 and _fits("list[number]", kinds[0]), "a list of numbers")
         return "number"
     if name == "length":
-        ok = len(kinds) == 1 and (_fits("text", kinds[0]) or _is_list(kinds[0]))
-        need(ok, "a list or text")
+        ok = len(kinds) == 1 and (
+            _fits("text", kinds[0]) or _is_list(kinds[0]) or _is_map(kinds[0])
+        )
+        need(ok, "a list, text or map")
         return "number"
+    if name == "slice":
+        ok = 2 <= len(kinds) <= 3 and (kinds[0] in ("text", "any") or _is_list(kinds[0]))
+        need(ok and all(_fits("number", k) for k in kinds[1:]), "a list or text, a start and end")
+        return kinds[0]
+    if name == "index_of":
+        text = len(kinds) == 2 and kinds[0] == "text" and _fits("text", kinds[1])
+        listed = len(kinds) == 2 and _is_list(kinds[0]) and _fits(_element(kinds[0]), kinds[1])
+        need(
+            text or listed or (len(kinds) == 2 and kinds[0] == "any"), "a list or text and an item"
+        )
+        return "number"
+    if name in ("split", "join"):
+        first = "text" if name == "split" else "list"
+        need(
+            1 <= len(kinds) <= 2
+            and _fits(first, kinds[0])
+            and all(_fits("text", k) for k in kinds[1:]),
+            f"{_a(first)} and an optional separator",
+        )
+        return "list[text]" if name == "split" else "text"
+    if name in ("replace", "trim", "starts_with", "ends_with"):
+        count = {"replace": 3, "trim": 1}.get(name, 2)
+        need(len(kinds) == count and all(_fits("text", k) for k in kinds), f"{count} text value(s)")
+        return "text" if name in ("replace", "trim") else "bool"
+    if name in ("keys", "values"):
+        need(len(kinds) == 1 and _fits("map", kinds[0]), "a map")
+        return "list[text]" if name == "keys" else _list_of(_map_value(kinds[0]))
+    if name in ("get", "put"):
+        ok = len(kinds) == 3 and _fits("map", kinds[0]) and _fits("text", kinds[1])
+        value = _map_value(kinds[0]) if ok else "any"
+        need(
+            ok and _fits(value, kinds[2]) and not (_is_list(kinds[2]) or _is_map(kinds[2])),
+            "a map, a key and a value of the map's kind",
+        )
+        return _specific(value, kinds[2]) if name == "get" else f"map[{_specific(value, kinds[2])}]"
+    if name == "random":
+        need(numbers(2), "two whole numbers")
+        return "number"
+    if name == "now":
+        need(not kinds, "no values")
+        return "text"
+    if name in ("read_lines", "read_csv"):
+        need(len(kinds) == 1 and _fits("text", kinds[0]), "a file name")
+        return "list[text]" if name == "read_lines" else "list[map[text]]"
     if name in ("as_text", "as_number"):
         need(len(kinds) == 1, "one value")
         return name[3:]
@@ -572,22 +811,28 @@ def _call(name, args, state, context, node, in_loop, row=False):
             node,
         )
     params = function.argument[1]
-    if len(args) != len(params):
+    declared = _param_types(function, context)
+    defaults = (function.extra or (None, ()))[1]
+    required = sum(default is None for default in defaults) if defaults else len(params)
+    if not required <= len(args) <= len(params):
         listed = ", ".join(param for param, _ in params) or "no values"
-        _fail(f"{name} takes {len(params)} value(s) ({listed}), but got {len(args)}.", node)
+        count = len(params) if required == len(params) else f"{required} to {len(params)}"
+        _fail(f"{name} takes {count} value(s) ({listed}), but got {len(args)}.", node)
     kinds = []
-    for (param, annotation), arg in zip(params, args, strict=True):
+    for (param, annotation), arg in zip(params, args, strict=False):
         found = _value_type(arg, state, context, row, "")
         if annotation and not _fits(annotation, found):
             _fail(f"{name} expects {param} to be {_a(annotation)}, but got {_a(found)}.", arg)
         kinds.append(annotation or found)
+    kinds += [kind for _, kind, _ in declared[len(args) :]]
     if name in context.stack:  # recursion: the body is being checked further up
         if len(context.stack) > _MAX_CALL_DEPTH:
             _fail("Functions call each other too deeply.", node)
         return "any", state
     local = replace(
         state,
-        variables=tuple(
+        variables=_constant_variables(context, state)
+        + tuple(
             (param, kind, state.generation) for (param, _), kind in zip(params, kinds, strict=True)
         ),
     )
@@ -606,15 +851,28 @@ def _call(name, args, state, context, node, in_loop, row=False):
 
 
 def _check_body(function, state, context, in_loop):
-    saved = context.returns
-    context.returns = []
+    saved, loops = context.returns, context.loops
+    context.returns, context.loops = [], 0
     context.stack.append(function.argument[0])
     try:
         after = _validate(function.body, state, in_loop, context)
         returned = set(context.returns)
     finally:
         context.stack.pop()
-        context.returns = saved
+        context.returns, context.loops = saved, loops
+    declared = (function.extra or (None,))[0]
+    if declared:
+        name = function.argument[0]
+        if returned <= {"nothing"}:
+            _fail(
+                f"{name} says it gives {_a(declared)} (-> {declared}), but never returns one.",
+                function,
+            )
+        for found in returned:
+            if not _fits(declared, found):
+                _fail(f"{name} says it gives {_a(declared)}, but it returns {_a(found)}.", function)
+        if declared not in ("list", "map", "any"):
+            return declared, after
     if not returned:
         return "nothing", after
     return (returned.pop() if len(returned) == 1 else "any"), after
@@ -641,6 +899,10 @@ def _need_subject(subject, state, command):
         _fail("Run segment detections before using masks.", command)
     elif subject == ":codes" and not state.codes_done:
         _fail("Run scan codes before using codes.", command)
+    elif subject == ":tracks" and not state.tracking:
+        _fail(
+            "Run track LABEL (after detect, usually in a video loop) before count tracks.", command
+        )
     elif subject.startswith(":pose:"):
         from vexa.pose import POSTURES
 
@@ -688,13 +950,25 @@ def _need_compound(subject, state, command):
             _fail(f'Unknown colour "{word}". Choose one of: {", ".join(COLOURS)}.', command)
         if not state.coloured:
             _fail(f"Run colour {labels[0]} before counting by colour.", command)
+    if kind == "zone" and state.zones is not None and word not in state.zones:
+        known = ", ".join(state.zones) or "none yet"
+        _fail(
+            f'Unknown zone "{word}". Define it first: zone {word} X1 Y1 X2 Y2 (zones: {known}).',
+            command,
+        )
     for label in labels:
         _need_subject(label, state, command)
 
 
 def _fresh(state, steps=1):
     """A new image: earlier results are gone, variables stay, old objects go stale."""
-    return State(loaded=True, variables=state.variables, generation=state.generation + steps)
+    return State(
+        loaded=True,
+        variables=state.variables,
+        generation=state.generation + steps,
+        zones=state.zones,
+        tracking=state.tracking,
+    )
 
 
 # Statements ------------------------------------------------------------------
@@ -702,12 +976,71 @@ def _fresh(state, steps=1):
 
 def _check(command, state, in_loop, context, top=False):
     kind = command.kind
-    if command.confidence is not None and not 0 <= command.confidence <= 1:
+    if isinstance(command.confidence, Expr):  # detect person confidence minimum
+        _expect(command.confidence, "number", state, context, False, "confidence needs")
+        state = _take(state, context)
+    elif command.confidence is not None and not 0 <= command.confidence <= 1:
         _fail("Confidence must be between 0 and 1.", command)
     if kind == "find_text" and not command.argument.strip():
         _fail("Search text cannot be empty.", command)
-    if kind not in NO_IMAGE_NEEDED and kind != "load" and not state.loaded:
+    totals = kind == "count" and command.argument == ":tracks"  # also after a video loop
+    if kind not in NO_IMAGE_NEEDED and kind != "load" and not state.loaded and not totals:
         _fail('Load your image first: load "image.jpg"', command)
+    if top and kind not in ("use", "define", "const", "param"):
+        context.started = True
+
+    if kind in ("const", "param"):
+        name, expr = command.argument
+        if not top or context.started:
+            _fail(f"{kind} belongs at the top of the program, before other commands.", command)
+        if name in context.functions or name in BUILTINS:
+            _fail(f"{name} is a function; choose another name.", command)
+        if _lookup(state, name, command) is not None:
+            _fail(f"{name} is already set; a {kind} cannot change.", command)
+        if kind == "const":
+            for node in _walk(expr):
+                if node.kind == "call" and node.value not in BUILTINS:
+                    _fail("A const can use values, operators and built-in functions only.", node)
+        found = context.constants.get(name) or _value_type(expr, state, context, False, "")
+        return _assign(_take(state, context), name, found)
+    if kind in ("break", "continue"):
+        if not context.loops:
+            _fail(f"{kind} works only inside a loop (for each, repeat or while).", command)
+        return state
+    if kind == "try_block":
+        yes = _validate(command.body, state, in_loop, context)
+        before = _lookup(state, "error", command)
+        if before not in (None, "text", "any"):
+            _fail(
+                "try … else sets error to the message; error already holds another type.", command
+            )
+        no = _validate(command.orelse, _assign(state, "error", "text"), in_loop, context)
+        return _merge(state, yes, no)
+    if kind == "zone":
+        name, *box = command.argument
+        x1, y1, x2, y2 = box
+        if not all(0 <= value <= 1 for value in box) or x1 >= x2 or y1 >= y2:
+            _fail(
+                "zone needs left, top, right and bottom as fractions of the image (0 to 1), "
+                "e.g. zone door 0.6 0.2 1 1",
+                command,
+            )
+        zones = state.zones if state.zones is None else tuple(dict.fromkeys((*state.zones, name)))
+        return replace(state, zones=zones)
+    if kind == "draw_zones" and state.zones == ():
+        _fail("No zones to draw: define one first, e.g. zone door 0.6 0.2 1 1", command)
+    if kind == "track":
+        _need_subject(command.argument, state, replace(command, kind="track"))
+        return replace(state, tracking=True)
+    if kind == "compare_image":
+        if PurePath(command.argument).suffix.lower() not in IMAGE_SUFFIXES or not _relative_file(
+            command.argument, PurePath(command.argument).suffix.lower()
+        ):
+            _fail(
+                'compare with needs a relative path to an image, e.g. compare with "empty.jpg"',
+                command,
+            )
+        return replace(state, compared=True)
 
     if kind == "define":
         if not top:
@@ -729,14 +1062,24 @@ def _check(command, state, in_loop, context, top=False):
             _need_bool(command.argument, state, context, "while")
         state = _take(state, context)
         # The body may run zero times: its results and new variables do not escape.
-        return _keep_outer(state, _validate(command.body, state, in_loop, context))
+        return _keep_outer(state, _loop_body(command.body, state, in_loop, context))
     if kind == "let":
         name, expr = command.argument
         if name in context.functions:
             _fail(f"{name} is a function; choose another variable name.", command)
+        shadowed = any(name == p for p, _, _ in _function_params(context))
+        if name in context.constants and _lookup(state, name, command) and not shadowed:
+            _fail(f"{name} is a const or param; it cannot change.", command)
+        annotation = command.extra
+        if annotation is not None and annotation not in TYPES:
+            _fail(f'Unknown type "{annotation}". Use one of: {", ".join(TYPES)}.', command)
         found = _value_type(expr, state, context, False, "")
         state = _take(state, context)
+        if annotation and not _fits(annotation, found):
+            _fail(f"{name} is declared {_a(annotation)}, but this is {_a(found)}.", expr)
         before = _lookup(state, name, command)
+        if before is None and annotation and annotation not in ("list", "map"):
+            before = annotation
         if before is not None and not _fits(before, found):
             _fail(f"{name} is {_a(before)}; it cannot hold {_a(found)}.", command)
         return _assign(state, name, found if before is None else _specific(before, found))
@@ -778,10 +1121,12 @@ def _check(command, state, in_loop, context, top=False):
         name, expr = command.argument
         source = _type(expr, state, context)
         state = _take(state, context)
+        if _is_map(source):
+            source = "list[text]"  # for each key in a map
         if source != "any" and not _is_list(source):
-            _fail(f"for each {name} in … needs a list, but this is {_a(source)}.", expr)
+            _fail(f"for each {name} in … needs a list or map, but this is {_a(source)}.", expr)
         element = _element(source) if source != "any" else "any"
-        inside = _validate(command.body, _assign(state, name, element), in_loop, context)
+        inside = _loop_body(command.body, _assign(state, name, element), in_loop, context)
         if source == "objects" and inside.generation != state.generation:
             _fail(
                 f"The loop over {name} changes the image (load, rotate, crop or style), so the "
@@ -800,10 +1145,13 @@ def _check(command, state, in_loop, context, top=False):
                 _fail("for each frame needs a video file: .mp4, .mov, .avi, .mkv or .webm", command)
             if every <= 0:
                 _fail("every needs a number of seconds above 0, e.g. every 1 second", command)
-        inside = _validate(command.body, _fresh(state), True, context)
+        inside = _loop_body(command.body, _fresh(state), True, context)
         # The loop leaves no current image or results behind; new variables stay inside.
         return State(
-            variables=_keep_outer(state, inside).variables, generation=inside.generation + 1
+            variables=_keep_outer(state, inside).variables,
+            generation=inside.generation + 1,
+            zones=inside.zones,
+            tracking=inside.tracking,
         )
     if kind == "if_block":
         _need_bool(command.condition, state, context, "if")
@@ -812,12 +1160,7 @@ def _check(command, state, in_loop, context, top=False):
         # every branch are.
         yes = _validate(command.body, state, in_loop, context)
         no = _validate(command.orelse, state, in_loop, context)
-        merged = _variables(state)
-        for name, (found, generation) in _variables(yes).items():
-            other = _variables(no).get(name)
-            if name not in merged and other is not None:
-                merged[name] = (found if other[0] == found else "any", generation)
-        return replace(state, variables=tuple((n, k, g) for n, (k, g) in merged.items()))
+        return _merge(state, yes, no)
     if kind == "save_csv":
         if in_loop:
             _fail("Use save csv after the for each loop ends.", command)
@@ -944,6 +1287,39 @@ def _check(command, state, in_loop, context, top=False):
     return state
 
 
+def _merge(state, yes, no):
+    """After two branches: results made inside are gone; variables set in both stay."""
+    merged = _variables(state)
+    for name, (found, generation) in _variables(yes).items():
+        other = _variables(no).get(name)
+        if name not in merged and other is not None:
+            merged[name] = (found if other[0] == found else "any", generation)
+    return replace(state, variables=tuple((n, k, g) for n, (k, g) in merged.items()))
+
+
+def _loop_body(body, state, in_loop, context):
+    context.loops += 1
+    try:
+        return _validate(body, state, in_loop, context)
+    finally:
+        context.loops -= 1
+
+
+def _walk(expr):
+    yield expr
+    for arg in expr.args:
+        if isinstance(arg, Expr):
+            yield from _walk(arg)
+
+
+def _function_params(context):
+    """Parameters of the function being checked, which may shadow a const."""
+    if not context.stack:
+        return ()
+    function = context.functions.get(context.stack[-1])
+    return tuple((p, k, 0) for p, k in function.argument[1]) if function else ()
+
+
 def _detected(state, selection):
     return replace(
         state, detected=True, segmented=False, selection=selection, posed=False, coloured=False
@@ -974,8 +1350,10 @@ def diagnose(source, base=None):
 
     try:
         commands = parse(source)
-    except VexaError as exc:
-        return [exc], []
+    except VexaError:
+        from vexa.parser import parse_errors
+
+        return parse_errors(source), []
     errors = []
     validate_commands(commands, base=base, errors=errors)
     errors.sort(key=lambda e: (e.file is not None, e.line or 0, e.column or 0))

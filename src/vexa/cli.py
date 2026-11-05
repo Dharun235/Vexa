@@ -10,7 +10,6 @@ from pathlib import Path
 from vexa import __version__
 from vexa.ast_nodes import VexaError
 from vexa.model import install_model, model_path
-from vexa.validation import check_source
 
 
 def read_source(path: Path) -> str:
@@ -37,6 +36,12 @@ def arguments():
     run.add_argument(
         "--json", type=Path, dest="json_output", help="Also save logs, counts and boxes as JSON"
     )
+    run.add_argument(
+        "--set", action="append", default=[], metavar="NAME=VALUE", help="Set a param (repeatable)"
+    )
+    run.add_argument(
+        "--trace", action="store_true", help="Show each line as it runs and every value let sets"
+    )
     compile_command = commands.add_parser(
         "compile", help="Compile a .vexa file to a standalone Python script"
     )
@@ -60,6 +65,9 @@ def arguments():
     test.add_argument("--image", type=Path, help="Image for load")
     test.add_argument(
         "--model", type=Path, help="Use this ONNX file instead of the installed model"
+    )
+    test.add_argument(
+        "--set", action="append", default=[], metavar="NAME=VALUE", help="Set a param (repeatable)"
     )
     fmt = commands.add_parser("fmt", help="Format .vexa files in the standard layout")
     fmt.add_argument("programs", type=Path, nargs="+")
@@ -130,15 +138,62 @@ def read_image(path):
         return decode_image(stream.read(MAX_IMAGE_BYTES + 1))
 
 
+def parse_settings(settings):
+    """--set NAME=VALUE options as a dict."""
+    found = {}
+    for setting in settings:
+        name, equals, value = setting.partition("=")
+        if not equals or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name.strip()):
+            raise VexaError(
+                f"--set needs NAME=VALUE, e.g. --set threshold=0.5 (got {setting!r}).", kind="input"
+            )
+        found[name.strip()] = value.strip()
+    return found
+
+
+def _checked(source, program, settings):
+    """Commands of a program, checked with use paths relative to its folder; --set names must
+    match its params."""
+    from vexa.parser import parse
+    from vexa.validation import validate_commands
+
+    commands = parse(source)
+    validate_commands(commands, base=program.parent)
+    params = {c.argument[0] for c in commands if c.kind == "param"}
+    for name in settings:
+        if name not in params:
+            known = ", ".join(sorted(params)) or "none"
+            raise VexaError(
+                f"--set {name}: the program has no param {name} (params: {known}).", kind="input"
+            )
+    return commands
+
+
+def _session(image, vision, program, settings):
+    from vexa.interpreter import Session
+
+    return Session(image, vision, parameters=settings, library_base=program.parent)
+
+
 def run_file(args):
-    from vexa.interpreter import execute_commands
     from vexa.vision import Vision
 
-    commands = check_source(read_source(args.program))
+    source = read_source(args.program)
+    settings = parse_settings(args.set)
+    commands = _checked(source, args.program, settings)
     image = read_image(args.image)
     outputs = [args.output] + ([args.json_output] if args.json_output else [])
     protect_inputs([args.program] + ([args.image] if args.image else []), outputs)
-    result = execute_commands(commands, image, Vision(args.model))
+    session = _session(image, Vision(args.model), args.program, settings)
+    if args.trace:
+        lines = source.splitlines()
+
+        def trace(line, value):
+            text = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+            session.logs.append(f"[{line}] " + (f"  {value}" if value else text))
+
+        session.trace = trace
+    result = session.execute(commands)
     failed = [e for e in result["expectations"] if not e["passed"]]
     write_outputs(result, args.output, args.json_output)
     if failed:
@@ -149,16 +204,18 @@ def run_file(args):
 
 def test_files(args):
     """Run each program and summarise its expect checks."""
-    from vexa.interpreter import execute_commands
     from vexa.vision import Vision
 
     image = read_image(args.image)
     vision = Vision(args.model)
+    settings = parse_settings(args.set)
     passed = failed = broken = 0
     for path in args.programs:
         source = read_source(path)
         try:
-            result = execute_commands(check_source(source), image, vision)
+            ok = {c.argument[0] for c in _checked(source, path, {}) if c.kind == "param"}
+            chosen = {name: value for name, value in settings.items() if name in ok}
+            result = _session(image, vision, path, chosen).execute(_checked(source, path, chosen))
         except VexaError as exc:
             print_error(exc, source, str(path))
             broken += 1
@@ -181,7 +238,7 @@ def check_file(args):
     from vexa.validation import diagnose
 
     source = read_source(args.program)
-    errors, warnings = diagnose(source)
+    errors, warnings = diagnose(source, base=args.program.parent)
     for problem in sorted(errors + warnings, key=lambda p: (p.file is not None, p.line or 0)):
         print_error(problem, source, str(args.program))
     if errors:
@@ -200,7 +257,7 @@ def compile_file(args):
 
     source = read_source(args.program)
     if args.emit == "ast":
-        commands = check_source(source)
+        commands = _checked(source, args.program, {})
         if not args.no_optimize:
             commands, stats = optimise(commands)
             print(f"# {stats.summary()}")
@@ -208,7 +265,9 @@ def compile_file(args):
         return
     output = args.output or args.program.with_suffix(".py")
     protect_inputs([args.program], [output])
-    code, stats = compile_source(source, args.program.name, optimize=not args.no_optimize)
+    code, stats = compile_source(
+        source, args.program.name, optimize=not args.no_optimize, base=args.program.parent
+    )
     output.write_text(code, encoding="utf-8")
     print(f"Compiled {args.program} → {output} ({stats.summary()}).")
     print(f"Run it with: python {output} --image photo.jpg")

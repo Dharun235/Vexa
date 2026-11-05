@@ -12,6 +12,7 @@ class Command:
     orelse: tuple = ()  # commands after else
     condition: "Expr | None" = None  # the expression an if tests
     origin: str | None = None  # library file a used define came from
+    extra: object = None  # let: type; define: (return type, defaults); use: alias
 
 
 @dataclass(frozen=True)

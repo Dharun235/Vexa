@@ -16,12 +16,14 @@ from vexa.values import record_value, show
 
 
 class Program:
-    def __init__(self, image=None, vision=None, reader=None, segmenter=None, base="."):
+    def __init__(
+        self, image=None, vision=None, reader=None, segmenter=None, base=".", parameters=None
+    ):
         if vision is None:
             from vexa.vision import Vision
 
             vision = Vision()
-        self.session = Session(image, vision, reader, segmenter, Path(base))
+        self.session = Session(image, vision, reader, segmenter, Path(base), parameters)
         self.logs = []
 
     def do(self, kind, argument=None, confidence=None, line=0, objects=None):
@@ -43,6 +45,15 @@ class Program:
         finally:
             for name in objects or ():
                 scope.pop(name, None)
+
+    def param(self, name, default):
+        value = self.session.parameter(name, default)
+        self.session.constants[name] = value
+        self.logs.append(f"param {name} = {show(value)}")
+        return value
+
+    def image_change(self):
+        return self.session.change
 
     def say(self, value):
         self.logs.append(show(value))
@@ -96,7 +107,7 @@ def _vexa_line(exc, run, lines):
 
 def main(run, lines, source_name, argv=None):
     """Command-line entry point of a compiled program."""
-    from vexa.cli import print_error, protect_inputs, read_image, write_outputs
+    from vexa.cli import parse_settings, print_error, protect_inputs, read_image, write_outputs
     from vexa.vision import Vision
 
     parser = argparse.ArgumentParser(description=f"Compiled Vexa program {source_name}")
@@ -106,11 +117,16 @@ def main(run, lines, source_name, argv=None):
     )
     parser.add_argument("--output", type=Path, default=Path("vexa-output.png"))
     parser.add_argument("--json", type=Path, dest="json_output")
+    parser.add_argument(
+        "--set", action="append", default=[], metavar="NAME=VALUE", help="Set a param"
+    )
     args = parser.parse_args(argv)
     try:
         outputs = [args.output] + ([args.json_output] if args.json_output else [])
         protect_inputs([args.image] if args.image else [], outputs)
-        program = Program(read_image(args.image), Vision(args.model))
+        program = Program(
+            read_image(args.image), Vision(args.model), parameters=parse_settings(args.set)
+        )
         try:
             run(program)
         except VexaError as exc:

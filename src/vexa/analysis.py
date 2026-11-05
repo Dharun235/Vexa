@@ -180,3 +180,43 @@ def where(box, width, height):
     if row == "middle":
         return column
     return row if column == "centre" else f"{row} {column}"
+
+
+def overlap(box, other):
+    """Intersection over union of two boxes: 1 is the same box, 0 is apart."""
+    x1, y1 = max(box[0], other[0]), max(box[1], other[1])
+    x2, y2 = min(box[2], other[2]), min(box[3], other[3])
+    inner = max(0, x2 - x1) * max(0, y2 - y1)
+    area = (box[2] - box[0]) * (box[3] - box[1]) + (other[2] - other[0]) * (other[3] - other[1])
+    return inner / (area - inner) if area > inner else 0.0
+
+
+def changed_share(image, other):
+    """Share of pixels (0 to 1) that clearly differ from another photo of the same view."""
+    height, width = image.shape[:2]
+    other = cv2.resize(other, (width, height), interpolation=cv2.INTER_AREA)
+    first, second = (
+        cv2.GaussianBlur(cv2.cvtColor(item, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+        for item in (image, other)
+    )
+    return round(float((cv2.absdiff(first, second) > 30).mean()), 3)
+
+
+def draw_zones(image, zones):
+    """Outline each zone and write its name."""
+    image = image.copy()
+    height, width = image.shape[:2]
+    for name, (x1, y1, x2, y2) in zones.items():
+        top_left = (round(x1 * (width - 1)), round(y1 * (height - 1)))
+        bottom_right = (round(x2 * (width - 1)), round(y2 * (height - 1)))
+        cv2.rectangle(image, top_left, bottom_right, (0, 200, 255), 2)
+        cv2.putText(
+            image,
+            name,
+            (top_left[0] + 4, top_left[1] + 18),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 200, 255),
+            2,
+        )
+    return image

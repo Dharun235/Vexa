@@ -10,7 +10,7 @@ from vexa.interpreter import Session
 from vexa.parser import parse
 from vexa.vision import MAX_IMAGE_BYTES, Vision, decode_image
 
-_OPENERS = {"if", "for", "define", "repeat", "while"}
+_OPENERS = {"if", "for", "define", "repeat", "while", "try"}
 
 
 def depth_change(line):

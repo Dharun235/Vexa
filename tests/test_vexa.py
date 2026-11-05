@@ -103,7 +103,14 @@ def test_unknown_labels_suggest_a_detectable_one(image, fake_vision):
 
 @pytest.mark.parametrize("path", sorted(Path("examples").resolve().glob("*.vexa")))
 def test_examples(path, image, fake_vision, fake_reader, fake_segmenter, offline_models):
-    assert execute(path.read_text(), image, fake_vision, fake_reader, fake_segmenter)["logs"]
+    from vexa.interpreter import Session
+    from vexa.parser import parse
+
+    commands = parse(path.read_text())
+    session = Session(image, fake_vision, fake_reader, fake_segmenter, library_base=path.parent)
+    result = session.execute(commands)
+    library = all(command.kind == "define" for command in commands)  # helpers.vexa
+    assert result["logs"] or library
 
 
 def test_load_alias_never_reads_a_path(image, fake_vision):

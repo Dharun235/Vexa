@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 
 from vexa import transforms, values
-from vexa.ast_nodes import VexaError
+from vexa.ast_nodes import Expr, VexaError
 from vexa.parser import TRANSFORMS, parse
 from vexa.validation import validate_commands
 from vexa.values import PROPERTIES, VObject, type_of
@@ -23,15 +23,39 @@ class _Return(Exception):
         self.value = value
 
 
+class _Break(Exception):
+    pass
+
+
+class _Continue(Exception):
+    pass
+
+
 _COLUMNS = {":text": "text_lines", ":masks": "masks", ":codes": "codes_found"}
 
 
 class Session:
     """State for one program or REPL; the input image and detector can be reused."""
 
-    def __init__(self, source_image, vision, reader=None, segmenter=None, base=Path(".")):
+    def __init__(
+        self,
+        source_image,
+        vision,
+        reader=None,
+        segmenter=None,
+        base=Path("."),
+        parameters=None,
+        library_base=None,
+    ):
         self.source_image = source_image
         self.base = Path(base)
+        self.library_base = Path(library_base) if library_base is not None else self.base
+        self.parameters = dict(parameters or {})  # --set NAME=VALUE from the command line
+        self.constants = {}  # const and param values; functions can read them
+        self.zones = {}  # name → (left, top, right, bottom) as fractions of the image
+        self.tracks = {}  # track id → (label, box) last seen
+        self.track_ids = {}  # id(detection) → track id for the current detections
+        self.trace = None  # called with (line, text) for vexa run --trace
         self.rows, self.row, self.image_name = [], None, "image"
         self.vision = vision
         self.reader = reader
@@ -75,6 +99,8 @@ class Session:
         self.colours = None  # None until colour runs
         self.positions = []
         self.exposure = None
+        self.change = None
+        self.track_ids = {}
         if self.segmenter is not None:
             self.segmenter.clear_image()
 
@@ -99,7 +125,8 @@ class Session:
             cutout=self.alpha is not None,
             variables=self.variable_types(),
             functions=self.functions,
-            base=self.base,
+            base=self.library_base,
+            constants={name: type_of(value) for name, value in self.constants.items()},
         )
         logs = []
         self._run(commands, logs)
@@ -109,6 +136,8 @@ class Session:
         self.logs = logs
         for command in commands:
             kind, target = command.kind, command.argument
+            if self.trace is not None:
+                self.trace(command.line, None)
             try:
                 if kind == "load":
                     if self.source_image is None:
@@ -132,6 +161,38 @@ class Session:
                     self._repeat(command, logs)
                 elif kind == "let":
                     self.assign(target[0], self.evaluate(target[1]))
+                    if self.trace is not None:
+                        self.trace(
+                            command.line, f"{target[0]} = {values.show(self.lookup(target[0]))}"
+                        )
+                elif kind == "const":
+                    self.constants[target[0]] = self.evaluate(target[1])
+                elif kind == "param":
+                    self.constants[target[0]] = self.parameter(target[0], self.evaluate(target[1]))
+                    logs.append(f"param {target[0]} = {values.show(self.constants[target[0]])}")
+                elif kind == "break":
+                    raise _Break
+                elif kind == "continue":
+                    raise _Continue
+                elif kind == "try_block":
+                    try:
+                        self._run(command.body, logs)
+                    except VexaError as exc:
+                        self.assign("error", exc.message)
+                        self._run(command.orelse, logs)
+                elif kind == "zone":
+                    name, *box = target
+                    self.zones[name] = tuple(box)
+                    logs.append(f"Zone {name}: {' '.join(f'{v:g}' for v in box)}.")
+                elif kind == "draw_zones":
+                    from vexa.analysis import draw_zones
+
+                    self.image = draw_zones(self.image, self.zones)
+                    logs.append(f"Drew {len(self.zones)} zone(s).")
+                elif kind == "track":
+                    self._track(target, logs)
+                elif kind == "compare_image":
+                    self._compare(target, logs)
                 elif kind == "record_value":
                     self._record(target[0], values.record_value(self.evaluate(target[1])), logs)
                 elif kind == "print_value":
@@ -149,16 +210,20 @@ class Session:
                     name, source = target
                     for item in list(self.evaluate(source)):
                         self.assign(name, item)
-                        self._run(command.body, logs)
+                        if not self._turn(command.body, logs):
+                            break
                 elif kind == "draw_objects":
                     self.image = draw_boxes(self.image, [d for _, d in self._named(target)])
                     logs.append(f"Drew {len(self._named(target))} box(es) for {target}.")
                 elif kind == "detect":
-                    detections = self.vision.detect(
-                        self.image,
-                        target,
-                        confidence=command.confidence,
-                    )
+                    confidence = command.confidence
+                    if isinstance(confidence, Expr):
+                        confidence = self.evaluate(confidence)
+                    if confidence is not None and not 0 <= confidence <= 1:
+                        raise VexaError(
+                            f"Confidence must be between 0 and 1, not {values.show(confidence)}."
+                        )
+                    detections = self.vision.detect(self.image, target, confidence=confidence)
                     self.detections = detections
                     self.detected, self.selection = True, target
                     self.masks, self.segmented, self.poses, self.colours = [], False, [], None
@@ -419,6 +484,8 @@ class Session:
             return len(self.masks)
         if subject == ":codes":
             return len(self.codes)
+        if subject == ":tracks":
+            return len(self.tracks)
         if subject.startswith(":pose:"):
             return sum(subject[6:] in p["postures"] for p in self.poses)
         labels = getattr(self.vision, "labels", None)
@@ -443,6 +510,8 @@ class Session:
         if kind == "area":
             height, width = self.image.shape[:2]
             return [d for d in items if analysis.in_area(d.box, word, width, height)]
+        if kind == "zone":
+            return [d for d in items if word in self._zones_of(d.box)]
         others = [d for _, d in self._named(other[0])]
         return [
             d
@@ -507,8 +576,27 @@ class Session:
     # Variables, expressions and functions ------------------------------------------
 
     def lookup(self, name):
-        """A variable of the running function, or of the program at the top level."""
-        return self.scopes[-1].get(name, _MISSING)
+        """A variable of the running function (or of the program at the top level), or a const."""
+        found = self.scopes[-1].get(name, _MISSING)
+        return self.constants.get(name, _MISSING) if found is _MISSING else found
+
+    def parameter(self, name, default):
+        """A param's value: --set NAME=VALUE, read as the default's type, or the default."""
+        if name not in self.parameters:
+            return default
+        text = str(self.parameters[name])
+        if isinstance(default, bool):
+            if text.lower() not in ("true", "false"):
+                raise VexaError(f"--set {name} needs true or false, not {text!r}.", kind="input")
+            return text.lower() == "true"
+        if isinstance(default, float):
+            try:
+                return float(text)
+            except ValueError:
+                raise VexaError(
+                    f"--set {name} needs a number, not {text!r}.", kind="input"
+                ) from None
+        return text
 
     def assign(self, name, value):
         self.scopes[-1][name] = value
@@ -517,7 +605,7 @@ class Session:
         """Types of the program's variables, for checking later REPL input."""
         return {
             name: type_of(value)
-            for name, value in self.scopes[0].items()
+            for name, value in {**self.constants, **self.scopes[0]}.items()
             if not any(
                 isinstance(item, VObject) and item.generation != self.generation
                 for item in (value if isinstance(value, list) else [value])
@@ -529,6 +617,11 @@ class Session:
         if self.depth_calls >= MAX_CALL_DEPTH:
             raise VexaError(f"{name} calls itself too many times (limit {MAX_CALL_DEPTH}).")
         params = [param for param, _ in function.argument[1]]
+        defaults = (function.extra or (None, ()))[1]
+        arguments = list(arguments) + [
+            self.constants[d.value] if d.kind == "variable" else self.evaluate(d)
+            for d in defaults[len(arguments) :]
+        ]
         self.scopes.append(dict(zip(params, arguments, strict=True)))
         self.depth_calls += 1
         try:
@@ -541,6 +634,8 @@ class Session:
         return None
 
     def evaluate(self, expr, row=None):
+        if row is None:
+            row = _NO_ROW
         """The value of an expression; row is the object a where clause is testing."""
         kind, args = expr.kind, expr.args
         try:
@@ -552,13 +647,25 @@ class Session:
                     for part in args
                 )
             if kind == "variable":
-                if row is not None and expr.value in PROPERTIES:
-                    return row.get(expr.value)
+                if row is not _NO_ROW:
+                    if expr.value == "it":
+                        return row
+                    if isinstance(row, VObject) and expr.value in PROPERTIES:
+                        return row.get(expr.value)
                 return self.lookup(expr.value)
             if kind == "attribute":
-                return self.evaluate(args[0], row).get(expr.value)
+                return values.attribute(self.evaluate(args[0], row), expr.value)
             if kind == "list":
                 return [self.evaluate(a, row) for a in args]
+            if kind == "map":
+                return {self.evaluate(e.args[0], row): self.evaluate(e.args[1], row) for e in args}
+            if kind == "comprehension":
+                return self._comprehension(expr, row)
+            if kind in ("contains", "not_contains"):
+                found = values.contains(self.evaluate(args[0], row), self.evaluate(args[1], row))
+                return found if kind == "contains" else not found
+            if kind == "image_change":
+                return self.change
             if kind == "index":
                 return values.index(self.evaluate(args[0], row), self.evaluate(args[1], row))
             if kind == "call":
@@ -636,15 +743,84 @@ class Session:
         yield from range(MAX_LOOP_TURNS)
         raise VexaError(f"while ran {MAX_LOOP_TURNS:,} times; its condition never became false.")
 
+    def _turn(self, body, logs):
+        """Run one turn of a loop body; False when it ends with break."""
+        try:
+            self._run(body, logs)
+        except _Continue:
+            pass
+        except _Break:
+            return False
+        return True
+
     def _repeat(self, command, logs):
         if command.kind == "repeat":
             for _ in self.times(self.evaluate(command.argument)):
-                self._run(command.body, logs)
+                if not self._turn(command.body, logs):
+                    break
             return
         for _ in self.turns():
-            if not self.evaluate(command.argument):
+            if not self.evaluate(command.argument) or not self._turn(command.body, logs):
                 break
-            self._run(command.body, logs)
+
+    def _comprehension(self, expr, row):
+        """[value for each name in source if condition]; name exists only inside."""
+        value, source, *condition = expr.args
+        scope, name = self.scopes[-1], expr.value
+        saved = scope.get(name, _MISSING)
+        found = []
+        try:
+            for item in list(self.evaluate(source, row)):
+                scope[name] = item
+                if not condition or self.evaluate(condition[0], row):
+                    found.append(self.evaluate(value, row))
+        finally:
+            if saved is _MISSING:
+                scope.pop(name, None)
+            else:
+                scope[name] = saved
+        return found
+
+    def _zones_of(self, box):
+        """Names of the zones that hold the centre of a box."""
+        height, width = self.image.shape[:2]
+        x, y = (box[0] + box[2]) / 2 / width, (box[1] + box[3]) / 2 / height
+        return [
+            name for name, (x1, y1, x2, y2) in self.zones.items() if x1 <= x <= x2 and y1 <= y <= y2
+        ]
+
+    def _track(self, label, logs):
+        """Give each detection the id of the matching object in the previous frame (the box that
+        overlaps it most), or a new id."""
+        from vexa.analysis import overlap
+
+        items = [d for _, d in self._named(label)]
+        previous, taken, self.track_ids = dict(self.tracks), set(), {}
+        new = 0
+        for item in sorted(items, key=lambda d: -d.confidence):
+            scores = [
+                (overlap(item.box, box), track)
+                for track, (kind, box) in previous.items()
+                if kind == item.label and track not in taken
+            ]
+            score, track = max(scores, default=(0, None))
+            if score < 0.3:
+                track, new = len(self.tracks) + 1, new + 1
+            taken.add(track)
+            self.tracks[track] = (item.label, item.box)
+            self.track_ids[id(item)] = track
+        logs.append(f"Tracked {len(items)} {label}: {new} new, {len(self.tracks)} in all.")
+
+    def _compare(self, path, logs):
+        from vexa.analysis import changed_share
+
+        try:
+            with (self.base / path).open("rb") as stream:
+                other = decode_image(stream.read(MAX_IMAGE_BYTES + 1))
+        except OSError:
+            raise VexaError(f'Image not found: "{path}"', kind="input") from None
+        self.change = changed_share(self.image, other)
+        logs.append(f"Changed from {path}: {self.change:.0%} of the image.")
 
     def measure_object(self, item, prop):
         """Lazily measured object properties: colour, position, distance, posture, text."""
@@ -658,6 +834,10 @@ class Session:
         if prop == "position":
             height, width = self.image.shape[:2]
             return analysis.where(box, width, height)
+        if prop == "zone":
+            return next(iter(self._zones_of(box)), "none")
+        if prop == "id":
+            return float(self.track_ids.get(id(item.detection), 0))
         if prop == "distance":
             from vexa.depth import closeness, estimate
 
@@ -748,7 +928,8 @@ class Session:
 
     def _loop(self, items, body, logs):
         for _ in self.iterate(items, logs):
-            self._run(body, logs)
+            if not self._turn(body, logs):
+                break
 
     def iterate(self, items, logs):
         """Make each (name, image, message) the current image in turn; one CSV row each."""
@@ -761,10 +942,10 @@ class Session:
                 self.rows.append(self.row)
                 logs.append(message)
                 yield name
-        finally:
+        finally:  # also after break, or an error caught by try
             self.source_image = outer
-        self.reset()
-        self.row = None
+            self.reset()
+            self.row = None
 
     def _set_reference(self, label, size, unit, logs):
         found = self.vision.detect(self.image, label)
@@ -880,10 +1061,13 @@ class Session:
             "exposure": self.exposure,
             "cutout": None if self.alpha is None else round(float((self.alpha > 127).mean()), 3),
             "expectations": [dict(item) for item in self.expectations],
+            "change": self.change,
+            "tracks": len(self.tracks),
         }
 
 
 _MISSING = object()  # lookup result when no variable has the name
+_NO_ROW = object()  # evaluate outside a where
 
 
 def _subject_name(subject):
@@ -894,8 +1078,12 @@ def _subject_name(subject):
             return f"{word} {label}"
         if kind == "area":
             return f"{label} in {word}"
+        if kind == "zone":
+            return f"{label} in zone {word}"
         return f"{label} {word} {other[0]}"
-    return f"pose {subject[6:]}" if subject.startswith(":pose:") else subject
+    if subject.startswith(":pose:"):
+        return f"pose {subject[6:]}"
+    return subject.lstrip(":")
 
 
 def _pose_text(item):
@@ -919,8 +1107,10 @@ def _gap(a, b):
     return math.hypot(dx, dy)
 
 
-def execute(source, source_image, vision, reader=None, segmenter=None):
-    return execute_commands(parse(source), source_image, vision, reader, segmenter)
+def execute(source, source_image, vision, reader=None, segmenter=None, parameters=None):
+    return Session(source_image, vision, reader, segmenter, parameters=parameters).execute(
+        parse(source)
+    )
 
 
 def execute_commands(commands, source_image, vision, reader=None, segmenter=None):

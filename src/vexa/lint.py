@@ -14,7 +14,7 @@ def lint(commands):
     reads = _reads(commands)
     seen = set()
     for command in _walk(commands):
-        if command.kind == "let":
+        if command.kind in ("let", "const", "param"):
             name = command.argument[0]
             if name not in reads and name not in seen:
                 warnings.append(_warning(f"{name} is set but never used.", command))
@@ -27,9 +27,9 @@ def lint(commands):
             warnings.append(_warning(f"The function {name} is never called.", define))
     for block in _blocks(commands):
         for position, command in enumerate(block[:-1]):
-            if command.kind == "return":
+            if command.kind in ("return", "break", "continue"):
                 after = block[position + 1]
-                warnings.append(_warning("This never runs: it comes after return.", after))
+                warnings.append(_warning(f"This never runs: it comes after {command.kind}.", after))
                 break
     return sorted(warnings, key=lambda w: (w.line, w.column))
 

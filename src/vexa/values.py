@@ -1,11 +1,15 @@
-"""Language values: numbers, text, true/false, objects and lists of objects.
+"""Language values: numbers, text, true/false, objects, lists and maps.
 
 The interpreter and compiled programs share these, so both give the same answers.
 Object properties such as colour or distance are measured the first time they
 are read and then kept.
 """
 
+import csv
 import math
+import random
+from datetime import datetime
+from pathlib import PurePath
 
 from vexa.ast_nodes import VexaError
 
@@ -25,6 +29,8 @@ PROPERTIES = {
     "distance": "number",
     "posture": "text",
     "text": "text",
+    "zone": "text",
+    "id": "number",
 }
 PICKS = ("first", "last", "largest", "smallest", "nearest", "farthest")
 
@@ -76,7 +82,7 @@ class VObject:
 
 
 def type_of(value):
-    """number, text, bool, object, objects, list[number], list[text], list[bool] or list[any]."""
+    """number, text, bool, object, objects, list[…] or map[…]."""
     if isinstance(value, bool):
         return "bool"
     if isinstance(value, (int, float)):
@@ -89,6 +95,8 @@ def type_of(value):
         if value and all(isinstance(item, VObject) for item in value):
             return "objects"
         return f"list[{type_of(value[0])}]" if value else "list[any]"
+    if isinstance(value, dict):
+        return f"map[{type_of(next(iter(value.values())))}]" if value else "map[any]"
     return "nothing"
 
 
@@ -106,6 +114,8 @@ def show(value):
         if not value:
             return "nothing"
         return "[" + ", ".join(show(item) for item in value) + "]"
+    if isinstance(value, dict):
+        return "{" + ", ".join(f"{key}: {show(item)}" for key, item in value.items()) + "}"
     if value is None:
         return "nothing"
     return str(value)
@@ -115,7 +125,7 @@ def record_value(value):
     """CSV cells keep numbers and text; objects become their names."""
     if isinstance(value, float) and math.isfinite(value) and value == int(value):
         return int(value)
-    if isinstance(value, (VObject, list)) or value is None:
+    if isinstance(value, (VObject, list, dict)) or value is None:
         return show(value)
     return value
 
@@ -123,6 +133,8 @@ def record_value(value):
 def add(left, right):
     if isinstance(left, list) and isinstance(right, list):
         return left + right
+    if isinstance(left, dict) and isinstance(right, dict):
+        return {**left, **right}
     if isinstance(left, str) or isinstance(right, str):
         return show(left) + show(right)
     return left + right
@@ -176,8 +188,29 @@ def pick(word, items):
     return choose(items, key=lambda item: item.get("distance"))
 
 
+def contains(item, container):
+    """item in container: an item of a list, part of a text (ignoring case) or a key of a map."""
+    if isinstance(container, str):
+        return str(item).casefold() in container.casefold()
+    if isinstance(container, dict):
+        return item in container
+    return any(equal(item, other) for other in container)
+
+
+def attribute(value, name):
+    """object.property, or map.key."""
+    if isinstance(value, dict):
+        return index(value, name)
+    return value.get(name)
+
+
 def index(items, position):
-    """items[1] is the first item (like car 1); items[-1] is the last."""
+    """items[1] is the first item (like car 1); items[-1] is the last; a map is indexed by key."""
+    if isinstance(items, dict):
+        if position not in items:
+            known = ", ".join(items) or "none"
+            raise VexaError(f'No key "{position}" in this map (keys: {known}).')
+        return items[position]
     if position != int(position):
         raise VexaError(f"A list position must be a whole number, not {show(position)}.")
     position = int(position)
@@ -242,6 +275,108 @@ def b_average(items):
 
 def b_length(value):
     return float(len(value))
+
+
+def _position(value, position, end=False):
+    """A 1-based, possibly negative position as a Python index for slice."""
+    if position != int(position):
+        raise VexaError(f"A position must be a whole number, not {show(position)}.")
+    position = int(position)
+    if position < 0:
+        position = len(value) + position + 1
+    return max(0, position if end else position - 1)
+
+
+def b_slice(value, start, end=-1):
+    """Items or characters start to end, both included: slice("vexa", 2, 3) is "ex"."""
+    return value[_position(value, start) : _position(value, end, end=True)]
+
+
+def b_index_of(value, item):
+    """Position of item in a list or text, 0 when it is not there."""
+    if isinstance(value, str):
+        return float(value.casefold().find(item.casefold()) + 1)
+    return float(next((n for n, other in enumerate(value, 1) if equal(other, item)), 0))
+
+
+def b_split(text, separator=None):
+    return text.split(separator) if separator else text.split()
+
+
+def b_join(items, separator=""):
+    return separator.join(show(item) for item in items)
+
+
+def b_replace(text, old, new):
+    if not old:
+        raise VexaError("replace needs text to look for.")
+    return text.replace(old, new)
+
+
+def b_trim(text):
+    return text.strip()
+
+
+def b_starts_with(text, prefix):
+    return text.casefold().startswith(prefix.casefold())
+
+
+def b_ends_with(text, suffix):
+    return text.casefold().endswith(suffix.casefold())
+
+
+def b_keys(mapping):
+    return list(mapping)
+
+
+def b_values(mapping):
+    return list(mapping.values())
+
+
+def b_get(mapping, key, default):
+    return mapping.get(key, default)
+
+
+def b_put(mapping, key, value):
+    return {**mapping, key: value}
+
+
+def b_random(low, high):
+    """A whole number from low to high, both included."""
+    if low != int(low) or high != int(high) or low > high:
+        raise VexaError("random needs two whole numbers, the first not above the second.")
+    return float(random.randint(int(low), int(high)))  # not for security
+
+
+def b_now():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+MAX_READ_BYTES = 5_000_000
+
+
+def _read(path):
+    name = PurePath(path)
+    if name.is_absolute() or ".." in name.parts:
+        raise VexaError(f'Use a relative path inside this folder, not "{path}".', kind="input")
+    try:
+        with open(path, encoding="utf-8", newline="") as stream:
+            text = stream.read(MAX_READ_BYTES + 1)
+    except OSError:
+        raise VexaError(f'File not found: "{path}"', kind="input") from None
+    if len(text) > MAX_READ_BYTES:
+        raise VexaError(f'"{path}" is larger than 5 MB.', kind="input")
+    return text
+
+
+def b_read_lines(path):
+    return _read(path).splitlines()
+
+
+def b_read_csv(path):
+    """Each row as a map from column name to text."""
+    rows = csv.DictReader(_read(path).splitlines())
+    return [{key: value or "" for key, value in row.items() if key is not None} for row in rows]
 
 
 def b_as_text(value):
