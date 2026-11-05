@@ -17,7 +17,7 @@ Language support for [Vexa](https://github.com/Dharun235/Vexa), a small language
 The extension runs `vexa lsp`, so install Vexa first:
 
 ```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.7.0a1/vexa-0.7.0a1-py3-none-any.whl
+uv tool install --python 3.12 vexa-language
 ```
 
 If `vexa` is not on your `PATH`, set **Vexa: Path** in the settings (for example to `/path/to/Vexa/.venv/bin/vexa`).

@@ -2,7 +2,7 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
-## Unreleased
+## 0.7.0
 
 - The package is published on PyPI as `vexa-language` (the name `vexa` was taken there). The command is still `vexa` and the Python package is still `vexa`.
 - Publishing a GitHub release uploads it to PyPI automatically (`.github/workflows/release.yml`).

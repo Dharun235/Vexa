@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vexa-language"  # the PyPI name; the command and the Python package are both vexa
-version = "0.7.0a1"
+version = "0.7.0"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"
 license = "MIT AND AGPL-3.0-only AND Apache-2.0"
