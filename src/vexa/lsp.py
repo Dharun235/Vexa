@@ -12,6 +12,7 @@ import sys
 from vexa.ast_nodes import VexaError
 
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_QUOTED = re.compile(r'"[^"]*"')
 _KEYWORDS = (
     "let", "define", "return", "if", "else", "end", "for", "each", "in", "where", "and", "or",
     "not", "true", "false", "detections", "first", "last", "largest", "smallest", "nearest",
@@ -19,29 +20,34 @@ _KEYWORDS = (
 )  # fmt: skip
 
 
-def _diagnostics(text):
-    from vexa.validation import check_source
+def _diagnostics(text, base=None):
+    """Every error (severity 1) and warning (severity 2) in the document."""
+    from vexa.validation import diagnose
 
-    try:
-        check_source(text)
-    except VexaError as exc:
-        lines = text.splitlines() or [""]
-        line = max(0, min((exc.line or 1) - 1, len(lines) - 1))
-        start = max(0, (exc.column or 1) - 1)
-        word = _WORD.match(lines[line], start)
-        end = word.end() if word else max(start + 1, len(lines[line]))
-        return [
+    errors, warnings = diagnose(text, base)
+    lines = text.splitlines() or [""]
+    found = []
+    for problem, severity in [(e, 1) for e in errors] + [(w, 2) for w in warnings]:
+        message = problem.message
+        line = max(0, min((problem.line or 1) - 1, len(lines) - 1))
+        start = max(0, (problem.column or 1) - 1)
+        if problem.file:  # inside a used library: show it on the first line
+            message = f"{problem.file}:{problem.line}: {message}"
+            line, start = 0, 0
+        token = _WORD.match(lines[line], start) or _QUOTED.match(lines[line], start)
+        end = token.end() if token else len(lines[line])
+        found.append(
             {
                 "range": {
-                    "start": {"line": line, "character": start if exc.column else 0},
-                    "end": {"line": line, "character": end},
+                    "start": {"line": line, "character": start if problem.column else 0},
+                    "end": {"line": line, "character": max(end, start + 1)},
                 },
-                "severity": 1,
+                "severity": severity,
                 "source": "vexa",
-                "message": exc.message,
+                "message": message,
             }
-        ]
-    return []
+        )
+    return found
 
 
 def _word_at(text, line, character):

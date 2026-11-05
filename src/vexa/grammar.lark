@@ -3,6 +3,8 @@ _statement: command _NL | block
 ?block: "if" expr _NL body elif* ("else" _NL body)? "end" _NL -> if_block
       | "for" "each" NAME "in" expr _NL body "end" _NL -> for_objects
       | "define" NAME params? _NL body "end" _NL -> define
+      | "repeat" expr "times" _NL body "end" _NL -> repeat
+      | "while" expr _NL body "end" _NL -> while_loop
       | "for" "each" "image" "in" ESCAPED_STRING _NL body "end" _NL -> for_each
       | "for" "each" "frame" "in" ESCAPED_STRING ("every" NUMBER ("second" | "seconds"))? _NL body "end" _NL -> for_frames
 body: _NL* (_statement _NL*)*
@@ -32,6 +34,7 @@ param: NAME (":" NAME)?
       | "-" unary -> negate
 ?postfix: atom
         | postfix "." NAME -> attribute
+        | postfix "[" expr "]" -> index
 ?atom: NUMBER -> number
      | ESCAPED_STRING -> string
      | "true" -> true
@@ -39,6 +42,7 @@ param: NAME (":" NAME)?
      | NAME -> variable
      | NAME "(" [expr ("," expr)*] ")" -> call
      | "(" expr ")"
+     | "[" [expr ("," expr)*] "]" -> list_literal
      | "count" subject -> count_value
      | "text" "contains" ESCAPED_STRING -> text_contains
      | "caption" "contains" ESCAPED_STRING -> caption_contains
@@ -57,6 +61,8 @@ param: NAME (":" NAME)?
         | target RELATION target -> relation_subject
 ?command: "load" ESCAPED_STRING -> load
         | "let" NAME "=" expr -> let
+        | "expect" expr ("," ESCAPED_STRING)? -> expect
+        | "use" ESCAPED_STRING -> use
         | "record" NAME "=" expr -> record_value
         | "return" expr? -> return
         | NAME ("(" [expr ("," expr)*] ")")? -> call_statement

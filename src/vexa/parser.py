@@ -122,6 +122,10 @@ def _expr(node):
         return Expr("variable", str(children[0]), line=line, column=column)
     if kind == "attribute":
         return Expr("attribute", str(children[1]), (_expr(children[0]),), line, column)
+    if kind == "index":
+        return Expr("index", None, (_expr(children[0]), _expr(children[1])), line, column)
+    if kind == "list_literal":
+        return Expr("list", None, tuple(_expr(c) for c in children if c is not None), line, column)
     if kind == "call":
         name, *arguments = children
         arguments = tuple(_expr(a) for a in arguments if a is not None)
@@ -179,6 +183,13 @@ def _command(node):
     if kind == "define":
         params = _params(children[1]) if len(children) > 2 else ()
         return Command(kind, (str(children[0]), params), line, column, body=_block(children[-1]))
+    if kind in ("repeat", "while_loop"):
+        return Command(
+            kind.removesuffix("_loop"), _expr(children[0]), line, column, body=_block(children[1])
+        )
+    if kind == "expect":
+        message = _value(node, children[1]) if len(children) > 1 else None
+        return Command(kind, (_expr(children[0]), message), line, column)
     if kind in ("let", "record_value"):
         return Command(kind, (str(children[0]), _expr(children[1])), line, column)
     if kind == "return":

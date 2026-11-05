@@ -73,6 +73,15 @@ class Program:
     def frames(self, video, every):
         return self.session.iterate(self.session._video_frames(video, every), self.logs)
 
+    def expect(self, passed, message, line):
+        self.session.expect(bool(passed), message, line, self.logs)
+
+    def times(self, count):
+        return self.session.times(count)
+
+    def turns(self):
+        return self.session.turns()
+
     def result(self):
         return self.session._result(self.logs)
 

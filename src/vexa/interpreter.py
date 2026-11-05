@@ -15,6 +15,7 @@ from vexa.vision import MAX_IMAGE_BYTES, decode_image, draw_boxes, unknown_label
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_FOLDER_IMAGES = 10_000
 MAX_CALL_DEPTH = 100
+MAX_LOOP_TURNS = 10_000  # repeat and while stop with an error after this many turns
 
 
 class _Return(Exception):
@@ -39,6 +40,7 @@ class Session:
         self.functions = {}
         self.generation = 0  # increases whenever the pixels move; old objects go stale
         self.depth_calls = 0
+        self.expectations = []  # (line, message, passed) for every expect that ran
         self.reset()
 
     def reset(self):
@@ -97,6 +99,7 @@ class Session:
             cutout=self.alpha is not None,
             variables=self.variable_types(),
             functions=self.functions,
+            base=self.base,
         )
         logs = []
         self._run(commands, logs)
@@ -121,8 +124,12 @@ class Session:
                     )
                 elif kind == "print_text":
                     logs.append(target)
-                elif kind == "define":
-                    pass  # functions are collected while checking
+                elif kind in ("define", "use"):
+                    pass  # functions, including used libraries, are collected while checking
+                elif kind == "expect":
+                    self._expect(command, logs)
+                elif kind in ("repeat", "while"):
+                    self._repeat(command, logs)
                 elif kind == "let":
                     self.assign(target[0], self.evaluate(target[1]))
                 elif kind == "record_value":
@@ -550,8 +557,14 @@ class Session:
                 return self.lookup(expr.value)
             if kind == "attribute":
                 return self.evaluate(args[0], row).get(expr.value)
+            if kind == "list":
+                return [self.evaluate(a, row) for a in args]
+            if kind == "index":
+                return values.index(self.evaluate(args[0], row), self.evaluate(args[1], row))
             if kind == "call":
                 arguments = [self.evaluate(a, row) for a in args]
+                if expr.value not in self.functions:
+                    return values.BUILTINS[expr.value](*arguments)
                 return self.call(expr.value, arguments, self.logs)
             if kind == "count":
                 return float(self._count(expr.value))
@@ -598,6 +611,40 @@ class Session:
                 exc.line, exc.column = expr.line, expr.column
             raise
         raise VexaError(f"Unsupported expression {kind}.", expr.line, column=expr.column)
+
+    def _expect(self, command, logs):
+        condition, message = command.argument
+        self.expect(bool(self.evaluate(condition)), message, command.line, logs)
+
+    def expect(self, passed, message, line, logs):
+        label = message or f"line {line}"
+        self.expectations.append({"line": line, "message": label, "passed": passed})
+        logs.append(f"{'✓' if passed else '✗'} expect {label}" + ("" if passed else " FAILED"))
+
+    @staticmethod
+    def times(count):
+        """range for repeat COUNT times, after checking COUNT."""
+        if count != int(count) or count < 0:
+            raise VexaError(f"repeat needs a whole number of 0 or more, not {values.show(count)}.")
+        if count > MAX_LOOP_TURNS:
+            raise VexaError(f"repeat is limited to {MAX_LOOP_TURNS:,} turns.")
+        return range(int(count))
+
+    @staticmethod
+    def turns():
+        """Turn numbers for a while loop, stopping runaway loops."""
+        yield from range(MAX_LOOP_TURNS)
+        raise VexaError(f"while ran {MAX_LOOP_TURNS:,} times; its condition never became false.")
+
+    def _repeat(self, command, logs):
+        if command.kind == "repeat":
+            for _ in self.times(self.evaluate(command.argument)):
+                self._run(command.body, logs)
+            return
+        for _ in self.turns():
+            if not self.evaluate(command.argument):
+                break
+            self._run(command.body, logs)
 
     def measure_object(self, item, prop):
         """Lazily measured object properties: colour, position, distance, posture, text."""
@@ -832,6 +879,7 @@ class Session:
             "positions": [dict(item) for item in self.positions],
             "exposure": self.exposure,
             "cutout": None if self.alpha is None else round(float((self.alpha > 127).mean()), 3),
+            "expectations": [dict(item) for item in self.expectations],
         }
 
 

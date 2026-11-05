@@ -76,6 +76,7 @@ class VObject:
 
 
 def type_of(value):
+    """number, text, bool, object, objects, list[number], list[text], list[bool] or list[any]."""
     if isinstance(value, bool):
         return "bool"
     if isinstance(value, (int, float)):
@@ -85,7 +86,9 @@ def type_of(value):
     if isinstance(value, VObject):
         return "object"
     if isinstance(value, list):
-        return "objects"
+        if value and all(isinstance(item, VObject) for item in value):
+            return "objects"
+        return f"list[{type_of(value[0])}]" if value else "list[any]"
     return "nothing"
 
 
@@ -98,7 +101,11 @@ def show(value):
             return str(int(value))
         return f"{value:.4g}" if abs(value) < 1e6 else f"{value:.6g}"
     if isinstance(value, list):
-        return ", ".join(item.name for item in value) or "nothing"
+        if value and all(isinstance(item, VObject) for item in value):
+            return ", ".join(item.name for item in value)
+        if not value:
+            return "nothing"
+        return "[" + ", ".join(show(item) for item in value) + "]"
     if value is None:
         return "nothing"
     return str(value)
@@ -114,6 +121,8 @@ def record_value(value):
 
 
 def add(left, right):
+    if isinstance(left, list) and isinstance(right, list):
+        return left + right
     if isinstance(left, str) or isinstance(right, str):
         return show(left) + show(right)
     return left + right
@@ -151,15 +160,125 @@ def compare(operator, left, right):
 
 
 def pick(word, items):
-    """first, last, largest, smallest, nearest or farthest of a list; nothing if empty."""
+    """first, last, largest, smallest, nearest or farthest of a list."""
     if not items:
-        raise VexaError(f"{word} of an empty list: there is no object to pick.")
+        raise VexaError(f"{word} of an empty list: there is nothing to pick.")
     if word == "first":
         return items[0]
     if word == "last":
         return items[-1]
+    if not isinstance(items[0], VObject):  # numbers or text
+        return max(items) if word == "largest" else min(items)
     if word in ("largest", "smallest"):
         choose = max if word == "largest" else min
         return choose(items, key=lambda item: item.get("area"))
     choose = max if word == "nearest" else min
     return choose(items, key=lambda item: item.get("distance"))
+
+
+def index(items, position):
+    """items[1] is the first item (like car 1); items[-1] is the last."""
+    if position != int(position):
+        raise VexaError(f"A list position must be a whole number, not {show(position)}.")
+    position = int(position)
+    if position == 0 or abs(position) > len(items):
+        size = len(items)
+        raise VexaError(
+            f"Position {position} is outside the list of {size} item(s); positions start at 1."
+        )
+    return items[position - 1 if position > 0 else position]
+
+
+# Built-in functions --------------------------------------------------------------
+
+
+def _numbers(name, args):
+    """min, max: one list of numbers, or several numbers."""
+    items = args[0] if len(args) == 1 and isinstance(args[0], list) else list(args)
+    if not items:
+        raise VexaError(f"{name} of an empty list.")
+    return items
+
+
+def b_round(value, digits=0):
+    return float(round(value, int(digits)))
+
+
+def b_floor(value):
+    return float(math.floor(value))
+
+
+def b_ceil(value):
+    return float(math.ceil(value))
+
+
+def b_abs(value):
+    return abs(value)
+
+
+def b_sqrt(value):
+    if value < 0:
+        raise VexaError("sqrt of a negative number.")
+    return math.sqrt(value)
+
+
+def b_min(*args):
+    return min(_numbers("min", args))
+
+
+def b_max(*args):
+    return max(_numbers("max", args))
+
+
+def b_sum(items):
+    return float(sum(items))
+
+
+def b_average(items):
+    if not items:
+        raise VexaError("average of an empty list.")
+    return sum(items) / len(items)
+
+
+def b_length(value):
+    return float(len(value))
+
+
+def b_as_text(value):
+    return show(value)
+
+
+def b_as_number(value):
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value
+    try:
+        return float(str(value).strip())
+    except ValueError:
+        raise VexaError(f'"{value}" is not a number.') from None
+
+
+def b_upper(value):
+    return value.upper()
+
+
+def b_lower(value):
+    return value.lower()
+
+
+def b_sort(items):
+    return sorted(items)
+
+
+def b_reverse(items):
+    return list(reversed(items))
+
+
+def b_range(count):
+    if count != int(count) or count < 0:
+        raise VexaError(f"range needs a whole number of 0 or more, not {show(count)}.")
+    if count > 100_000:
+        raise VexaError("range is limited to 100,000 numbers.")
+    return [float(n) for n in range(1, int(count) + 1)]
+
+
+BUILTINS = {name[2:]: function for name, function in globals().items() if name.startswith("b_")}

@@ -8,11 +8,11 @@ any image is read.
 
 import difflib
 from dataclasses import dataclass, replace
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 from vexa.ast_nodes import Command, Expr, VexaError
 from vexa.parser import TRANSFORMS, parse
-from vexa.values import PROPERTIES
+from vexa.values import BUILTINS, PROPERTIES
 
 NO_IMAGE_NEEDED = {
     "print_text",
@@ -27,9 +27,14 @@ NO_IMAGE_NEEDED = {
     "call_statement",
     "define",
     "for_objects",
+    "repeat",
+    "while",
+    "expect",
+    "use",
 }
 VIDEO_SUFFIXES = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
-TYPES = ("number", "text", "bool", "object", "objects")
+TYPES = ("number", "text", "bool", "object", "objects", "list")
+MAX_USE_DEPTH = 10
 _OBJECT_TARGETS = {"blur", "pixelate", "measure", "colour", "where", "draw_objects"}
 _IMAGE_CHECKS = {"blurry": ("blur_checked", "check blur"), "dark": ("exposure_checked", "check exposure"), "bright": ("exposure_checked", "check exposure")}  # fmt: skip
 _MAX_CALL_DEPTH = 20
@@ -82,6 +87,15 @@ class _Context:
         self.stack = []
         self.returns = None  # list of return types while checking a function body
         self.pending = None  # state after a function called inside an expression
+        self.errors = None  # a list when collecting every error instead of stopping at the first
+
+    def report(self, error):
+        """Raise, or keep the error and carry on when collecting."""
+        if self.errors is None:
+            raise error
+        key = (error.file, error.line, error.column)
+        if key not in {(e.file, e.line, e.column) for e in self.errors}:
+            self.errors.append(error)
 
 
 def validate_commands(
@@ -104,6 +118,8 @@ def validate_commands(
     cutout=False,
     variables=None,
     functions=None,
+    base=None,
+    errors=None,
 ):
     state = State(
         loaded,
@@ -124,8 +140,14 @@ def validate_commands(
         tuple((name, kind, 0) for name, kind in (variables or {}).items()),
     )
     context = _Context(functions or {})
+    context.errors = errors
     defined = []
-    for command in commands:  # functions can be called before their define
+    try:
+        library = _load_uses(commands, Path(base or "."), [])
+    except VexaError as exc:
+        context.report(exc)
+        library = []
+    for command in [*library, *commands]:  # functions can be called before their define
         if command.kind == "define":
             name, params = command.argument
             if name in context.functions and name not in (functions or {}):
@@ -142,23 +164,83 @@ def validate_commands(
         params = tuple(
             (name, kind or "any", state.generation) for name, kind in command.argument[1]
         )
-        _check_body(
-            command,
-            replace(_ANYTHING, variables=params, generation=state.generation),
-            context,
-            False,
-        )
+        try:
+            _check_body(
+                command,
+                replace(_ANYTHING, variables=params, generation=state.generation),
+                context,
+                False,
+            )
+        except VexaError as exc:
+            exc.file = exc.file or command.origin
+            context.report(exc)
     _validate(commands, state, False, context, top=True)
     return context.functions
 
 
 def _fail(message, node):
-    raise VexaError(message, node.line, column=node.column)
+    error = VexaError(message, node.line, "check", node.column)
+    error.file = getattr(node, "origin", None)
+    raise error
+
+
+def _load_uses(commands, base, stack):
+    """The defines of every library file named by use, depth first."""
+    found = []
+    for command in commands:
+        if command.kind != "use":
+            continue
+        path = PurePath(command.argument)
+        if path.suffix != ".vexa" or path.is_absolute() or ".." in path.parts:
+            _fail('use needs a relative path to a .vexa file, e.g. use "helpers.vexa"', command)
+        target = base / path
+        if str(target) in stack:
+            _fail(f"{command.argument} uses itself through other files.", command)
+        if len(stack) >= MAX_USE_DEPTH:
+            _fail("Library files use each other too deeply.", command)
+        try:
+            source = target.read_text(encoding="utf-8")
+        except OSError:
+            _fail(f"Library not found: {command.argument}", command)
+        try:
+            library = parse(source)
+        except VexaError as exc:
+            exc.file = str(target)
+            raise
+        for item in library:
+            if item.kind not in ("define", "use"):
+                error = VexaError(
+                    "A library file holds only define … end blocks (and use).",
+                    item.line,
+                    column=item.column,
+                )
+                error.file = str(target)
+                raise error
+        library = [_from(item, str(target)) for item in library]
+        found += _load_uses(library, target.parent, [*stack, str(target)])
+        found += [item for item in library if item.kind == "define"]
+    return found
+
+
+def _from(command, origin):
+    """A library command, marked with its file, inside blocks too."""
+    return replace(
+        command,
+        origin=origin,
+        body=tuple(_from(c, origin) for c in command.body),
+        orelse=tuple(_from(c, origin) for c in command.orelse),
+    )
 
 
 def _validate(commands, state, in_loop, context, top=False):
     for command in commands:
-        state = _check(command, state, in_loop, context, top)
+        try:
+            state = _check(command, state, in_loop, context, top)
+        except VexaError as exc:
+            context.report(exc)
+            context.pending = None
+            if command.kind == "let":  # avoid a second error at every later use
+                state = _assign(state, command.argument[0], "any")
     return state
 
 
@@ -235,6 +317,25 @@ def _type(expr, state, context, row=False):
                 expr,
             )
         return found
+    if kind == "list":
+        element = "any"
+        for item in expr.args:
+            found = _value_type(item, state, context, row, "")
+            if _is_list(found):
+                _fail("Lists cannot hold lists.", item)
+            if not _fits(element, found):
+                _fail(
+                    f"A list holds one kind of value; this one mixes {_a(element)} and {_a(found)}.",
+                    item,
+                )
+            element = _specific(element, found)
+        return _list_of(element)
+    if kind == "index":
+        base = _type(expr.args[0], state, context, row)
+        if base != "any" and not _is_list(base):
+            _fail(f"[…] picks from a list, but this is {_a(base)}.", expr)
+        _expect(expr.args[1], "number", state, context, row, "A list position needs")
+        return _element(base) if base != "any" else "any"
     if kind == "attribute":
         base = _type(expr.args[0], state, context, row)
         if base not in ("object", "any"):
@@ -248,6 +349,9 @@ def _type(expr, state, context, row=False):
             )
         return PROPERTIES[expr.value]
     if kind == "call":
+        if expr.value in BUILTINS and expr.value not in context.functions:
+            kinds = [_value_type(a, state, context, row, "") for a in expr.args]
+            return _builtin(expr.value, kinds, expr)
         return _call(expr.value, expr.args, state, context, expr, in_loop=False, row=row)[0]
     if kind == "count":
         _need_subject(expr.value, state, Command("count", expr.value, expr.line, expr.column))
@@ -271,9 +375,18 @@ def _type(expr, state, context, row=False):
         return "objects"
     if kind == "pick":
         source = _type(expr.args[0], state, context, row)
-        if source not in ("objects", "any"):
-            _fail(f"{expr.value} needs a list of objects, but this is {_a(source)}.", expr)
-        return "object"
+        objects_only = expr.value in ("nearest", "farthest")
+        if source != "any" and (not _is_list(source) or (objects_only and source != "objects")):
+            wanted = "a list of objects" if objects_only else "a list"
+            _fail(f"{expr.value} needs {wanted}, but this is {_a(source)}.", expr)
+        if expr.value in ("largest", "smallest") and _element(source) not in (
+            "object",
+            "number",
+            "text",
+            "any",
+        ):
+            _fail(f"{expr.value} compares objects, numbers or text.", expr)
+        return _element(source) if source != "any" else "any"
     if kind == "where":
         source = _type(expr.args[0], state, context, row)
         if source not in ("objects", "any"):
@@ -292,6 +405,10 @@ def _type(expr, state, context, row=False):
         return "bool"
     if kind == "add":
         left, right = (_value_type(side, state, context, row, "+ ") for side in expr.args)
+        if _is_list(left) and _is_list(right):
+            if not _fits(left, right):
+                _fail(f"+ joins lists of the same kind, not {_a(left)} and {_a(right)}.", expr)
+            return _specific(left, right)
         if "text" in (left, right):
             return "text"
         for side, found in zip(expr.args, (left, right), strict=True):
@@ -306,7 +423,7 @@ def _type(expr, state, context, row=False):
     if kind == "compare":
         left, right = (_value_type(side, state, context, row, "") for side in expr.args)
         if "any" not in (left, right):
-            if expr.value in ("==", "!=") and left != right:
+            if expr.value in ("==", "!=") and not _fits(left, right):
                 _fail(
                     f"{expr.value} compares {_a(left)} with {_a(right)}; that is never equal.", expr
                 )
@@ -327,7 +444,46 @@ def _a(kind):
         "object": "an object",
         "objects": "a list of objects",
         "nothing": "nothing",
+        "list[number]": "a list of numbers",
+        "list[text]": "a list of text",
+        "list[bool]": "a list of true/false",
+        "list[any]": "an empty list",
+        "list": "a list",
     }.get(kind, "an unknown value")
+
+
+def _is_list(kind):
+    return kind == "objects" or kind.startswith("list")
+
+
+def _element(kind):
+    if kind == "objects":
+        return "object"
+    if kind.startswith("list["):
+        return kind[5:-1]
+    return "any"
+
+
+def _list_of(element):
+    return "objects" if element == "object" else f"list[{element}]"
+
+
+def _fits(wanted, found):
+    """Can a value of type found go where wanted is expected?"""
+    if wanted == found or "any" in (wanted, found):
+        return True
+    if wanted == "list":
+        return _is_list(found)
+    if _is_list(wanted) and _is_list(found):
+        return "any" in (_element(wanted), _element(found))
+    return False
+
+
+def _specific(first, second):
+    """The more specific of two fitting types: list[number] over list[any]."""
+    if first == "any" or (_is_list(first) and _element(first) == "any"):
+        return second
+    return first
 
 
 def _value_type(expr, state, context, row, prefix):
@@ -348,6 +504,57 @@ def _need_bool(expr, state, context, where, row=False):
     if found not in ("bool", "any"):
         hint = " Compare it, e.g. … > 0." if found == "number" else ""
         _fail(f"{where} needs true or false, but this is {_a(found)}.{hint}", expr)
+
+
+_ONE_NUMBER = {"floor", "ceil", "abs", "sqrt"}
+
+
+def _builtin(name, kinds, node):
+    """Type of a built-in function call, after checking its arguments."""
+
+    def need(condition, usage):
+        if not condition:
+            got = ", ".join(_a(k) for k in kinds) or "nothing"
+            _fail(f"{name} takes {usage}; got {got}.", node)
+
+    def numbers(count=None):
+        return (count is None or len(kinds) == count) and all(_fits("number", k) for k in kinds)
+
+    if name in _ONE_NUMBER:
+        need(numbers(1), "one number")
+        return "number"
+    if name == "round":
+        need(1 <= len(kinds) <= 2 and numbers(), "a number and optional digits")
+        return "number"
+    if name in ("min", "max"):
+        one_list = len(kinds) == 1 and _fits("list[number]", kinds[0])
+        need(one_list or (len(kinds) >= 2 and numbers()), "a list of numbers, or 2+ numbers")
+        return "number"
+    if name in ("sum", "average"):
+        need(len(kinds) == 1 and _fits("list[number]", kinds[0]), "a list of numbers")
+        return "number"
+    if name == "length":
+        ok = len(kinds) == 1 and (_fits("text", kinds[0]) or _is_list(kinds[0]))
+        need(ok, "a list or text")
+        return "number"
+    if name in ("as_text", "as_number"):
+        need(len(kinds) == 1, "one value")
+        return name[3:]
+    if name in ("upper", "lower"):
+        need(len(kinds) == 1 and _fits("text", kinds[0]), "text")
+        return "text"
+    if name in ("sort", "reverse"):
+        sortable = ("number", "text", "any") if name == "sort" else None
+        ok = len(kinds) == 1 and (
+            kinds[0] == "any"
+            or (_is_list(kinds[0]) and (sortable is None or _element(kinds[0]) in sortable))
+        )
+        need(ok, "a list of numbers or text" if name == "sort" else "a list")
+        return kinds[0]
+    if name == "range":
+        need(numbers(1), "one whole number")
+        return "list[number]"
+    raise VexaError(f"Unknown built-in {name}.", node.line, column=node.column)
 
 
 # Functions -------------------------------------------------------------------
@@ -371,7 +578,7 @@ def _call(name, args, state, context, node, in_loop, row=False):
     kinds = []
     for (param, annotation), arg in zip(params, args, strict=True):
         found = _value_type(arg, state, context, row, "")
-        if annotation and found not in (annotation, "any"):
+        if annotation and not _fits(annotation, found):
             _fail(f"{name} expects {param} to be {_a(annotation)}, but got {_a(found)}.", arg)
         kinds.append(annotation or found)
     if name in context.stack:  # recursion: the body is being checked further up
@@ -390,6 +597,7 @@ def _call(name, args, state, context, node, in_loop, row=False):
         if f"(in {name}" not in exc.message:
             exc.message += f" (in {name}, called on line {node.line})"
             exc.args = (exc.message,)
+        exc.file = exc.file or function.origin
         raise
     after = replace(after, variables=state.variables)
     if isinstance(node, Expr):
@@ -423,6 +631,8 @@ def _need_subject(subject, state, command):
     subject = "all" if subject == "detections" else subject
     variable = _lookup(state, subject, command) if not subject.startswith(":") else None
     if variable is not None:
+        if command.kind in ("count", "record_count") and _is_list(variable):
+            return
         if variable not in ("object", "objects", "any"):
             _fail(f"{subject} is {_a(variable)}, not objects.", command)
     elif subject == ":text" and not state.ocr_done:
@@ -502,7 +712,24 @@ def _check(command, state, in_loop, context, top=False):
     if kind == "define":
         if not top:
             _fail("define belongs at the top level, not inside if, for each or define.", command)
+        if command.argument[0] in BUILTINS:
+            _fail(f"{command.argument[0]} is a built-in function; choose another name.", command)
         return state
+    if kind == "use":
+        if not top:
+            _fail("use belongs at the top level of the program.", command)
+        return state
+    if kind == "expect":
+        _need_bool(command.argument[0], state, context, "expect")
+        return _take(state, context)
+    if kind in ("repeat", "while"):
+        if kind == "repeat":
+            _expect(command.argument, "number", state, context, False, "repeat needs")
+        else:
+            _need_bool(command.argument, state, context, "while")
+        state = _take(state, context)
+        # The body may run zero times: its results and new variables do not escape.
+        return _keep_outer(state, _validate(command.body, state, in_loop, context))
     if kind == "let":
         name, expr = command.argument
         if name in context.functions:
@@ -510,9 +737,9 @@ def _check(command, state, in_loop, context, top=False):
         found = _value_type(expr, state, context, False, "")
         state = _take(state, context)
         before = _lookup(state, name, command)
-        if before not in (None, "any") and found not in (before, "any"):
+        if before is not None and not _fits(before, found):
             _fail(f"{name} is {_a(before)}; it cannot hold {_a(found)}.", command)
-        return _assign(state, name, found if before in (None, "any") else before)
+        return _assign(state, name, found if before is None else _specific(before, found))
     if kind == "record_value":
         _value_type(command.argument[1], state, context, False, "")
         return _take(state, context)
@@ -551,10 +778,11 @@ def _check(command, state, in_loop, context, top=False):
         name, expr = command.argument
         source = _type(expr, state, context)
         state = _take(state, context)
-        if source not in ("objects", "any"):
-            _fail(f"for each {name} in … needs a list of objects, but this is {_a(source)}.", expr)
-        inside = _validate(command.body, _assign(state, name, "object"), in_loop, context)
-        if inside.generation != state.generation:
+        if source != "any" and not _is_list(source):
+            _fail(f"for each {name} in … needs a list, but this is {_a(source)}.", expr)
+        element = _element(source) if source != "any" else "any"
+        inside = _validate(command.body, _assign(state, name, element), in_loop, context)
+        if source == "objects" and inside.generation != state.generation:
             _fail(
                 f"The loop over {name} changes the image (load, rotate, crop or style), so the "
                 "remaining objects would no longer match it.",
@@ -738,3 +966,17 @@ def check_source(source):
     commands = parse(source)
     validate_commands(commands)
     return commands
+
+
+def diagnose(source, base=None):
+    """(errors, warnings) for a whole program: every checker error, not only the first."""
+    from vexa.lint import lint
+
+    try:
+        commands = parse(source)
+    except VexaError as exc:
+        return [exc], []
+    errors = []
+    validate_commands(commands, base=base, errors=errors)
+    errors.sort(key=lambda e: (e.file is not None, e.line or 0, e.column or 0))
+    return errors, lint(commands)

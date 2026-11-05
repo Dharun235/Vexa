@@ -53,6 +53,14 @@ def arguments():
     compile_command.add_argument(
         "--no-optimize", action="store_true", help="Skip constant folding and dead-code removal"
     )
+    test = commands.add_parser(
+        "test", help="Run .vexa programs and report their expect checks (exit 1 if any fail)"
+    )
+    test.add_argument("programs", type=Path, nargs="+")
+    test.add_argument("--image", type=Path, help="Image for load")
+    test.add_argument(
+        "--model", type=Path, help="Use this ONNX file instead of the installed model"
+    )
     fmt = commands.add_parser("fmt", help="Format .vexa files in the standard layout")
     fmt.add_argument("programs", type=Path, nargs="+")
     mode = fmt.add_mutually_exclusive_group()
@@ -93,6 +101,12 @@ def save_image(png_bytes, path):
 
 
 def print_error(error, source="", filename="<repl>"):
+    if getattr(error, "file", None) and error.file != filename:  # inside a used library
+        filename = error.file
+        try:
+            source = read_source(Path(error.file))
+        except (OSError, UnicodeError, VexaError):
+            source = ""
     location = f"{filename}:{error.line}" if error.line else filename
     if error.column:
         location += f":{error.column}"
@@ -125,7 +139,60 @@ def run_file(args):
     outputs = [args.output] + ([args.json_output] if args.json_output else [])
     protect_inputs([args.program] + ([args.image] if args.image else []), outputs)
     result = execute_commands(commands, image, Vision(args.model))
+    failed = [e for e in result["expectations"] if not e["passed"]]
     write_outputs(result, args.output, args.json_output)
+    if failed:
+        print(f"{len(failed)} expect check(s) failed.", file=sys.stderr)
+        return 1
+    return 0
+
+
+def test_files(args):
+    """Run each program and summarise its expect checks."""
+    from vexa.interpreter import execute_commands
+    from vexa.vision import Vision
+
+    image = read_image(args.image)
+    vision = Vision(args.model)
+    passed = failed = broken = 0
+    for path in args.programs:
+        source = read_source(path)
+        try:
+            result = execute_commands(check_source(source), image, vision)
+        except VexaError as exc:
+            print_error(exc, source, str(path))
+            broken += 1
+            continue
+        checks = result["expectations"]
+        for check in checks:
+            mark = "✓" if check["passed"] else "✗"
+            print(f"{mark} {path}:{check['line']}: {check['message']}")
+        passed += sum(check["passed"] for check in checks)
+        failed += sum(not check["passed"] for check in checks)
+        if not checks:
+            print(f"- {path}: no expect checks")
+    summary = f"{passed} passed, {failed} failed"
+    print(summary + (f", {broken} program(s) with errors" if broken else ""))
+    return 1 if failed or broken else 0
+
+
+def check_file(args):
+    """Report every error and warning in a program, not only the first."""
+    from vexa.validation import diagnose
+
+    source = read_source(args.program)
+    errors, warnings = diagnose(source)
+    for problem in sorted(errors + warnings, key=lambda p: (p.file is not None, p.line or 0)):
+        print_error(problem, source, str(args.program))
+    if errors:
+        print(f"{len(errors)} error(s), {len(warnings)} warning(s).", file=sys.stderr)
+        return 1
+    from vexa.parser import parse
+
+    note = f" {len(warnings)} warning(s)." if warnings else ""
+    count = len(parse(source))
+    print(f"Check OK: {count} command(s). Syntax, types and command order are valid.{note}")
+    return 0
 
 
 def compile_file(args):
@@ -197,12 +264,11 @@ def main(argv=None):
 
             print(help_text(args.topic))
         elif args.command == "check":
-            commands = check_source(read_source(args.program))
-            print(
-                f"Check OK: {len(commands)} command(s). Syntax, types and command order are valid."
-            )
+            return check_file(args)
         elif args.command == "run":
-            run_file(args)
+            return run_file(args)
+        elif args.command == "test":
+            return test_files(args)
         elif args.command == "compile":
             compile_file(args)
         elif args.command == "fmt":

@@ -89,7 +89,7 @@ def test_language_server_session():
         },
         {
             "method": "textDocument/didChange",
-            "params": {"textDocument": {"uri": uri}, "contentChanges": [{"text": "let  x=1\n"}]},
+            "params": {"textDocument": {"uri": uri}, "contentChanges": [{"text": "let  x=1\nprint x\n"}]},
         },
         {"id": 4, "method": "textDocument/formatting", "params": {"textDocument": {"uri": uri}}},
         {"id": 5, "method": "shutdown"},
@@ -105,7 +105,7 @@ def test_language_server_session():
     assert "width" in [item["label"] for item in completion["result"]]
     assert hover["result"]["contents"]["value"].startswith("detect person")
     assert clean["params"]["diagnostics"] == []
-    assert formatting["result"][0]["newText"] == "let x = 1\n"
+    assert formatting["result"][0]["newText"] == "let x = 1\nprint x\n"
     assert shutdown == {"jsonrpc": "2.0", "id": 5, "result": None}
 
 

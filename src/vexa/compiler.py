@@ -51,6 +51,7 @@ _READS = {
     "show",
     "save_csv",
     "where",
+    "expect",
     # these add results but leave the pixels alone
     "detect",
     "locate",
@@ -121,6 +122,8 @@ def _command_exprs(command):
         yield argument
     elif command.kind in ("let", "record_value", "for_objects"):
         yield argument[1]
+    elif command.kind == "expect":
+        yield argument[0]
     elif command.kind == "call_statement":
         yield from argument[1]
 
@@ -227,6 +230,8 @@ def _fold_command(command, stats):
         argument = (argument[0], fold(argument[1], stats))
     elif command.kind == "call_statement":
         argument = (argument[0], tuple(fold(a, stats) for a in argument[1]))
+    elif command.kind == "expect":
+        argument = (fold(argument[0], stats), argument[1])
     condition = fold(command.condition, stats) if command.condition is not None else None
     return replace(command, argument=argument, condition=condition)
 
@@ -305,8 +310,16 @@ class _Emitter:
             self.map[len(self.lines)] = line
 
 
+_NUMBER_BUILTINS = {"round", "floor", "ceil", "abs", "sqrt", "min", "max", "sum", "average",
+                    "length", "as_number"}  # fmt: skip
+
+
 def _type_of(expr, types, row=False):
     kind = expr.kind
+    if kind == "call" and expr.value in _NUMBER_BUILTINS:  # defines cannot reuse these names
+        return "number"
+    if kind == "call" and expr.value in ("upper", "lower", "as_text"):
+        return "text"
     if kind == "number" or kind in ("count", "subtract", "multiply", "divide", "modulo", "negate"):
         return "number"
     if kind in ("string", "template", "caption"):
@@ -370,8 +383,14 @@ class _Generator:
             return _var(expr.value)
         if kind == "attribute":
             return f"{self.expr(args[0], types, row)}.get({expr.value!r})"
+        if kind == "list":
+            return "[" + ", ".join(self.expr(a, types, row) for a in args) + "]"
+        if kind == "index":
+            return f"v.index({self.expr(args[0], types, row)}, {self.expr(args[1], types, row)})"
         if kind == "call":
             arguments = ", ".join(self.expr(a, types, row) for a in args)
+            if expr.value not in self.functions:
+                return f"v.b_{expr.value}({arguments})"
             return f"{_function(expr.value)}({arguments})"
         if kind == "count":
             subject = expr.value
@@ -460,8 +479,23 @@ class _Generator:
             out.indent += 1
             self.block(command.body, types)
             out.indent -= 1
-        elif kind == "define":
-            pass  # emitted first, by generate
+        elif kind == "repeat":
+            out.emit(f"for _ in rt.times({self.expr(argument, types)}):", line)
+            out.indent += 1
+            self.block(command.body, dict(types))
+            out.indent -= 1
+        elif kind == "while":
+            out.emit("for _ in rt.turns():", line)
+            out.indent += 1
+            out.emit(f"if not {self.expr(argument, types)}:", line)
+            out.emit("    break")
+            self.block(command.body, dict(types))
+            out.indent -= 1
+        elif kind == "expect":
+            condition, message = argument
+            out.emit(f"rt.expect({self.expr(condition, types)}, {message!r}, {line})", line)
+        elif kind in ("define", "use"):
+            pass  # functions are emitted first, by generate
         else:
             extra = f", confidence={command.confidence!r}" if command.confidence is not None else ""
             extra += self._bind(argument if kind in _OBJECT_TARGETS | {"measure_gap"} else None)
@@ -541,7 +575,10 @@ def generate(commands, source_name="program.vexa"):
 def compile_source(source, source_name="program.vexa", optimize=True):
     """(python source, Stats) for a Vexa program; raises VexaError when it is invalid."""
     commands = parse(source)
-    validate_commands(commands)
+    functions = validate_commands(commands)
+    # Used libraries become part of the program: their defines first, the use lines go.
+    library = [f for f in functions.values() if f.origin]
+    commands = library + [c for c in commands if c.kind != "use"]
     stats = Stats()
     if optimize:
         commands, stats = optimise(commands)
