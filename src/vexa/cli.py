@@ -3,6 +3,7 @@
 import argparse
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -52,6 +53,12 @@ def arguments():
     compile_command.add_argument(
         "--no-optimize", action="store_true", help="Skip constant folding and dead-code removal"
     )
+    fmt = commands.add_parser("fmt", help="Format .vexa files in the standard layout")
+    fmt.add_argument("programs", type=Path, nargs="+")
+    mode = fmt.add_mutually_exclusive_group()
+    mode.add_argument("--write", action="store_true", help="Rewrite the files in place")
+    mode.add_argument("--check", action="store_true", help="Exit 1 if any file needs formatting")
+    commands.add_parser("lsp", help="Run the language server for editors (stdin/stdout)")
     repl = commands.add_parser("repl", help="Start an interactive image session")
     repl.add_argument("--image", required=True, type=Path)
     repl.add_argument("--model", type=Path)
@@ -92,9 +99,12 @@ def print_error(error, source="", filename="<repl>"):
     print(f"{location}: {error.kind}: {error.message}", file=sys.stderr)
     lines = source.splitlines()
     if error.line and 0 < error.line <= len(lines):
-        excerpt = lines[error.line - 1].expandtabs(4)
-        column = len(lines[error.line - 1][: max(0, (error.column or 1) - 1)].expandtabs(4))
-        print(f"  {excerpt}\n  {' ' * column}^", file=sys.stderr)
+        text = lines[error.line - 1]
+        start = max(0, (error.column or 1) - 1)
+        column = len(text[:start].expandtabs(4))
+        word = re.match(r"[A-Za-z0-9_]+|\"[^\"]*\"", text[start:]) if error.column else None
+        marker = "^" + "~" * (len(word.group()) - 1) if word else "^"
+        print(f"  {text.expandtabs(4)}\n  {' ' * column}{marker}", file=sys.stderr)
 
 
 def read_image(path):
@@ -137,6 +147,30 @@ def compile_file(args):
     print(f"Run it with: python {output} --image photo.jpg")
 
 
+def format_files(args):
+    from vexa.formatter import check_formatting
+
+    changed = 0
+    for path in args.programs:
+        source = read_source(path)
+        try:
+            formatted = check_formatting(source)
+        except VexaError as exc:
+            print_error(exc, source, str(path))
+            return 1
+        if args.check:
+            if formatted != source:
+                changed += 1
+                print(f"Would reformat {path}")
+        elif args.write:
+            if formatted != source:
+                path.write_text(formatted, encoding="utf-8")
+                print(f"Formatted {path}")
+        else:
+            sys.stdout.write(formatted)
+    return 1 if changed else 0
+
+
 def write_outputs(result, output, json_output=None):
     """Print the logs, save the shown image as PNG, and optionally the result as JSON."""
     image_data = result.pop("image")
@@ -169,6 +203,12 @@ def main(argv=None):
             run_file(args)
         elif args.command == "compile":
             compile_file(args)
+        elif args.command == "fmt":
+            return format_files(args)
+        elif args.command == "lsp":
+            from vexa.lsp import main as serve
+
+            return serve()
         elif args.command == "repl":
             from vexa.repl import run_repl
 

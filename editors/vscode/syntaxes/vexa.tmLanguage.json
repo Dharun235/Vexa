@@ -1,0 +1,66 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Vexa",
+  "scopeName": "source.vexa",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#define" },
+    { "include": "#string" },
+    { "include": "#number" },
+    { "include": "#keyword" },
+    { "include": "#command" },
+    { "include": "#constant" },
+    { "include": "#property" },
+    { "include": "#call" },
+    { "include": "#operator" }
+  ],
+  "repository": {
+    "comment": { "name": "comment.line.number-sign.vexa", "match": "#.*$" },
+    "define": {
+      "match": "^\\s*(define)\\s+([A-Za-z_]\\w*)",
+      "captures": {
+        "1": { "name": "keyword.control.vexa" },
+        "2": { "name": "entity.name.function.vexa" }
+      }
+    },
+    "string": {
+      "name": "string.quoted.double.vexa",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.vexa", "match": "\\\\.|\\{\\{|\\}\\}" },
+        {
+          "name": "meta.interpolation.vexa",
+          "begin": "\\{",
+          "end": "\\}",
+          "beginCaptures": { "0": { "name": "punctuation.section.interpolation.vexa" } },
+          "endCaptures": { "0": { "name": "punctuation.section.interpolation.vexa" } },
+          "patterns": [{ "include": "#number" }, { "include": "#property" }, { "include": "#operator" },
+                       { "name": "variable.other.vexa", "match": "[A-Za-z_]\\w*" }]
+        }
+      ]
+    },
+    "number": { "name": "constant.numeric.vexa", "match": "\\b\\d+(\\.\\d+)?\\b" },
+    "keyword": {
+      "name": "keyword.control.vexa",
+      "match": "\\b(if|else|end|for|each|in|define|return|let|where|and|or|not|every|seconds?|by|to|between|confidence)\\b"
+    },
+    "constant": {
+      "name": "constant.language.vexa",
+      "match": "\\b(true|false|detections|first|last|largest|smallest|nearest|farthest|all|image|frame|left of|right of|above|below)\\b"
+    },
+    "command": {
+      "name": "support.function.vexa",
+      "match": "\\b(load|detect|locate|segment|count|draw|print|show|record|save|csv|ocr|scan|find|inspect|check|measure|reference|rotate|flip|resize|scale|crop|move|style|translate|estimate|rank|export|blur|pixelate|caption|colou?r|where|remove|background)\\b"
+    },
+    "property": {
+      "match": "(\\.)([A-Za-z_]\\w*)",
+      "captures": { "2": { "name": "variable.other.property.vexa" } }
+    },
+    "call": {
+      "match": "\\b([A-Za-z_]\\w*)(?=\\()",
+      "captures": { "1": { "name": "entity.name.function.vexa" } }
+    },
+    "operator": { "name": "keyword.operator.vexa", "match": "==|!=|<=|>=|<|>|\\+|-|\\*|/|%|=" }
+  }
+}
