@@ -50,6 +50,8 @@ _MAX_CALL_DEPTH = 20
 
 @dataclass(frozen=True)
 class State:
+    """What the checker knows at one point: which results exist and the variables in scope."""
+
     loaded: bool = False
     detected: bool = False
     ocr_done: bool = False
@@ -139,6 +141,12 @@ def validate_commands(
     errors=None,
     constants=None,
 ):
+    """Check a program without running it and return its functions by name.
+
+    The keyword flags describe results that already exist (for REPL input after earlier
+    commands). Raises VexaError on the first problem, or appends every problem to errors
+    when a list is given.
+    """
     state = State(
         loaded,
         detected,
@@ -1339,14 +1347,18 @@ def _relative_file(name, suffix):
 
 
 def check_source(source):
+    """Parse and check a program; return its commands or raise VexaError."""
     commands = parse(source)
     validate_commands(commands)
     return commands
 
 
 def _syntax_diagnostics(source, base):
-    """Syntax errors, plus checker errors on the lines before the first one: those cannot be
-    caused by the stand-ins that replaced the bad lines."""
+    """Return syntax errors plus checker errors on the lines before the first syntax error.
+
+    Only earlier lines are checked because later errors may be caused by the stand-ins
+    that replaced the bad lines.
+    """
     from vexa.parser import recover
 
     errors, commands = recover(source)

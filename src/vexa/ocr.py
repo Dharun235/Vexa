@@ -13,12 +13,16 @@ from vexa.ast_nodes import VexaError
 
 @dataclass(frozen=True)
 class TextRegion:
+    """One line of recognised text; box is its corner points as (x, y) pixels."""
+
     text: str
     confidence: float
     box: tuple[tuple[int, int], ...]
 
 
 class TextReader:
+    """RapidOCR detection, orientation and recognition; models load on first use."""
+
     def __init__(self):
         self.engine = None
         self.lock = Lock()
@@ -59,6 +63,7 @@ class TextReader:
         self.engine = RapidOCR(params=params)
 
     def read(self, image):
+        """Return the text regions found in an image; boxes are clipped to the image."""
         with self.lock:
             try:
                 if self.engine is None:
@@ -82,6 +87,7 @@ class TextReader:
 
 
 def draw_text_regions(image, regions):
+    """Return a copy of image with each region outlined and numbered from 1."""
     output = image.copy()
     for index, region in enumerate(regions, 1):
         points = np.asarray(region.box, dtype=np.int32)

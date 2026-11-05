@@ -1,3 +1,5 @@
+"""Run checked Vexa commands on an image and collect logs, results and the output image."""
+
 import csv
 import math
 from dataclasses import asdict
@@ -35,7 +37,10 @@ _COLUMNS = {":text": "text_lines", ":masks": "masks", ":codes": "codes_found"}
 
 
 class Session:
-    """State for one program or REPL; the input image and detector can be reused."""
+    """Hold image state and run commands for one program or REPL.
+
+    The input image and detector can be reused across calls to execute.
+    """
 
     def __init__(
         self,
@@ -68,6 +73,7 @@ class Session:
         self.reset()
 
     def reset(self):
+        """Drop the working image and everything measured on it."""
         self.image = None
         self.alpha = None  # transparency after remove background, 255 is kept
         self.counts = {}
@@ -105,6 +111,7 @@ class Session:
             self.segmenter.clear_image()
 
     def execute(self, commands):
+        """Check then run commands and return the result dict (logs, image, expectations …)."""
         # Validate the entire submission before any image changes or inference.
         self.functions = validate_commands(
             commands,
@@ -536,7 +543,7 @@ class Session:
         ]
 
     def current_objects(self):
-        """The latest detections as language objects, numbered per label: car 1, car 2 …"""
+        """Return the latest detections as objects numbered per label (car 1, car 2 …)."""
         if self.objects is None:
             numbers, self.objects = {}, []
             for item in self.detections:
@@ -599,6 +606,7 @@ class Session:
         return text
 
     def assign(self, name, value):
+        """Set a variable in the innermost scope."""
         self.scopes[-1][name] = value
 
     def variable_types(self):
@@ -613,6 +621,7 @@ class Session:
         }
 
     def call(self, name, arguments, logs):
+        """Run a defined function with its own scope and return its value (or None)."""
         function = self.functions[name]
         if self.depth_calls >= MAX_CALL_DEPTH:
             raise VexaError(f"{name} calls itself too many times (limit {MAX_CALL_DEPTH}).")
@@ -634,9 +643,9 @@ class Session:
         return None
 
     def evaluate(self, expr, row=None):
+        """Return the value of an expression; row is the object a where clause is testing."""
         if row is None:
             row = _NO_ROW
-        """The value of an expression; row is the object a where clause is testing."""
         kind, args = expr.kind, expr.args
         try:
             if kind in ("number", "string", "bool"):
@@ -724,13 +733,14 @@ class Session:
         self.expect(bool(self.evaluate(condition)), message, command.line, logs)
 
     def expect(self, passed, message, line, logs):
+        """Record an expect check and log whether it passed."""
         label = message or f"line {line}"
         self.expectations.append({"line": line, "message": label, "passed": passed})
         logs.append(f"{'✓' if passed else '✗'} expect {label}" + ("" if passed else " FAILED"))
 
     @staticmethod
     def times(count):
-        """range for repeat COUNT times, after checking COUNT."""
+        """Return the range for repeat COUNT times, after checking COUNT."""
         if count != int(count) or count < 0:
             raise VexaError(f"repeat needs a whole number of 0 or more, not {values.show(count)}.")
         if count > MAX_LOOP_TURNS:
@@ -790,8 +800,10 @@ class Session:
         ]
 
     def _track(self, label, logs):
-        """Give each detection the id of the matching object in the previous frame (the box that
-        overlaps it most), or a new id."""
+        """Give each detection the id of the matching object in the previous frame, or a new id.
+
+        The match is the previous box that overlaps it most.
+        """
         from vexa.analysis import overlap
 
         items = [d for _, d in self._named(label)]
@@ -1108,10 +1120,12 @@ def _gap(a, b):
 
 
 def execute(source, source_image, vision, reader=None, segmenter=None, parameters=None):
+    """Parse and run a program on one image in a fresh Session; return the result dict."""
     return Session(source_image, vision, reader, segmenter, parameters=parameters).execute(
         parse(source)
     )
 
 
 def execute_commands(commands, source_image, vision, reader=None, segmenter=None):
+    """Run already-parsed commands on one image in a fresh Session; return the result dict."""
     return Session(source_image, vision, reader, segmenter).execute(commands)

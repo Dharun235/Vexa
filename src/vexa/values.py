@@ -49,6 +49,7 @@ class VObject:
         return self.name
 
     def get(self, prop):
+        """Return a property's value, measuring it on first read and caching it."""
         if self.generation != self.session.generation:
             raise VexaError(
                 f"{self.name} belongs to an earlier image: the image changed since it was found."
@@ -131,6 +132,7 @@ def record_value(value):
 
 
 def add(left, right):
+    """Apply +: join lists, merge maps, concatenate text, or add numbers."""
     if isinstance(left, list) and isinstance(right, list):
         return left + right
     if isinstance(left, dict) and isinstance(right, dict):
@@ -141,12 +143,14 @@ def add(left, right):
 
 
 def divide(left, right):
+    """Apply /, raising a VexaError on division by zero."""
     if right == 0:
         raise VexaError("Division by zero.")
     return left / right
 
 
 def modulo(left, right):
+    """Apply %, raising a VexaError on division by zero."""
     if right == 0:
         raise VexaError("Division by zero.")
     return left % right
@@ -160,6 +164,7 @@ def equal(left, right):
 
 
 def compare(operator, left, right):
+    """Apply a comparison operator; text compares ignoring case."""
     if operator == "==":
         return equal(left, right)
     if operator == "!=":
@@ -189,7 +194,7 @@ def pick(word, items):
 
 
 def contains(item, container):
-    """item in container: an item of a list, part of a text (ignoring case) or a key of a map."""
+    """Check `item in container`: a list item, part of a text (ignoring case) or a map key."""
     if isinstance(container, str):
         return str(item).casefold() in container.casefold()
     if isinstance(container, dict):
@@ -234,46 +239,56 @@ def _numbers(name, args):
 
 
 def b_round(value, digits=0):
+    """Round to the given number of decimal places."""
     return float(round(value, int(digits)))
 
 
 def b_floor(value):
+    """Round down to a whole number."""
     return float(math.floor(value))
 
 
 def b_ceil(value):
+    """Round up to a whole number."""
     return float(math.ceil(value))
 
 
 def b_abs(value):
+    """Return the absolute value."""
     return abs(value)
 
 
 def b_sqrt(value):
+    """Return the square root; negative numbers are an error."""
     if value < 0:
         raise VexaError("sqrt of a negative number.")
     return math.sqrt(value)
 
 
 def b_min(*args):
+    """Return the smallest of a list of numbers, or of several numbers."""
     return min(_numbers("min", args))
 
 
 def b_max(*args):
+    """Return the largest of a list of numbers, or of several numbers."""
     return max(_numbers("max", args))
 
 
 def b_sum(items):
+    """Add up a list of numbers."""
     return float(sum(items))
 
 
 def b_average(items):
+    """Return the mean of a non-empty list of numbers."""
     if not items:
         raise VexaError("average of an empty list.")
     return sum(items) / len(items)
 
 
 def b_length(value):
+    """Count the items in a list or map, or the characters in a text."""
     return float(len(value))
 
 
@@ -300,44 +315,54 @@ def b_index_of(value, item):
 
 
 def b_split(text, separator=None):
+    """Split text on a separator, or on whitespace when none is given."""
     return text.split(separator) if separator else text.split()
 
 
 def b_join(items, separator=""):
+    """Join items into one text, with the separator between them."""
     return separator.join(show(item) for item in items)
 
 
 def b_replace(text, old, new):
+    """Replace every occurrence of old in the text with new."""
     if not old:
         raise VexaError("replace needs text to look for.")
     return text.replace(old, new)
 
 
 def b_trim(text):
+    """Strip whitespace from both ends of the text."""
     return text.strip()
 
 
 def b_starts_with(text, prefix):
+    """Check whether the text starts with prefix, ignoring case."""
     return text.casefold().startswith(prefix.casefold())
 
 
 def b_ends_with(text, suffix):
+    """Check whether the text ends with suffix, ignoring case."""
     return text.casefold().endswith(suffix.casefold())
 
 
 def b_keys(mapping):
+    """Return a map's keys as a list."""
     return list(mapping)
 
 
 def b_values(mapping):
+    """Return a map's values as a list."""
     return list(mapping.values())
 
 
 def b_get(mapping, key, default):
+    """Return the value for key, or default when the map lacks it."""
     return mapping.get(key, default)
 
 
 def b_put(mapping, key, value):
+    """Return a copy of the map with key set to value."""
     return {**mapping, key: value}
 
 
@@ -349,6 +374,7 @@ def b_random(low, high):
 
 
 def b_now():
+    """Return the local date and time as "YYYY-MM-DD HH:MM:SS"."""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -370,6 +396,7 @@ def _read(path):
 
 
 def b_read_lines(path):
+    """Read a text file in this folder as a list of lines."""
     return _read(path).splitlines()
 
 
@@ -380,10 +407,12 @@ def b_read_csv(path):
 
 
 def b_as_text(value):
+    """Return the value as text, as print would show it."""
     return show(value)
 
 
 def b_as_number(value):
+    """Convert a value to a number, raising a VexaError if it is not one."""
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return value
     try:
@@ -393,22 +422,27 @@ def b_as_number(value):
 
 
 def b_upper(value):
+    """Return the text in upper case."""
     return value.upper()
 
 
 def b_lower(value):
+    """Return the text in lower case."""
     return value.lower()
 
 
 def b_sort(items):
+    """Return the items sorted in ascending order."""
     return sorted(items)
 
 
 def b_reverse(items):
+    """Return the items in reverse order."""
     return list(reversed(items))
 
 
 def b_range(count):
+    """Return the numbers 1 to count; count is limited to 100,000."""
     if count != int(count) or count < 0:
         raise VexaError(f"range needs a whole number of 0 or more, not {show(count)}.")
     if count > 100_000:

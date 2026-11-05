@@ -71,8 +71,10 @@ def _path(uri):
 
 
 def _tokens(text):
-    """(line, start, end, word) for every name outside comments and plain string text; names
-    inside {…} placeholders of strings count."""
+    """Yield (line, start, end, word) for every name outside comments and string text.
+
+    Names inside the {…} placeholders of strings count.
+    """
     for number, line in enumerate(text.splitlines()):
         position = 0
         while position < len(line):
@@ -280,6 +282,8 @@ def _formatting(text):
 
 
 class Server:
+    """A Language Server Protocol server for Vexa, speaking JSON-RPC over stdin/stdout."""
+
     def __init__(self, reader=None, writer=None):
         self.reader = reader or sys.stdin.buffer
         self.writer = writer or sys.stdout.buffer
@@ -287,6 +291,7 @@ class Server:
         self.running = True
 
     def read(self):
+        """Read one JSON-RPC message, or return None when the input ends."""
         headers = {}
         while True:
             line = self.reader.readline()
@@ -301,11 +306,13 @@ class Server:
         return json.loads(body)
 
     def send(self, message):
+        """Write one JSON-RPC message with its Content-Length header."""
         body = json.dumps({"jsonrpc": "2.0", **message}).encode("utf-8")
         self.writer.write(f"Content-Length: {len(body)}\r\n\r\n".encode("ascii") + body)
         self.writer.flush()
 
     def publish(self, uri):
+        """Send the current diagnostics for a document to the editor."""
         diagnostics = _diagnostics(self.documents.get(uri, ""), _path(uri))
         self.send(
             {
@@ -315,6 +322,7 @@ class Server:
         )
 
     def handle(self, message):
+        """Answer one request or notification, replying when it has an id."""
         method, params = message.get("method"), message.get("params") or {}
         result = None
         if method == "initialize":
@@ -395,6 +403,7 @@ class Server:
         return {"changes": {uri: edits}}
 
     def serve(self):
+        """Handle messages until exit or end of input, reporting errors instead of stopping."""
         while self.running:
             message = self.read()
             if message is None:
@@ -407,5 +416,6 @@ class Server:
 
 
 def main():
+    """Run the language server on stdin/stdout; entry point of `vexa lsp`."""
     Server().serve()
     return 0

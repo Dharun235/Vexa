@@ -55,6 +55,10 @@ def _tidy(code):
 
 
 def format_source(source):
+    """Return source in the canonical layout, without checking that its meaning is kept.
+
+    Use check_formatting to also verify the result parses to the same program.
+    """
     lines, depth, blank = [], 0, False
     for raw in source.splitlines():
         code, comment = _split_comment(raw)

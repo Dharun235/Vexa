@@ -9,6 +9,7 @@ from platformdirs import user_data_path
 
 
 def user_model_path() -> Path:
+    """Return where the user's YOLO11n model lives: $VEXA_MODEL_PATH or the data dir."""
     configured = os.environ.get("VEXA_MODEL_PATH")
     if configured:
         return Path(configured).expanduser()
@@ -16,6 +17,7 @@ def user_model_path() -> Path:
 
 
 def model_path() -> Path:
+    """Return the detection model to load: the user's model, else the bundled one."""
     user_path = user_model_path()
     if os.environ.get("VEXA_MODEL_PATH") or user_path.is_file():
         return user_path
@@ -24,6 +26,11 @@ def model_path() -> Path:
 
 
 def install_model(source: Path) -> Path:
+    """Check that source loads as a YOLO11n ONNX model, then copy it into place.
+
+    The copy replaces the user model atomically, so a failed install never leaves
+    a broken model behind. Returns the installed path.
+    """
     # Validate using exactly the same loader as inference before replacing a working model.
     from vexa.vision import Vision
 

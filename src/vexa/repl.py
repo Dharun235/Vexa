@@ -32,6 +32,7 @@ def read_entry(first, ask=input):
 
 
 def run_repl(args):
+    """Run the interactive console on args.image until exit, quit or end of input."""
     # Optional standard-library editing; never read or write a history file.
     try:
         import readline  # noqa: F401

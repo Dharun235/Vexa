@@ -56,6 +56,7 @@ _SESSION, _LOCK = [], Lock()
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the pose model."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "pose"
@@ -188,6 +189,10 @@ def _middle(a, b):
 
 
 def angles(keypoints):
+    """Return elbow, knee and hip angles in degrees, e.g. {"left knee": 172}.
+
+    A joint is left out when any of its three keypoints is not visible.
+    """
     p = {name: _point(keypoints, name) for name in KEYPOINTS}
     found = {}
     for side in ("left", "right"):
@@ -239,6 +244,7 @@ def postures(keypoints):
 
 
 def draw(image, poses):
+    """Return a copy of image with each pose's skeleton and visible keypoints drawn."""
     canvas = image.copy()
     thickness = max(2, round(max(image.shape[:2]) / 400))
     for keypoints in poses:

@@ -1,8 +1,16 @@
+"""The syntax tree the parser produces: commands, expressions and the Vexa error type."""
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class Command:
+    """One statement of a program.
+
+    kind names the command, argument holds its main operand, and line/column give its
+    source position. Block commands keep their nested commands in body and orelse.
+    """
+
     kind: str
     argument: str | None
     line: int
@@ -27,6 +35,12 @@ class Expr:
 
 
 class VexaError(Exception):
+    """An error to show the user, with its source position.
+
+    kind is "syntax", "type", "runtime", "input" and so on; line and column are None
+    when the error has no place in the source. file names the used library it came from.
+    """
+
     def __init__(
         self,
         message: str,

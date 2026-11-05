@@ -13,11 +13,13 @@ from vexa.model import install_model, model_path
 
 
 def read_source(path: Path) -> str:
+    """Read a program file, stopping just past the 20,000-character limit."""
     with path.open(encoding="utf-8") as stream:
         return stream.read(20_001)
 
 
 def arguments():
+    """Build the argument parser for the vexa command and its subcommands."""
     parser = argparse.ArgumentParser(description="Vexa: computer vision in a few commands.")
     parser.add_argument("--version", action="version", version=f"Vexa {__version__}")
     parser.add_argument("--debug", action="store_true", help="Show details for unexpected errors")
@@ -96,6 +98,7 @@ def arguments():
 
 
 def protect_inputs(inputs, outputs):
+    """Raise VexaError if an output path would overwrite an input or another output."""
     source_paths = {path.resolve() for path in inputs}
     destinations = [path.resolve() for path in outputs]
     if source_paths.intersection(destinations) or len(set(destinations)) != len(destinations):
@@ -105,10 +108,12 @@ def protect_inputs(inputs, outputs):
 
 
 def save_image(png_bytes, path):
+    """Write PNG bytes to path."""
     path.write_bytes(png_bytes)
 
 
 def print_error(error, source="", filename="<repl>"):
+    """Print an error as file:line:column, with the source line and a marker under it."""
     if getattr(error, "file", None) and error.file != filename:  # inside a used library
         filename = error.file
         try:
@@ -130,6 +135,7 @@ def print_error(error, source="", filename="<repl>"):
 
 
 def read_image(path):
+    """Decode the image at path, or return None when no path is given."""
     from vexa.vision import MAX_IMAGE_BYTES, decode_image
 
     if path is None:
@@ -139,7 +145,7 @@ def read_image(path):
 
 
 def parse_settings(settings):
-    """--set NAME=VALUE options as a dict."""
+    """Return --set NAME=VALUE options as a dict."""
     found = {}
     for setting in settings:
         name, equals, value = setting.partition("=")
@@ -152,8 +158,10 @@ def parse_settings(settings):
 
 
 def _checked(source, program, settings):
-    """Commands of a program, checked with use paths relative to its folder; --set names must
-    match its params."""
+    """Parse and check a program, with use paths relative to its folder; return its commands.
+
+    Every --set name must match one of the program's params.
+    """
     from vexa.parser import parse
     from vexa.validation import validate_commands
 
@@ -176,6 +184,7 @@ def _session(image, vision, program, settings):
 
 
 def run_file(args):
+    """Run a program for vexa run; return 1 when an expect check fails, else 0."""
     from vexa.vision import Vision
 
     source = read_source(args.program)
@@ -253,6 +262,7 @@ def check_file(args):
 
 
 def compile_file(args):
+    """Compile a program to Python, or print its optimised AST with --emit ast."""
     from vexa.compiler import compile_source, describe, optimise
 
     source = read_source(args.program)
@@ -274,6 +284,7 @@ def compile_file(args):
 
 
 def format_files(args):
+    """Format programs to stdout, in place with --write, or report changes with --check."""
     from vexa.formatter import check_formatting
 
     changed = 0
@@ -315,6 +326,7 @@ def write_outputs(result, output, json_output=None):
 
 
 def main(argv=None):
+    """Entry point for the vexa command; return the process exit code."""
     args = arguments().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.CRITICAL)
     try:

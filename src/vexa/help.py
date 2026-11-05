@@ -66,6 +66,7 @@ TOPICS["continue"] = TOPICS["break"]
 
 
 def help_text(topic=None):
+    """Return help for one command, or a list of all commands when no topic is given."""
     if topic:
         return TOPICS.get(
             topic.lower(), f'Unknown help topic "{topic}". Use help to list commands.'

@@ -67,16 +67,19 @@ _GENERATORS, _LOCK = {}, Lock()
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the CycleGAN checkpoints."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "translate"
 
 
 def pairs():
+    """Return the available translations as phrases, e.g. "horse to zebra"."""
     return [f"{source} to {target}" for source, target in MODELS]
 
 
 def check_pair(source, target):
+    """Raise VexaError unless there is a model from source to target."""
     if (source, target) not in MODELS:
         raise VexaError(
             f'No translation from "{source}" to "{target}". Available: {", ".join(pairs())}.'
@@ -84,6 +87,7 @@ def check_pair(source, target):
 
 
 def download(name, progress=print) -> Path:
+    """Download one CycleGAN checkpoint (45 MB), e.g. "horse2zebra", and return its path."""
     from vexa.openvocab import download_file
 
     checkpoints = dict(MODELS.values())
@@ -224,6 +228,11 @@ def generate(weights, rgb):
 
 
 def apply(image, source, target):
+    """Return image translated from source to target, e.g. horse to zebra, same size.
+
+    The generator runs with the longer side at most 512 pixels, then the result is
+    resized back to the original size.
+    """
     check_pair(source, target)
     name = MODELS[(source, target)][0]
     path = models_dir() / f"{name}.pth"

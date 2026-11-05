@@ -30,12 +30,14 @@ _SESSION, _LOCK = [], Lock()
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the depth model."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "depth"
 
 
 def download(progress=print) -> Path:
+    """Download Depth Anything V2 Small (27 MB) and return its path."""
     from vexa.openvocab import fetch
 
     return fetch(models_dir(), {FILE: SOURCE}, progress) / FILE
@@ -81,6 +83,7 @@ def estimate(image):
 
 
 def normalise(raw):
+    """Scale raw network output to closeness in [0, 1], ignoring the extreme 0.5%."""
     low, high = np.percentile(raw, (0.5, 99.5))  # a few hot pixels must not set the scale
     if high - low < 1e-6:
         return np.zeros(raw.shape, np.float32)
@@ -129,6 +132,7 @@ def points(image, closeness_map, max_points=MAX_POINTS):
 
 
 def write_ply(path, xyz, rgb):
+    """Write coloured points to a binary PLY file."""
     header = (
         "ply\nformat binary_little_endian 1.0\ncomment made by Vexa from monocular depth\n"
         f"element vertex {len(xyz)}\nproperty float x\nproperty float y\nproperty float z\n"

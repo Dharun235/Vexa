@@ -22,6 +22,8 @@ def _byte_chars():
 
 
 class ClipTokenizer:
+    """Turn text into CLIP token ids, read from a Hugging Face tokenizer.json."""
+
     def __init__(self, path):
         model = json.loads(path.read_text(encoding="utf-8"))["model"]
         self.vocab = model["vocab"]
@@ -40,6 +42,10 @@ class ClipTokenizer:
         return parts
 
     def encode(self, text):
+        """Return the token ids for text, lower-cased, wrapped in start and end tokens.
+
+        At most 77 ids are returned, CLIP's context length; longer text is cut.
+        """
         chars = _byte_chars()
         ids = [self.start]
         for word in _SPLIT.findall(" ".join(text.lower().split())):

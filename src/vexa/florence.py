@@ -65,16 +65,19 @@ _MODEL, _LOCK = [], Lock()
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the Florence-2 files."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "florence"
 
 
 def installed() -> bool:
+    """Return True when every Florence-2 file has been downloaded."""
     return all((models_dir() / name).is_file() for name in FILES)
 
 
 def download(progress=print) -> Path:
+    """Download Florence-2 (about 275 MB) and return its folder."""
     from vexa.openvocab import fetch
 
     return fetch(models_dir(), FILES, progress)
@@ -104,6 +107,7 @@ class Tokenizer:
         return parts
 
     def encode(self, text):
+        """Return the token ids for text, wrapped in <s> and </s>."""
         chars = _byte_chars()
         ids = [BOS]
         for word in _SPLIT.findall(text):
@@ -127,6 +131,8 @@ class Tokenizer:
 
 
 class Florence:
+    """The four Florence-2 ONNX sessions and tokenizer, loaded from one folder."""
+
     def __init__(self, directory):
         import onnxruntime as ort
 
@@ -149,6 +155,10 @@ class Florence:
         return self.embed.run(None, {"input_ids": np.array([ids], np.int64)})[0]
 
     def run(self, image, task, text=""):
+        """Run one task ("caption", "detailed" or "ground") on an image and return the text.
+
+        For "ground", text is the phrase to locate; the answer holds location tokens.
+        """
         rgb = cv2.resize(image, (SIZE, SIZE), interpolation=cv2.INTER_CUBIC)[:, :, ::-1]
         pixels = ((rgb.astype(np.float32) / 255 - _MEAN) / _STD).transpose(2, 0, 1)[None]
         features = self.vision.run(None, {"pixel_values": pixels})[0]
@@ -213,6 +223,7 @@ def _model():
 
 
 def caption(image, detailed=False):
+    """Describe an image in a sentence, or a paragraph when detailed is true."""
     return _model().run(image, "detailed" if detailed else "caption")
 
 

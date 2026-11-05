@@ -9,6 +9,12 @@ from vexa.ast_nodes import VexaError
 
 
 def scan_codes(image):
+    """Read the QR codes and barcodes in an image.
+
+    Returns:
+        A list of dicts with the decoded ``text``, the ``format`` name and the
+        ``box``: four [x, y] pixel corners, clockwise from the top left.
+    """
     import zxingcpp
 
     try:
@@ -38,6 +44,7 @@ def scan_codes(image):
 
 
 def inspect_image(image):
+    """Return the image's width, height, channel count, colour order and dtype."""
     height, width = image.shape[:2]
     return {
         "width": width,
@@ -49,6 +56,11 @@ def inspect_image(image):
 
 
 def check_blur(image):
+    """Score sharpness as the variance of the Laplacian; below 100 is possibly blurry.
+
+    Large images are first shrunk so the longer side is at most 1024 pixels, so
+    scores are comparable between photos of different sizes.
+    """
     # Bound work and give the heuristic a consistent maximum resolution.
     height, width = image.shape[:2]
     scale = min(1.0, 1024 / max(height, width))

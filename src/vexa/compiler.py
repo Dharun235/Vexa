@@ -109,8 +109,11 @@ def _walk_exprs(expr):
 
 
 def _simplify_logic(expr, stats):
-    """x and true → x, x or false → x; x and false → false (and x or true → true) when x has no
-    function call to run."""
+    """Simplify and/or with a literal operand.
+
+    x and true → x, x or false → x; x and false → false (and x or true → true) when x has
+    no function call to run.
+    """
     left, right = expr.args
     literal, other = (left, right) if left.kind == "bool" else (right, left)
     neutral = expr.kind == "and"  # true is neutral for and, false for or
@@ -254,7 +257,7 @@ def _fold_command(command, stats):
 
 
 def _substitute(expr, values_, stats, row=False):
-    """expr with the constants in values_ replaced by their literal values."""
+    """Return expr with the constants in values_ replaced by their literal values."""
     if expr.kind == "variable" and expr.value in values_:
         if not (row and (expr.value == "it" or expr.value in PROPERTIES)):
             stats.constants += 1
@@ -356,6 +359,7 @@ def _optimise_block(commands, stats, unused):
 
 
 def optimise(commands):
+    """Drop unused functions and variables and fold constants; return (commands, Stats)."""
     stats = Stats()
     reachable, frontier = set(), _calls([c for c in commands if c.kind != "define"])
     functions = {c.argument[0]: c for c in commands if c.kind == "define"}
@@ -725,9 +729,10 @@ def generate(commands, source_name="program.vexa"):
 
 
 def compile_source(source, source_name="program.vexa", optimize=True, base=None):
-    """(python source, Stats) for a Vexa program; raises VexaError when it is invalid.
+    """Compile a Vexa program to (python source, Stats); raise VexaError when it is invalid.
 
-    base is the folder that use paths are relative to (the program's folder)."""
+    base is the folder that use paths are relative to (the program's folder).
+    """
     commands = parse(source)
     functions = validate_commands(commands, base=base)
     # Used libraries become part of the program: their defines first, the use lines go.

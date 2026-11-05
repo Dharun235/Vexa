@@ -1,4 +1,8 @@
-"""Box-prompted segmentation with one lazy two-thread ONNX CPU model pair."""
+"""Box-prompted segmentation with one lazy two-thread ONNX CPU model pair.
+
+The model is EfficientSAM ViT-T, an encoder and decoder bundled in vexa/data;
+it loads on the first segment call.
+"""
 
 import hashlib
 import logging
@@ -17,11 +21,18 @@ MAX_MASK_BYTES = 64 * 1024 * 1024
 
 @dataclass(frozen=True)
 class Mask:
+    """One object's mask, cropped to its box to save memory.
+
+    box is (x1, y1, x2, y2) pixels in the full image; pixels is a boolean array of
+    the box's height and width, True where the object is.
+    """
+
     label: str
     box: tuple[int, int, int, int]
     pixels: np.ndarray
 
     def summary(self, shape):
+        """Return the label, box, area in pixels and share of an image of this shape."""
         area = int(np.count_nonzero(self.pixels))
         return {
             "label": self.label,
@@ -32,6 +43,10 @@ class Mask:
 
 
 def crop_mask(mask, label, shape):
+    """Return a full-image boolean mask as a Mask cropped to its pixels, or None if empty.
+
+    The mask is first resized to shape when it differs.
+    """
     height, width = shape[:2]
     if mask.shape != (height, width):
         mask = cv2.resize(mask.view(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST) > 0
@@ -60,6 +75,7 @@ def match_mask(box, masks, label):
 
 
 def draw_masks(image, masks):
+    """Return a copy of image with each mask tinted green and outlined."""
     output = image.copy()
     for mask in masks:
         x1, y1, x2, y2 = mask.box
@@ -77,17 +93,29 @@ def draw_masks(image, masks):
 
 
 class Segmenter:
+    """EfficientSAM encoder and decoder; models load on first use.
+
+    The image encoding is cached, so segmenting the same image again only runs the
+    decoder.
+    """
+
     def __init__(self):
         self.sessions = None
         self.lock = Lock()
         self.clear_image()
 
     def clear_image(self):
+        """Forget the cached image encoding."""
         self.key = None
         self.features = None
         self.shape = None
 
     def segment(self, image, detections):
+        """Return one Mask per detection, using its box as the prompt.
+
+        At most 32 detections and 64 MB of masks; detections whose mask is empty are
+        skipped. Images are encoded with the longer side at most 1024 pixels.
+        """
         if len(detections) > MAX_SEGMENTS:
             raise VexaError(
                 "Segment at most 32 detections at a time. Select a label or raise confidence.",

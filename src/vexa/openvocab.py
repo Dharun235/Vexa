@@ -43,16 +43,19 @@ FILES = {
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the open-vocabulary models."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "open-vocabulary"
 
 
 def installed() -> bool:
+    """Return True when every open-vocabulary file has been downloaded."""
     return all((models_dir() / name).is_file() for name in FILES)
 
 
 def download(progress=print) -> Path:
+    """Download YOLO-World and the CLIP text encoder (about 175 MB); return the folder."""
     return fetch(models_dir(), FILES, progress)
 
 
@@ -136,6 +139,11 @@ class OpenVocabulary:
         return self.embeddings[label]
 
     def detect(self, image, label, confidence=DEFAULT_CONFIDENCE):
+        """Find objects matching a free-text label, most confident first.
+
+        Boxes are (x1, y1, x2, y2) pixels clipped to the image; overlapping boxes are
+        merged by non-maximum suppression at IoU 0.45.
+        """
         from vexa.vision import Detection, prepare_image
 
         with self.lock:

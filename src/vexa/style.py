@@ -55,23 +55,27 @@ _NETS, _LOCK = {}, Lock()
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the neural style models."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "styles"
 
 
 def download(progress=print) -> Path:
+    """Download the five neural styles (about 34 MB in all) and return the folder."""
     from vexa.openvocab import fetch
 
     return fetch(models_dir(), FILES, progress)
 
 
 def check_name(name):
+    """Raise VexaError unless name is a known style."""
     if name not in STYLES:
         raise VexaError(f'Unknown style "{name}". Choose one of: {", ".join(STYLES)}.')
 
 
 def apply(image, name):
+    """Return a styled copy of image, the same size; see STYLES for the names."""
     check_name(name)
     if name in NEURAL:
         return _neural(image, name)

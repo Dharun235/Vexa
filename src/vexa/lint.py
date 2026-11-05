@@ -10,6 +10,7 @@ def _warning(message, command):
 
 
 def lint(commands):
+    """Return warnings for unused variables, uncalled functions and unreachable code, by line."""
     warnings = []
     reads = _reads(commands)
     seen = set()

@@ -1,3 +1,8 @@
+"""Object detection with the bundled YOLO11n ONNX model, and image decoding and drawing.
+
+The model loads on the first detection and runs on CPU with two threads.
+"""
+
 import ast
 import difflib
 import logging
@@ -16,6 +21,8 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 @dataclass(frozen=True)
 class Detection:
+    """One detected object: label, confidence 0–1 and box as (x1, y1, x2, y2) pixels."""
+
     label: str
     confidence: float
     box: tuple[int, int, int, int]
@@ -74,6 +81,12 @@ class Vision:
         self.labels, self.model = labels, session
 
     def detect(self, image, target, confidence=None):
+        """Find objects of one label in a BGR image, or every COCO object for "all".
+
+        Labels outside YOLO11n's 80 COCO labels go to open-vocabulary detection and
+        "face" goes to the YuNet face detector. confidence defaults to 0.25 for
+        YOLO11n and to each other detector's own default.
+        """
         if target == "face":  # a dedicated face detector beats a person box for privacy
             from vexa.privacy import detect_faces
 
@@ -166,6 +179,7 @@ def unknown_label(target, labels):
 
 
 def decode_image(data: bytes):
+    """Decode JPEG, PNG or WebP bytes to a BGR uint8 array; at most 10 MB and 20 MP."""
     if len(data) > MAX_IMAGE_BYTES:
         raise VexaError("Image exceeds the 10 MB image size limit.", kind="image")
     if not data:
@@ -182,6 +196,7 @@ def decode_image(data: bytes):
 
 
 def draw_boxes(image, detections):
+    """Return a copy of image with each detection's box, label and confidence drawn."""
     output = image.copy()
     for detection in detections:
         x1, y1, x2, y2 = detection.box

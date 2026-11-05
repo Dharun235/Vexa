@@ -24,12 +24,14 @@ _SESSION, _LOCK = [], Lock()
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the background-removal model."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "background"
 
 
 def download(progress=print) -> Path:
+    """Download U²-Net-p (4.6 MB) and return its path."""
     from vexa.openvocab import download_file
 
     return download_file(

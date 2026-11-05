@@ -27,18 +27,25 @@ _DETECTOR, _LOCK = [], Lock()
 
 
 def models_dir() -> Path:
+    """Return the folder that holds the face detection model."""
     from vexa.model import user_model_path
 
     return user_model_path().parent / "faces"
 
 
 def download(progress=print) -> Path:
+    """Download YuNet (232 KB) and return its path."""
     from vexa.openvocab import fetch
 
     return fetch(models_dir(), {FILE: SOURCE}, progress) / FILE
 
 
 def detect_faces(image, confidence=None):
+    """Find faces as "face" detections, most confident first.
+
+    confidence defaults to 0.6. Images larger than 1920 pixels are searched at
+    that size; boxes are (x1, y1, x2, y2) pixels in the original image.
+    """
     from vexa.vision import Detection
 
     path = models_dir() / FILE

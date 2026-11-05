@@ -31,6 +31,7 @@ def rotate(image, degrees):
 
 
 def resize(image, width, height):
+    """Resize to width × height pixels, ignoring the aspect ratio; at most 20 MP."""
     width, height = round(width), round(height)
     _check_size(width, height)
     shrinking = width * height < image.shape[0] * image.shape[1]
@@ -40,11 +41,13 @@ def resize(image, width, height):
 
 
 def scale(image, factor):
+    """Resize by factor on both sides, keeping the aspect ratio."""
     height, width = image.shape[:2]
     return resize(image, max(1, width * factor), max(1, height * factor))
 
 
 def crop(image, x1, y1, x2, y2):
+    """Return the (x1, y1, x2, y2) pixel area, clipped to the image."""
     height, width = image.shape[:2]
     x1, x2 = sorted((int(np.clip(x1, 0, width)), int(np.clip(x2, 0, width))))
     y1, y2 = sorted((int(np.clip(y1, 0, height)), int(np.clip(y2, 0, height))))
@@ -68,6 +71,10 @@ def _check_size(width, height):
 
 
 def apply(image, kind, numbers):
+    """Apply one operation by name, e.g. "rotate" or "flip_horizontal", to image.
+
+    numbers are the operation's arguments after the image, e.g. (90,) for rotate.
+    """
     if kind == "flip_horizontal":
         return cv2.flip(image, 1)
     if kind == "flip_vertical":

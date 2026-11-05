@@ -1,3 +1,5 @@
+"""Turn Vexa source into Command and Expr nodes using the Lark grammar."""
+
 import json
 import re
 from pathlib import Path
@@ -36,8 +38,11 @@ _INTERPOLATION = re.compile(r"\{\{|\}\}|\{([^{}]*)\}")
 
 
 def _compound(node, data, children):
-    """A subject such as ("colour", "red", "car"), ("area", "left", "car") or
-    ("relation", "left of", "person", "car")."""
+    """Build a compound subject tuple from its parse-tree children.
+
+    Examples: ("colour", "red", "car"), ("area", "left", "car") or
+    ("relation", "left of", "person", "car").
+    """
     kind = _COMPOUND[data]
     if kind == "colour":
         return (kind, str(children[0]).lower(), _value(node, children[1]))
@@ -305,7 +310,7 @@ def _command(node):
 
 
 def _if(children, line, column):
-    """if … else if … else … end becomes nested if blocks."""
+    """Turn if … else if … else … end into nested if blocks."""
     condition, body, *rest = children
     orelse = ()
     if rest and isinstance(rest[-1], Tree) and rest[-1].data == "body":
@@ -346,6 +351,7 @@ def _syntax_hint(source, line):
 
 
 def parse(source: str) -> list[Command]:
+    """Parse a whole program into commands; raise VexaError on the first syntax error."""
     if not source.strip():
         raise VexaError("Write a Vexa program before running.", kind="syntax")
     if len(source) > 20_000:
@@ -392,8 +398,10 @@ def parse_errors(source, limit=20):
 
 
 def recover(source, limit=20):
-    """(syntax errors, commands or None): after each error the bad line is replaced by a stand-in
-    and parsing starts again; commands is the program that finally parsed, if one did."""
+    """Collect syntax errors by replacing each bad line with a stand-in and parsing again.
+
+    Returns (errors, commands), where commands is the program that finally parsed, or None.
+    """
     errors, lines = [], source.splitlines()
     for _ in range(limit):
         try:
