@@ -1,26 +1,43 @@
 {
   "name": "vexa",
   "displayName": "Vexa",
-  "description": "Vexa computer-vision language: highlighting, live checking, completion, hover help and formatting",
-  "version": "0.1.0",
+  "description": "Vexa computer-vision language: highlighting, live checking, completion, hover, go to definition, references, rename, outline, signature help and formatting",
+  "version": "0.2.0",
   "publisher": "dharun235",
   "license": "MIT",
   "repository": "https://github.com/Dharun235/Vexa",
-  "engines": { "vscode": "^1.75.0" },
-  "categories": ["Programming Languages", "Linters", "Formatters"],
-  "activationEvents": ["onLanguage:vexa"],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onLanguage:vexa"
+  ],
   "main": "./extension.js",
   "contributes": {
     "languages": [
       {
         "id": "vexa",
-        "aliases": ["Vexa", "vexa"],
-        "extensions": [".vexa"],
+        "aliases": [
+          "Vexa",
+          "vexa"
+        ],
+        "extensions": [
+          ".vexa"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
-      { "language": "vexa", "scopeName": "source.vexa", "path": "./syntaxes/vexa.tmLanguage.json" }
+      {
+        "language": "vexa",
+        "scopeName": "source.vexa",
+        "path": "./syntaxes/vexa.tmLanguage.json"
+      }
     ],
     "configuration": {
       "title": "Vexa",
@@ -31,6 +48,12 @@
           "description": "The vexa command; the extension runs \"vexa lsp\"."
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "vexa.restartServer",
+        "title": "Vexa: Restart Language Server"
+      }
+    ]
   }
 }
