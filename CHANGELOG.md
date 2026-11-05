@@ -2,6 +2,18 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
+## Unreleased — language 0.6
+
+- Variables (`let`), arithmetic, comparisons, `and`/`or`/`not`, `true`/`false`, `else if`, and `{expression}` placeholders in strings.
+- Detected objects as values: `detections`, properties (`label`, `colour`, `position`, `distance`, `posture`, `text`, `width` …) measured on first use, `where` filters, `first`/`largest`/`nearest` …, `for each NAME in LIST`, and object variables in `count`, `blur`, `measure`, `colour`, `draw`.
+- Functions: `define NAME(PARAM: TYPE …)` … `end`, `return`, recursion.
+- A static type checker for all of it, with suggestions for misspelt names and properties and detection of objects used after the image changed.
+- `vexa compile`: optimising compiler to standalone Python; `vexa fmt`; `vexa lsp` and a VS Code extension.
+- New: `colour`, `where`, `count car in left`, `count person left of car`, `check exposure`, `if image dark`, `remove background`.
+- Removed: `vexa ask` and `vexa bench` (the local-model agent).
+
+Migration: `let`, `define`, `return`, `where`, `and`, `or`, `not`, `true`, `false`, `detections` and the pick words (`first`, `largest` …) are keywords. `print NAME` still counts a label unless a variable has that name.
+
 ## 0.6.0a1 — box-prompted segmentation — 2026-11-02
 
 - Benchmark SAM2 Tiny and EfficientSAM ViT-T on this CPU with identical image/box prompts. Select EfficientSAM for smaller weights, faster encoding and lower measured memory; record SAM2's quality advantage on overlapping people.

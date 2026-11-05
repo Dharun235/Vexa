@@ -198,7 +198,9 @@ def main(argv=None):
             print(help_text(args.topic))
         elif args.command == "check":
             commands = check_source(read_source(args.program))
-            print(f"Check OK: {len(commands)} command(s). Syntax and command ordering are valid.")
+            print(
+                f"Check OK: {len(commands)} command(s). Syntax, types and command order are valid."
+            )
         elif args.command == "run":
             run_file(args)
         elif args.command == "compile":

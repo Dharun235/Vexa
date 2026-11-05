@@ -1,6 +1,6 @@
 # Vexa language reference
 
-**Package 0.6.0a1 — language 0.5 (in development).** [Documentation home](README.md) · [First program](getting-started.md)
+**Package 0.6.0a1 — language 0.6 (in development).** [Documentation home](README.md) · [First program](getting-started.md)
 
 This reference describes the current interpreter. The executable syntax definition is [src/vexa/grammar.lark](../src/vexa/grammar.lark); runtime behaviour is in [src/vexa/interpreter.py](../src/vexa/interpreter.py).
 
@@ -35,7 +35,8 @@ check blur
 - Unquoted labels match a letter followed by letters, digits, or underscores. That syntax alone does not make a label recognisable by the model.
 - `detect` and `count` accept quoted labels with spaces, such as `"traffic light"`.
 - `print "person"` prints the literal text `person`. `print person` computes a count. For multiword labels, use `count "traffic light"`; `print "traffic light"` prints text.
-- Blocks: `if … else … end` and `for each image in "folder" … end` (see [Conditions, folders and results](#conditions-folders-and-results)). There are no semicolons, braces, imports, variables or arithmetic.
+- Blocks: `if … else if … else … end`, `for each image in "folder" … end`, `for each NAME in LIST … end` and `define NAME(…) … end` (see [Conditions, folders and results](#conditions-folders-and-results) and [Programming with Vexa](#programming-with-vexa)). There are no semicolons, braces or imports.
+- Variables, arithmetic, text with `{…}` placeholders, objects and functions: see [Programming with Vexa](#programming-with-vexa).
 
 For example:
 
@@ -116,14 +117,118 @@ save csv "screws.csv"
 
 | Form | Meaning |
 | --- | --- |
-| `if CONDITION` … `end`, optional `else` | Runs the body when the condition holds. Blocks can be nested. Results produced inside a branch (for example a `detect`) are not available after `end`. |
-| `count LABEL OP NUMBER` | Condition on the latest detections; also `count text`, `count masks`, `count codes`. `OP` is `<`, `<=`, `>`, `>=`, `==` or `!=`. Same requirements as the matching `count` command. |
+| `if CONDITION` … `end`, optional `else if CONDITION` and `else` | Runs the body when the condition holds. Blocks can be nested. Results produced inside a branch (for example a `detect`) are not available after `end`. |
+| `count LABEL OP NUMBER` | Any true/false expression works (see [Programming with Vexa](#programming-with-vexa)); the common one is a condition on the latest detections; also `count text`, `count masks`, `count codes`. `OP` is `<`, `<=`, `>`, `>=`, `==` or `!=`. Same requirements as the matching `count` command. |
 | `text contains "QUERY"` | Condition: some OCR line contains the text, ignoring case. Needs `ocr`. |
 | `for each image in "FOLDER"` … `end` | Runs the body once per JPEG, PNG or WebP file in the folder, in name order, at most 10,000. Each image starts loaded with no results; do not `load` inside. Loops cannot be nested, and nothing from the loop is available after `end`. |
 | `record count LABEL` | Adds a column to the current row: also `record count text` (`text_lines`), `record count masks`, `record count codes` (`codes_found`), `record text` (OCR lines joined with ` \| `) and `record codes`. Inside a loop each image has its own row; outside, records go to one row. |
 | `save csv "FILE.csv"` | Writes all rows recorded so far, one column per recorded name plus `image`. The path must be relative and end in `.csv`; it is not allowed inside a loop. |
 
 Folder paths and CSV files are relative to the current directory. A program whose only image work happens in a loop needs no `--image`. Rows also appear in `--json` output under `rows`. Blocks span several lines, so use them in program files rather than the interactive console.
+
+## Programming with Vexa
+
+Vexa has variables, arithmetic, detected objects as values, functions and a static type checker. Everything above still works unchanged; these features combine it.
+
+```vexa
+define describe(thing: object)
+  return "{thing.name}: {thing.colour}, {thing.position}"
+end
+
+load "street.jpg"
+detect all
+let people = count person
+if people >= 4
+  print "crowded: {people} people"
+else if people > 0
+  print "{people} people"
+end
+for each thing in detections where area > 20000
+  print describe(thing)
+end
+let nearest_person = nearest (detections where label == "person")
+blur nearest_person
+show image
+```
+
+### Variables and expressions
+
+| Form | Meaning |
+| --- | --- |
+| `let NAME = EXPR` | Sets a variable. Setting an existing variable updates it; its type cannot change. |
+| `12`, `0.5`, `"text"`, `true`, `false` | Numbers, text and true/false. |
+| `+ - * / %`, unary `-`, `( )` | Arithmetic on numbers. `+` also joins text: `"n=" + 3` is `"n=3"`. Division by zero is an error on that line. |
+| `== != < <= > >=` | Comparisons. Text compares ignoring case: `"Car" == "car"` is true. |
+| `and`, `or`, `not` | Logic on true/false; `not` binds tighter than `and`, which binds tighter than `or`. |
+| `"{EXPR}"` | Placeholders in any string are replaced when it runs: `"{people} people, {people * 2} legs"`. Write `{{` and `}}` for literal braces. |
+| `count LABEL`, `count VARIABLE` | The number of matching detections, or of objects in a variable. All `count` forms (`count colour red car`, `count car in left`, `count text` …) are numbers. |
+| `text contains "X"`, `caption contains "X"`, `image dark`, `image bright`, `image blurry` | True/false checks on earlier results. `caption` alone is the caption text. |
+| `print EXPR` | Prints any value. `print LABEL` with no variable of that name still counts the label. |
+| `record NAME = EXPR` | Adds a column with any value to the current row. |
+
+### Objects
+
+`detections` is the list of the latest detections as objects, numbered per label: `car 1`, `car 2`, `person 1` … An object's properties are measured the first time they are read:
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `label`, `name` | text | `car`, or the numbered name `car 2` |
+| `confidence` | number | Detection confidence, 0 to 1 |
+| `x`, `y`, `width`, `height`, `area` | number | Box centre and size in pixels |
+| `colour` (`color`) | text | Main colour, as for `colour LABEL` |
+| `position` | text | `top left` … `bottom right`, as for `where` |
+| `distance` | number | Closeness 0 to 1 (1 nearest); runs depth estimation once when needed |
+| `posture` | text | `standing`, `sitting` … for people; runs pose estimation for that person |
+| `text` | text | OCR of the text inside the box |
+
+| Form | Meaning |
+| --- | --- |
+| `LIST where CONDITION` | The objects for which the condition holds. Inside it, property names refer to each object: `detections where colour == "red" and width > 100`. |
+| `first`, `last`, `largest`, `smallest`, `nearest`, `farthest` `LIST` | One object (largest by area, nearest by distance). An empty list is an error. |
+| `for each NAME in LIST` … `end` | Runs the body once per object. The loop may not change the image. |
+| `OBJECT.PROPERTY` | One property: `car.colour`, `(first detections).width`. |
+| `blur`, `pixelate`, `measure`, `colour`, `where`, `draw`, `count` with a variable | Act on the objects in the variable instead of a label: `blur red_cars`, `draw big`. |
+
+Objects belong to the image they were found in. After `load`, a transform, `style`, `translate`, or in the next loop image, earlier object variables can no longer be used; the checker reports this.
+
+### Functions
+
+```vexa
+define crowd_level(people: number)
+  if people >= 4
+    return "crowded"
+  end
+  return "quiet"
+end
+load "street.jpg"
+detect person
+print crowd_level(count person)
+```
+
+`define NAME` or `define NAME(PARAM, PARAM: TYPE …)` … `end` defines a function at the top level of the program; it can be called before its definition. Types are `number`, `text`, `bool`, `object` and `objects`; parameters without a type accept any value. `return EXPR` ends the call with a value; a function without `return` gives nothing. Call a function as a command (`anonymise`, `tag(car, 2)`) or inside an expression (`crowd_level(3)`). A function sees only its parameters and its own variables, but works on the current image, so `define find_faces` … `detect face` … `end` is fine. Recursion works up to 100 calls deep.
+
+### Types and the checker
+
+`vexa check`, `vexa run`, `vexa compile` and the editor all run the same checker before any image is read. It follows which results exist and the type of every variable and expression, and rejects, with the line and column:
+
+- type mismatches: `let n = 3` then `let n = "x"`, `if count person` (a number, not true/false), `"a" * 2`, `1 == "1"`;
+- unknown names and properties, with suggestions: `print totl` → *Did you mean "total"?*, `car.colr` → *Did you mean "color"?*;
+- wrong function calls: the number of values, typed parameters, using a function that returns nothing;
+- variables set in only one branch of an `if`, or only inside a loop, used afterwards;
+- objects used after the image changed, and loops that change the image they iterate;
+- every earlier rule, such as `count car` after `detect person`.
+
+Function bodies are checked once on their own and again at each call, with the caller's image state, so `define g` … `count person` … `end` called before any `detect` is an error at the call.
+
+### Compiling to Python
+
+`vexa compile program.vexa` writes `program.py`, a standalone script: Vexa variables, `if`, loops and functions become Python's own, and each vision command calls the same runtime the interpreter uses, so results are identical. Run it with `python program.py --image photo.jpg --output out.png [--json out.json]`; errors report the Vexa source line.
+
+The compiler optimises the checked program first: it folds constant expressions (`2 * 3 + 1` → `7`, `x and true` → `x`), drops branches that can never run (`if 1 > 2`), unused variables and functions, and repeated analyses on unchanged pixels (a second `estimate depth`, `ocr` or `caption`). Where types are known to be numbers or text, operators compile to plain Python operators. `vexa compile --emit ast` prints the optimised syntax tree; `--no-optimize` skips the optimiser.
+
+### Formatting and editors
+
+`vexa fmt program.vexa` prints the standard layout (two-space blocks, single spaces, spaced operators); `--write` rewrites the file and `--check` only reports. It refuses any change that would alter what the program means. `vexa lsp` is a language server: the [VS Code extension](../editors/vscode/README.md) and other editors use it for live errors, completion (including object properties after `.`), hover help and formatting.
 
 ## Rotate, flip, resize, crop and move
 
@@ -411,9 +516,9 @@ The upper-left corner is the coordinate origin. Inference uses fixed 640×640 le
 The terminal shows a filename (or `<repl>`), one-based line and column, message, source excerpt, and caret when available:
 
 ```text
-demo.vexa:2:1: runtime: Run detect before counting or drawing objects.
-  count person
-  ^
+demo.vexa:2:7: runtime: Unknown name "totl". Set it first with let totl = … Did you mean "total"?
+  print totl + 1
+        ^~~~
 ```
 
 Image/model failures without a source location still have an explanatory message. Exit statuses distinguish successful execution, Vexa errors, file/argument errors, and unexpected failures. See [troubleshooting](troubleshooting.md).

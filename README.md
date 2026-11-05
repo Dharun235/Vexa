@@ -15,7 +15,9 @@ show image
 Computer vision today means Python, PyTorch, model zoos and a GPU. Most real questions are simpler: *how many people are in each photo, is the car red, blur every face, which frame shows a dog*. Vexa makes those one-line commands.
 
 - **Readable:** `count colour red car`, `blur face`, `rank all by distance`, `count person left of car`.
-- **Checked before it runs:** a static checker catches mistakes such as counting cars after detecting only people, or reading text before running `ocr`, with no image and no model. Errors name the line and say how to fix it.
+- **A real language:** variables, arithmetic, `{…}` text placeholders, detected objects as values with properties (`car.colour`, `car.distance`), `where` filters, loops and functions.
+- **Checked before it runs:** a static type checker catches mistakes such as counting cars after detecting only people, `if count person` (a number, not true/false) or a misspelt `car.colr`, with no image and no model. Errors name the line, underline the word and say how to fix it.
+- **Interpreted or compiled:** `vexa run` interprets; `vexa compile` turns a program into an optimised standalone Python script with identical results.
 - **Safe:** a program can only look at images and write the files it names, so it is safe to run programs from others.
 - **Small and offline:** every model is an ONNX file of 0.2 to 275 MB run on CPU; nothing leaves the machine.
 
@@ -28,8 +30,40 @@ Computer vision today means Python, PyTorch, model zoos and a GPU. Most real que
 | Look and quality | `colour car`, `check blur`, `check exposure`, `if image dark` |
 | Editing | `blur face`, `pixelate`, `remove background`, `style cartoon`, `translate horse to zebra`, `rotate`, `crop` |
 | Batches | `for each image in "photos/"`, `for each frame in "clip.mp4" every 1 second`, `record`, `save csv` |
+| Programming | `let`, `+ - * / %`, `and`/`or`/`not`, `"{n} cars"`, `detections where colour == "red"`, `nearest`, `for each car in …`, `define … return … end` |
 
-Try the showcase programs in [examples](examples/): [scene.vexa](examples/scene.vexa) (what, where, what colour, how far), [privacy.vexa](examples/privacy.vexa) (blur faces), [cutout.vexa](examples/cutout.vexa) (transparent cut-out) and [sort-photos.vexa](examples/sort-photos.vexa) (a folder to CSV). [How Vexa works](docs/architecture.md) explains the parser, checker and interpreter.
+Try the showcase programs in [examples](examples/): [language.vexa](examples/language.vexa) (variables, objects, functions), [scene.vexa](examples/scene.vexa) (what, where, what colour, how far), [privacy.vexa](examples/privacy.vexa) (blur faces), [cutout.vexa](examples/cutout.vexa) (transparent cut-out) and [sort-photos.vexa](examples/sort-photos.vexa) (a folder to CSV). [How Vexa works](docs/architecture.md) explains the parser, checker and interpreter.
+
+## A small, typed language
+
+```vexa
+define crowd_level(people: number)
+  if people >= 4
+    return "crowded"
+  end
+  return "quiet"
+end
+
+load "street.jpg"
+detect all
+let people = count person
+print "{people} people: {crowd_level(people)}"
+for each thing in detections where area > 20000
+  print "{thing.name} is {thing.colour}, {thing.position}"
+end
+let closest = nearest (detections where label == "person")
+blur closest
+show image
+```
+
+```sh
+vexa check street.vexa              # syntax, types and command order; no image needed
+vexa run street.vexa --image street.jpg
+vexa compile street.vexa            # → street.py, optimised standalone Python
+vexa fmt --write street.vexa        # standard layout
+```
+
+Editors get live errors, completion and hover help from `vexa lsp`; see the [VS Code extension](editors/vscode/README.md). The [language reference](docs/language-reference.md#programming-with-vexa) covers variables, objects, functions, types and the compiler.
 
 ## Install
 

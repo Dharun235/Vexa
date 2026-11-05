@@ -2,34 +2,37 @@
 
 [Documentation home](README.md) · [Contributing](../CONTRIBUTING.md)
 
-Vexa is an **interpreted domain-specific language**. Its purpose is to describe a short image-detection workflow. Python implements the language, but a `.vexa` file contains Vexa commands.
+Vexa is a **domain-specific language for computer vision** with an interpreter and a compiler. A `.vexa` file describes a vision workflow with commands, variables, objects and functions; Python implements the language.
 
 ## The execution path
 
 ```text
 .vexa source text
     ↓
-Lark lexer and parser → syntax error, if invalid
+Lark LALR lexer and parser → syntax error, if invalid
     ↓
-command nodes: kind, argument, source line and column
+AST: Command and Expr nodes with source line and column
     ↓
-shared validator → command-order error, if invalid
+static checker: result-state flow + type inference → error, if invalid
+    ↓                                   ↓
+session interpreter (vexa run, REPL)    optimiser → Python code generator (vexa compile)
+    ↓                                   ↓
+            vexa.runtime / Session: image operations and ONNX CPU inference
     ↓
-session interpreter
-    ↓
-image operations and ONNX CPU inference
-    ↓
-logs, counts, detections, and an optional image
+logs, counts, detections, rows, and an optional image
 ```
 
-File execution and the REPL use this same path. They do not have separate language implementations.
+File execution, the REPL, compiled scripts, `vexa fmt` and the language server share the parser and checker; the interpreter and compiled scripts share one runtime, so they give the same results.
 
 | Component | Responsibility | Source |
 | --- | --- | --- |
 | Grammar | Defines command syntax and tokens | [grammar.lark](../src/vexa/grammar.lark) |
 | Lexer and parser | Lark recognises tokens and checks their structure; `parse` converts the parse tree to command nodes | [parser.py](../src/vexa/parser.py) |
-| Command nodes | An immutable `Command` stores the keyword form, argument, and original line number; this is the small AST | [ast_nodes.py](../src/vexa/ast_nodes.py) |
-| Shared validator | Checks command ordering without image I/O or inference | [validation.py](../src/vexa/validation.py) |
+| AST | Immutable `Command` (statements and blocks) and `Expr` (expressions) nodes with source positions | [ast_nodes.py](../src/vexa/ast_nodes.py) |
+| Static checker | Runs the program abstractly: which results exist, the type of every variable and expression, scopes, function calls checked at each call site, stale objects. No image I/O or inference | [validation.py](../src/vexa/validation.py) |
+| Values | Numbers, text, true/false, objects with lazily measured properties, lists; operators shared by interpreter and compiler | [values.py](../src/vexa/values.py) |
+| Compiler | Constant folding, dead-branch/variable/function and repeated-analysis removal, then Python code generation with typed operators | [compiler.py](../src/vexa/compiler.py), [runtime.py](../src/vexa/runtime.py) |
+| Formatter and language server | `vexa fmt` layout that must preserve the AST; `vexa lsp` diagnostics, completion, hover and formatting | [formatter.py](../src/vexa/formatter.py), [lsp.py](../src/vexa/lsp.py) |
 | Session interpreter | Executes nodes and keeps image, detections, counts, and output state; reused across REPL inputs | [interpreter.py](../src/vexa/interpreter.py) |
 | Vision runtime | Decodes images, prepares model input, runs ONNX on CPU, filters boxes, and draws results | [vision.py](../src/vexa/vision.py) |
 | OCR runtime | Reads text with lazy, packaged ONNX CPU models; no downloads or duplicate model copies | [ocr.py](../src/vexa/ocr.py) |
@@ -38,9 +41,9 @@ File execution and the REPL use this same path. They do not have separate langua
 | Terminal runner | Reads files, presents errors, and writes PNG/JSON outputs | [cli.py](../src/vexa/cli.py) |
 | REPL | Reads one command at a time and reuses one session and model | [repl.py](../src/vexa/repl.py) |
 
-## Does it need a compiler?
+## Interpreter and compiler
 
-The current interpreter executes the command nodes directly. It does not generate machine code, bytecode, or a standalone executable for each program. An extra compiler would not make these small orchestration language substantially faster: most execution time is spent in the vision model.
+`vexa run` interprets the AST directly. `vexa compile` translates the same checked AST into a standalone Python script: Vexa control flow, variables and functions become Python's own, and each vision command calls `vexa.runtime`, a thin layer over the interpreter's `Session`. Compilation does not make model inference faster, since that is most of the time; its value is a self-contained artefact other Python code can read, import and extend, and the optimiser's removal of repeated analyses (a second depth estimate or OCR pass), which does save model time.
 
 ONNX is the model's portable computation format. ONNX Runtime optimises and executes that model on CPU. Exporting YOLO to ONNX is a model-preparation step, separate from parsing or running the Vexa language.
 
@@ -56,11 +59,11 @@ PyTorch and Ultralytics are used only in an isolated developer environment to ex
 | --- | --- |
 | Installation | Unsupported Python/platform, unavailable dependency wheel |
 | Parsing | Misspelled command, missing quote, invalid string escape |
-| Shared preflight | `draw boxes` before `detect`, or image commands before `load` |
+| Static checker | `draw boxes` before `detect`, image commands before `load`, type mismatches, unknown names, stale objects, wrong function calls |
 | Input/model runtime | Missing file, invalid image, missing or unsupported ONNX model |
 | Output | Destination cannot be written |
 
-`vexa check` covers parsing and predictable command-order errors. `vexa run` covers the complete path. Errors stop the run and include the command's source line when available. The terminal shows source locations and returns an exit status. See [troubleshooting](troubleshooting.md).
+`vexa check` covers parsing, types and predictable command-order errors. `vexa run` covers the complete path. Errors stop the run and include the command's source line when available. The terminal shows source locations and returns an exit status. See [troubleshooting](troubleshooting.md).
 
 ## Keeping the runtime small
 
