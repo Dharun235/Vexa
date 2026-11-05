@@ -34,15 +34,14 @@ def test_blocks_parse_into_nested_commands():
     loop, save = parse(LOOP)
     assert loop.kind == "for_each" and loop.argument == "photos"
     branch = loop.body[2]
-    assert branch.condition == ("count", "car", ">=", 1.0)
+    assert branch.condition.kind == "compare" and branch.condition.value == ">="
+    assert branch.condition.args[0].value == "car" and branch.condition.args[1].value == 1.0
     assert [c.argument for c in branch.body + branch.orelse] == ["has a car", "no car"]
     assert save.kind == "save_csv"
-    assert parse('load "x"\nocr\nif text contains "TOTAL"\nrecord count text\nend')[
+    condition = parse('load "x"\nocr\nif text contains "TOTAL"\nrecord count text\nend')[
         2
-    ].condition == (
-        "contains",
-        "TOTAL",
-    )
+    ].condition
+    assert (condition.kind, condition.value) == ("text_contains", "TOTAL")
 
 
 @pytest.mark.parametrize(

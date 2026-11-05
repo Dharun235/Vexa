@@ -10,9 +10,18 @@ class Command:
     confidence: float | None = None
     body: tuple = ()  # commands inside an if or for each block
     orelse: tuple = ()  # commands after else
-    condition: tuple | None = (
-        None  # (subject, label, operator, number) or ("contains" | "caption", text)
-    )
+    condition: "Expr | None" = None  # the expression an if tests
+
+
+@dataclass(frozen=True)
+class Expr:
+    """An expression node: kind names the operation, value holds its literal or name."""
+
+    kind: str
+    value: object = None
+    args: tuple = ()
+    line: int = 1
+    column: int = 1
 
 
 class VexaError(Exception):

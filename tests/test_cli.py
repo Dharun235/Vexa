@@ -49,11 +49,11 @@ def test_run_saves_image_and_small_json(program, tmp_path, monkeypatch, fake_vis
 
 def test_syntax_error_shows_file_line_and_no_traceback(tmp_path, capsys):
     source = tmp_path / "bad.vexa"
-    source.write_text('load "x"\ndraw circles')
+    source.write_text('load "x"\ndraw boxes now')
     assert main(["check", str(source)]) == 1
     error = capsys.readouterr().err
-    assert f"{source}:2:6: syntax:" in error
-    assert "draw circles" in error and "^" in error
+    assert f"{source}:2:12: syntax:" in error
+    assert "draw boxes now" in error and "^" in error
     assert "Traceback" not in error
 
 

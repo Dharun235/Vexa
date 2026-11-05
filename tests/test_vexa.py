@@ -20,7 +20,7 @@ def test_parser_commands_comments_and_quoted_labels():
         "count",
         "draw",
         "print_text",
-        "print_count",
+        "print_value",
         "show",
     ]
     assert nodes[1].argument == "traffic light"
@@ -28,7 +28,7 @@ def test_parser_commands_comments_and_quoted_labels():
 
 
 @pytest.mark.parametrize(
-    "source", ["", "# only a comment", "detect", "draw circles", "load ../secret"]
+    "source", ["", "# only a comment", "detect", "draw boxes now", "load ../secret"]
 )
 def test_invalid_programs(source):
     with pytest.raises(VexaError) as error:
@@ -171,4 +171,8 @@ def test_syntax_errors_show_the_usage_of_the_command():
         parse('load "x"\nprint "a" + text')
     assert error.value.line == 2
     with pytest.raises(VexaError, match="Invalid command. Run vexa help"):
-        parse("frobnicate")
+        parse("frobnicate now")
+    with pytest.raises(
+        VexaError, match='Unknown command or function "detecc". Did you mean "detect"'
+    ):
+        check_source("detecc")

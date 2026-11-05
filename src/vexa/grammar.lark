@@ -1,13 +1,52 @@
 start: _NL* (_statement _NL*)*
 _statement: command _NL | block
-?block: "if" condition _NL body ("else" _NL body)? "end" _NL -> if_block
+?block: "if" expr _NL body elif* ("else" _NL body)? "end" _NL -> if_block
+      | "for" "each" NAME "in" expr _NL body "end" _NL -> for_objects
+      | "define" NAME params? _NL body "end" _NL -> define
       | "for" "each" "image" "in" ESCAPED_STRING _NL body "end" _NL -> for_each
       | "for" "each" "frame" "in" ESCAPED_STRING ("every" NUMBER ("second" | "seconds"))? _NL body "end" _NL -> for_frames
 body: _NL* (_statement _NL*)*
-?condition: "count" subject COMPARE NUMBER -> count_condition
-          | "text" "contains" ESCAPED_STRING -> text_condition
-          | "caption" "contains" ESCAPED_STRING -> caption_condition
-          | "image" QUALITY -> image_condition
+elif: "else" "if" expr _NL body
+params: "(" [param ("," param)*] ")"
+param: NAME (":" NAME)?
+
+// Expressions, loosest binding first
+?expr: or_expr
+     | or_expr "where" or_expr -> where
+?or_expr: and_expr
+        | or_expr "or" and_expr -> or_op
+?and_expr: not_expr
+         | and_expr "and" not_expr -> and_op
+?not_expr: comparison
+         | "not" not_expr -> not_op
+?comparison: sum
+           | sum COMPARE sum -> compare
+?sum: product
+    | sum "+" product -> add
+    | sum "-" product -> subtract
+?product: unary
+        | product "*" unary -> multiply
+        | product "/" unary -> divide
+        | product "%" unary -> modulo
+?unary: postfix
+      | "-" unary -> negate
+?postfix: atom
+        | postfix "." NAME -> attribute
+?atom: NUMBER -> number
+     | ESCAPED_STRING -> string
+     | "true" -> true
+     | "false" -> false
+     | NAME -> variable
+     | NAME "(" [expr ("," expr)*] ")" -> call
+     | "(" expr ")"
+     | "count" subject -> count_value
+     | "text" "contains" ESCAPED_STRING -> text_contains
+     | "caption" "contains" ESCAPED_STRING -> caption_contains
+     | "caption" -> caption_value
+     | "image" QUALITY -> image_quality
+     | "detections" -> detections
+     | pick_word postfix -> pick
+!pick_word: "first" | "last" | "largest" | "smallest" | "nearest" | "farthest"
 ?subject: target
         | "text" -> text_subject
         | "masks" -> masks_subject
@@ -17,6 +56,11 @@ body: _NL* (_statement _NL*)*
         | target "in" AREA -> area_subject
         | target RELATION target -> relation_subject
 ?command: "load" ESCAPED_STRING -> load
+        | "let" NAME "=" expr -> let
+        | "record" NAME "=" expr -> record_value
+        | "return" expr? -> return
+        | NAME ("(" [expr ("," expr)*] ")")? -> call_statement
+        | "draw" target -> draw_objects
         | "detect" target ("confidence" NUMBER)? -> detect
         | "segment" "detections" -> segment
         | "count" "masks" -> count_masks
@@ -53,10 +97,9 @@ body: _NL* (_statement _NL*)*
         | "draw" "boxes" -> draw
         | "draw" "text" -> draw_text
         | "ocr" -> ocr
-        | "print" ESCAPED_STRING -> print_text
         | "print" "text" -> print_ocr
         | "print" "masks" -> count_masks
-        | "print" NAME -> print_count
+        | "print" expr -> print_value
         | "show" "image" -> show
         | "record" "count" subject -> record_count
         | "record" "text" -> record_text

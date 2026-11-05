@@ -107,9 +107,9 @@ def test_scene_validation():
         check_source('load "a.png"\ndetect car\ncolour person')
     with pytest.raises(VexaError, match="count person after detect car"):
         check_source('load "a.png"\ndetect car\ncount car left of person')
-    with pytest.raises(VexaError, match="Run check exposure before if image dark"):
+    with pytest.raises(VexaError, match="Run check exposure before image dark"):
         check_source('load "a.png"\nif image dark\n  print "x"\nend')
-    with pytest.raises(VexaError, match="Run check blur before if image blurry"):
+    with pytest.raises(VexaError, match="Run check blur before image blurry"):
         check_source('load "a.png"\ncheck exposure\nif image blurry\n  print "x"\nend')
     with pytest.raises(VexaError, match="rotate after remove background"):
         check_source('load "a.png"\nremove background\nrotate 90')

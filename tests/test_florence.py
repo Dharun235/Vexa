@@ -103,7 +103,7 @@ def test_caption_and_locate_commands(fake_vision, image, fake_florence):
 
 
 def test_florence_validation():
-    with pytest.raises(VexaError, match="Run caption before if caption"):
+    with pytest.raises(VexaError, match="Run caption before"):
         check_source('load "a.png"\nif caption contains "dog"\n  print "x"\nend')
     with pytest.raises(VexaError, match="Run caption before record caption"):
         check_source('load "a.png"\nrecord caption')

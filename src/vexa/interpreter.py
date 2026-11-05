@@ -5,22 +5,23 @@ from pathlib import Path
 
 import cv2
 
-from vexa import transforms
+from vexa import transforms, values
 from vexa.ast_nodes import VexaError
 from vexa.parser import TRANSFORMS, parse
 from vexa.validation import validate_commands
+from vexa.values import PROPERTIES, VObject, type_of
 from vexa.vision import MAX_IMAGE_BYTES, decode_image, draw_boxes, unknown_label
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_FOLDER_IMAGES = 10_000
-_COMPARE = {
-    "<": lambda a, b: a < b,
-    "<=": lambda a, b: a <= b,
-    ">": lambda a, b: a > b,
-    ">=": lambda a, b: a >= b,
-    "==": lambda a, b: a == b,
-    "!=": lambda a, b: a != b,
-}
+MAX_CALL_DEPTH = 100
+
+
+class _Return(Exception):
+    def __init__(self, value):
+        self.value = value
+
+
 _COLUMNS = {":text": "text_lines", ":masks": "masks", ":codes": "codes_found"}
 
 
@@ -34,6 +35,10 @@ class Session:
         self.vision = vision
         self.reader = reader
         self.segmenter = segmenter
+        self.scopes = [{}]  # variables: the program's, then one per running function call
+        self.functions = {}
+        self.generation = 0  # increases whenever the pixels move; old objects go stale
+        self.depth_calls = 0
         self.reset()
 
     def reset(self):
@@ -45,6 +50,8 @@ class Session:
 
     def clear_results(self):
         """Forget everything measured on the current pixels."""
+        self.generation += 1
+        self.objects = None  # VObject list for the current detections, made on first use
         self.detections = []
         self.detected = False
         self.selection = None
@@ -71,7 +78,7 @@ class Session:
 
     def execute(self, commands):
         # Validate the entire submission before any image changes or inference.
-        validate_commands(
+        self.functions = validate_commands(
             commands,
             loaded=self.image is not None,
             detected=self.detected,
@@ -88,12 +95,15 @@ class Session:
             blur_checked=self.blur is not None,
             exposure_checked=self.exposure is not None,
             cutout=self.alpha is not None,
+            variables=self.variable_types(),
+            functions=self.functions,
         )
         logs = []
         self._run(commands, logs)
         return self._result(logs)
 
     def _run(self, commands, logs):
+        self.logs = logs
         for command in commands:
             kind, target = command.kind, command.argument
             try:
@@ -111,6 +121,31 @@ class Session:
                     )
                 elif kind == "print_text":
                     logs.append(target)
+                elif kind == "define":
+                    pass  # functions are collected while checking
+                elif kind == "let":
+                    self.assign(target[0], self.evaluate(target[1]))
+                elif kind == "record_value":
+                    self._record(target[0], values.record_value(self.evaluate(target[1])), logs)
+                elif kind == "print_value":
+                    if target.kind == "variable" and self.lookup(target.value) is _MISSING:
+                        value = self._count(target.value)  # print person counts, as before
+                        self.counts[target.value] = value
+                        logs.append(f"{target.value}: {value}")
+                    else:
+                        logs.append(values.show(self.evaluate(target)))
+                elif kind == "return":
+                    raise _Return(None if target is None else self.evaluate(target))
+                elif kind == "call_statement":
+                    self.call(target[0], [self.evaluate(a) for a in target[1]], logs)
+                elif kind == "for_objects":
+                    name, source = target
+                    for item in list(self.evaluate(source)):
+                        self.assign(name, item, local=True)
+                        self._run(command.body, logs)
+                elif kind == "draw_objects":
+                    self.image = draw_boxes(self.image, [d for _, d in self._named(target)])
+                    logs.append(f"Drew {len(self._named(target))} box(es) for {target}.")
                 elif kind == "detect":
                     detections = self.vision.detect(
                         self.image,
@@ -120,6 +155,7 @@ class Session:
                     self.detections = detections
                     self.detected, self.selection = True, target
                     self.masks, self.segmented, self.poses, self.colours = [], False, [], None
+                    self.objects = None
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
                     logs.append(f"Detected {len(detections)} object(s) matching {target}.")
                 elif kind == "segment":
@@ -257,7 +293,7 @@ class Session:
                     self.clear_results()
                     logs.append(f"Translated {target[0]} to {target[1]}.")
                 elif kind == "if_block":
-                    branch = command.body if self._holds(command.condition) else command.orelse
+                    branch = command.body if self.evaluate(command.condition) else command.orelse
                     self._run(branch, logs)
                 elif kind == "for_each":
                     self._loop(self._folder_images(target), command.body, logs)
@@ -293,18 +329,17 @@ class Session:
                     self.detections = locate(self.image, target)
                     self.detected, self.selection = True, target
                     self.masks, self.segmented, self.poses, self.colours = [], False, [], None
+                    self.objects = None
                     self.counts = {k: v for k, v in self.counts.items() if k == "text"}
                     logs.append(f'Located {len(self.detections)} region(s) matching "{target}".')
                 elif kind in {"blur", "pixelate"}:
                     from vexa.privacy import anonymise
                     from vexa.segmentation import match_mask
 
-                    self._count(target)  # rejects labels the detector does not know
                     regions = []
-                    for item in self.detections:
-                        if target in ("all", item.label):
-                            mask = match_mask(item.box, self.masks, item.label)
-                            regions.append((mask.box, mask) if mask else item.box)
+                    for _, item in self._named(target):
+                        mask = match_mask(item.box, self.masks, item.label)
+                        regions.append((mask.box, mask) if mask else item.box)
                     self.image = anonymise(self.image, regions, kind)
                     verb = "Blurred" if kind == "blur" else "Pixelated"
                     outline = " along their masks" if self.masks else ""
@@ -365,8 +400,12 @@ class Session:
                 raise
 
     def _count(self, subject):
+        subject = "all" if subject == "detections" else subject
         if isinstance(subject, tuple):
             return len(self._matching(subject))
+        found = self.lookup(subject) if not subject.startswith(":") else _MISSING
+        if found is not _MISSING:
+            return len(found) if isinstance(found, list) else 1
         if subject == ":text":
             return len(self.text_regions)
         if subject == ":masks":
@@ -390,37 +429,51 @@ class Session:
         from vexa import analysis
 
         kind, word, label, *other = subject
-        self._count(label)  # rejects labels the detector does not know
-        items = [d for d in self.detections if label in ("all", d.label)]
+        items = [d for _, d in self._named(label)]
         if kind == "colour":
             named = {id(c["detection"]) for c in self.colours if c["colour"] == word}
             return [d for d in items if id(d) in named]
         if kind == "area":
             height, width = self.image.shape[:2]
             return [d for d in items if analysis.in_area(d.box, word, width, height)]
-        self._count(other[0])
-        others = [d for d in self.detections if other[0] in ("all", d.label)]
+        others = [d for _, d in self._named(other[0])]
         return [
             d
             for d in items
             if any(o is not d and analysis.related(d.box, o.box, word) for o in others)
         ]
 
-    def _numbered(self, label):
-        """(name, detection) pairs such as ("car 2", …) for one label or all."""
+    def _named(self, label):
+        """(name, detection) pairs such as ("car 2", …) for a label, all, or a variable."""
+        label = "all" if label == "detections" else label
+        found = self.lookup(label)
+        if found is not _MISSING:
+            items = found if isinstance(found, list) else [found]
+            for item in items:
+                item.get("label")  # rejects objects from an earlier image
+            return [(item.name, item.detection) for item in items]
         self._count(label)  # rejects labels the detector does not know
-        numbers = {}
-        for item in self.detections:
-            if label in ("all", item.label):
+        return [
+            (o.name, o.detection)
+            for o in self.current_objects()
+            if label in ("all", o.detection.label)
+        ]
+
+    def current_objects(self):
+        """The latest detections as language objects, numbered per label: car 1, car 2 …"""
+        if self.objects is None:
+            numbers, self.objects = {}, []
+            for item in self.detections:
                 numbers[item.label] = numbers.get(item.label, 0) + 1
-                yield f"{item.label} {numbers[item.label]}", item
+                self.objects.append(VObject(self, item, f"{item.label} {numbers[item.label]}"))
+        return self.objects
 
     def _colour(self, label, logs):
         from vexa.analysis import colour_of
         from vexa.segmentation import match_mask
 
         self.colours = []
-        for name, item in self._numbered(label):
+        for name, item in self._named(label):
             mask = match_mask(item.box, self.masks, item.label) if self.masks else None
             colour, bgr = colour_of(self.image, item.box, mask)
             if colour:
@@ -438,23 +491,157 @@ class Session:
         height, width = self.image.shape[:2]
         self.positions = [
             {"object": name, "position": where(item.box, width, height)}
-            for name, item in self._numbered(label)
+            for name, item in self._named(label)
         ]
         if not self.positions:
             logs.append(f"No {label} to place.")
         logs.extend(f"{p['object']}: {p['position']}" for p in self.positions)
 
-    def _holds(self, condition):
-        if condition[0] == "image":
-            if condition[1] == "blurry":
-                return self.blur["possibly_blurry"]
-            return self.exposure[condition[1]]
-        if condition[0] == "caption":
-            return condition[1].casefold() in (self.caption or "").casefold()
-        if condition[0] == "contains":
-            return any(condition[1].casefold() in r.text.casefold() for r in self.text_regions)
-        _, subject, operator, number = condition
-        return _COMPARE[operator](self._count(subject), number)
+    # Variables, expressions and functions ------------------------------------------
+
+    def lookup(self, name):
+        for scope in (self.scopes[-1], self.scopes[0]):
+            if name in scope:
+                return scope[name]
+        return _MISSING
+
+    def assign(self, name, value, local=False):
+        """let updates an existing variable where it lives, otherwise creates it here."""
+        scope = self.scopes[-1]
+        if not local and name not in scope and name in self.scopes[0]:
+            scope = self.scopes[0]
+        scope[name] = value
+
+    def variable_types(self):
+        """Types of the program's variables, for checking later REPL input."""
+        return {
+            name: type_of(value)
+            for name, value in self.scopes[0].items()
+            if not (isinstance(value, VObject) and value.generation != self.generation)
+            and not (
+                isinstance(value, list) and any(v.generation != self.generation for v in value)
+            )
+        }
+
+    def call(self, name, arguments, logs):
+        function = self.functions[name]
+        if self.depth_calls >= MAX_CALL_DEPTH:
+            raise VexaError(f"{name} calls itself too many times (limit {MAX_CALL_DEPTH}).")
+        params = [param for param, _ in function.argument[1]]
+        self.scopes.append(dict(zip(params, arguments, strict=True)))
+        self.depth_calls += 1
+        try:
+            self._run(function.body, logs)
+        except _Return as result:
+            return result.value
+        finally:
+            self.scopes.pop()
+            self.depth_calls -= 1
+        return None
+
+    def evaluate(self, expr, row=None):
+        """The value of an expression; row is the object a where clause is testing."""
+        kind, args = expr.kind, expr.args
+        try:
+            if kind in ("number", "string", "bool"):
+                return expr.value
+            if kind == "template":
+                return "".join(
+                    part if isinstance(part, str) else values.show(self.evaluate(part, row))
+                    for part in args
+                )
+            if kind == "variable":
+                if row is not None and expr.value in PROPERTIES:
+                    return row.get(expr.value)
+                return self.lookup(expr.value)
+            if kind == "attribute":
+                return self.evaluate(args[0], row).get(expr.value)
+            if kind == "call":
+                arguments = [self.evaluate(a, row) for a in args]
+                return self.call(expr.value, arguments, self.logs)
+            if kind == "count":
+                return float(self._count(expr.value))
+            if kind == "text_contains":
+                return any(expr.value.casefold() in r.text.casefold() for r in self.text_regions)
+            if kind == "caption_contains":
+                return expr.value.casefold() in (self.caption or "").casefold()
+            if kind == "caption":
+                return self.caption or ""
+            if kind == "image_quality":
+                if expr.value == "blurry":
+                    return self.blur["possibly_blurry"]
+                return self.exposure[expr.value]
+            if kind == "detections":
+                return list(self.current_objects())
+            if kind == "pick":
+                return values.pick(expr.value, self.evaluate(args[0], row))
+            if kind == "where":
+                items = self.evaluate(args[0], row)
+                return [item for item in items if self.evaluate(args[1], item)]
+            if kind == "and":
+                return bool(self.evaluate(args[0], row)) and bool(self.evaluate(args[1], row))
+            if kind == "or":
+                return bool(self.evaluate(args[0], row)) or bool(self.evaluate(args[1], row))
+            if kind == "not":
+                return not self.evaluate(args[0], row)
+            if kind == "negate":
+                return -self.evaluate(args[0], row)
+            left, right = (self.evaluate(a, row) for a in args)
+            if kind == "compare":
+                return values.compare(expr.value, left, right)
+            if kind == "add":
+                return values.add(left, right)
+            if kind == "subtract":
+                return left - right
+            if kind == "multiply":
+                return left * right
+            if kind == "divide":
+                return values.divide(left, right)
+            if kind == "modulo":
+                return values.modulo(left, right)
+        except VexaError as exc:
+            if exc.line is None:
+                exc.line, exc.column = expr.line, expr.column
+            raise
+        raise VexaError(f"Unsupported expression {kind}.", expr.line, column=expr.column)
+
+    def measure_object(self, item, prop):
+        """Lazily measured object properties: colour, position, distance, posture, text."""
+        from vexa import analysis
+        from vexa.segmentation import match_mask
+
+        box = item.detection.box
+        if prop == "colour":
+            mask = match_mask(box, self.masks, item.detection.label) if self.masks else None
+            return analysis.colour_of(self.image, box, mask)[0] or "unknown"
+        if prop == "position":
+            height, width = self.image.shape[:2]
+            return analysis.where(box, width, height)
+        if prop == "distance":
+            from vexa.depth import closeness, estimate
+
+            if self.depth is None:
+                self.depth = estimate(self.image)
+            mask = match_mask(box, self.masks, item.detection.label) if self.masks else None
+            return closeness(self.depth, box, mask)
+        if prop == "posture":
+            from vexa.pose import estimate, postures
+
+            if item.detection.label != "person":
+                return "none"
+            found = postures(estimate(self.image, [box])[0])
+            return found[0] if found else "unclear"
+        if prop == "text":
+            if self.reader is None:
+                from vexa.ocr import TextReader
+
+                self.reader = TextReader()
+            x1, y1, x2, y2 = box
+            crop = self.image[y1:y2, x1:x2]
+            if crop.size == 0:
+                return ""
+            return " ".join(region.text for region in self.reader.read(crop.copy()))
+        raise VexaError(f'Objects have no property "{prop}".')
 
     def _record(self, column, value, logs):
         if self.row is None:  # outside a loop, all records go to one row
@@ -549,22 +736,19 @@ class Session:
         return round(pixels * factor, 1), unit
 
     def _measure(self, label, logs):
-        self._count(label)  # rejects labels the detector does not know
-        items = [d for d in self.detections if label == "all" or d.label == label]
+        items = self._named(label)
         if not items:
             logs.append(f"No {label} to measure.")
-        for number, item in enumerate(items, 1):
+        for name, item in items:
             x1, y1, x2, y2 = item.box
             (width, unit), (height, _) = self._length(x2 - x1), self._length(y2 - y1)
-            entry = {"object": f"{item.label} {number}", "width": width, "height": height}
+            entry = {"object": name, "width": width, "height": height}
             self.measurements.append({**entry, "unit": unit})
             logs.append(self._describe(self.measurements[-1]))
 
     def _measure_gap(self, first, second, logs):
-        for label in (first, second):
-            self._count(label)
-        a = [d for d in self.detections if first == "all" or d.label == first]
-        b = [d for d in self.detections if second == "all" or d.label == second]
+        a = [d for _, d in self._named(first)]
+        b = [d for _, d in self._named(second)]
         pairs = [(p, q) for p in a for q in b if p is not q]
         if not pairs:
             logs.append(f"No gap: need two objects, found {len(a)} {first} and {len(b)} {second}.")
@@ -598,14 +782,10 @@ class Session:
         from vexa.depth import closeness
         from vexa.segmentation import match_mask
 
-        self._count(label)  # rejects labels the detector does not know
-        numbers, ranked = {}, []
-        for item in self.detections:
-            if label in ("all", item.label):
-                numbers[item.label] = numbers.get(item.label, 0) + 1
-                name = f"{item.label} {numbers[item.label]}"
-                mask = match_mask(item.box, self.masks, item.label) if self.masks else None
-                ranked.append({"object": name, "closeness": closeness(self.depth, item.box, mask)})
+        ranked = []
+        for name, item in self._named(label):
+            mask = match_mask(item.box, self.masks, item.label) if self.masks else None
+            ranked.append({"object": name, "closeness": closeness(self.depth, item.box, mask)})
         ranked.sort(key=lambda entry: -entry["closeness"])  # stable: ties keep detection order
         self.distances = [{**entry, "rank": rank} for rank, entry in enumerate(ranked, 1)]
         if not ranked:
@@ -654,6 +834,9 @@ class Session:
             "exposure": self.exposure,
             "cutout": None if self.alpha is None else round(float((self.alpha > 127).mean()), 3),
         }
+
+
+_MISSING = object()  # lookup result when no variable has the name
 
 
 def _subject_name(subject):
