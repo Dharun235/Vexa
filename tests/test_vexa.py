@@ -101,8 +101,8 @@ def test_unknown_labels_suggest_a_detectable_one(image, fake_vision):
         execute('load "x"\ndetect all\ncount tree', image, fake_vision)
 
 
-@pytest.mark.parametrize("path", list(Path("examples").glob("*.vexa")))
-def test_examples(path, image, fake_vision, fake_reader, fake_segmenter):
+@pytest.mark.parametrize("path", sorted(Path("examples").resolve().glob("*.vexa")))
+def test_examples(path, image, fake_vision, fake_reader, fake_segmenter, offline_models):
     assert execute(path.read_text(), image, fake_vision, fake_reader, fake_segmenter)["logs"]
 
 

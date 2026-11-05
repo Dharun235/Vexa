@@ -32,13 +32,3 @@ The int8 CLIP text encoder shifted prompt embeddings (cosine similarity 0.93 to 
 ## Decision
 
 YOLO-World v2-S: the only candidate that is both near real time on CPU and accurate on ordinary photos. The AGPL terms match the bundled YOLO11 model. Revisit OWLv2 or Grounding DINO for accuracy-critical, non-interactive use, and a larger photo benchmark before advertising accuracy.
-
-## Effect on `vexa ask`
-
-| Version | Solved | Count | Read | Codes | Quality | Open vocabulary |
-| --- | --- | --- | --- | --- | --- | --- |
-| Language 0.4 baseline | 18/26 | 3/9 | 9/9 | 4/4 | 2/2 | 0/2 |
-| Count and error fixes | 22/26 | 7/9 | 9/9 | 4/4 | 2/2 | 0/2 |
-| + open vocabulary | 23/26 | 8/9 | 9/9 | 4/4 | 2/2 | 0/2 |
-
-The pickup truck is now found. Remaining failures: one tie missed by both detectors, trees not found by YOLO-World, and "How many people wear sunglasses?", which needs relations between objects that the language does not have yet.

@@ -3,7 +3,6 @@
 import argparse
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -41,24 +40,6 @@ def arguments():
     repl.add_argument("--image", required=True, type=Path)
     repl.add_argument("--model", type=Path)
     repl.add_argument("--output", type=Path, default=Path("vexa-output.png"))
-    ask_command = commands.add_parser(
-        "ask", help="Answer a question about an image with a local model writing Vexa"
-    )
-    ask_command.add_argument("question")
-    source = ask_command.add_mutually_exclusive_group(required=True)
-    source.add_argument("--image", type=Path)
-    source.add_argument("--folder", help="Ask about every image in this folder")
-    source.add_argument("--video", help="Ask about frames of this video file")
-    ask_command.add_argument("--save", type=Path, help="Save the generated program to this file")
-    bench = commands.add_parser("bench", help="Score vexa ask on benchmark tasks")
-    bench.add_argument("--tasks", type=Path, default=Path("benchmarks/vision-qa/tasks.json"))
-    bench.add_argument("--only", help="Run tasks whose id starts with this, or one suite")
-    bench.add_argument("--out", type=Path, help="Save one JSON line per task")
-    for command in (ask_command, bench):
-        command.add_argument(
-            "--llm", default=os.environ.get("VEXA_LLM", "qwen3:4b-instruct"), help="Ollama model"
-        )
-        command.add_argument("--host", default="http://127.0.0.1:11434", help="Ollama server")
     model = commands.add_parser("model", help="Manage the model stored in your user data folder")
     actions = model.add_subparsers(dest="model_action", required=True)
     actions.add_parser("path", help="Print the model location")
@@ -133,50 +114,6 @@ def run_file(args):
         print(f"Saved {args.output}")
 
 
-def ask_file(args):
-    from vexa.agent import OllamaClient, ask
-    from vexa.interpreter import execute_commands
-    from vexa.vision import Vision
-
-    image = read_image(args.image)
-    vision = Vision()
-    question = args.question
-    if args.folder:
-        question += f'\nThe images are in the folder "{args.folder}"; use for each image in "{args.folder}".'
-    if args.video:
-        question += f'\nThe video is "{args.video}"; use for each frame in "{args.video}".'
-    result = ask(
-        question,
-        lambda commands: execute_commands(commands, image, vision),
-        OllamaClient(args.llm, args.host),
-    )
-    if result.program is None:
-        raise VexaError(
-            f"No valid program after {result.attempts} attempts. Last error: {result.errors[-1]}",
-            kind="agent",
-        )
-    print("program:\n  " + result.program.strip().replace("\n", "\n  "))
-    print(f"answer: {result.answer}")
-    if args.save:
-        args.save.write_text(result.program, encoding="utf-8")
-        print(f"saved: {args.save}")
-
-
-def bench_tasks(args):
-    from vexa.agent import OllamaClient
-    from vexa.bench import load_tasks, run_bench
-
-    report = run_bench(
-        load_tasks(args.tasks, args.only), OllamaClient(args.llm, args.host), out=args.out
-    )
-    suites = ", ".join(f"{name} {s}/{n}" for name, (s, n) in report["suites"].items())
-    print(
-        f"\nSolved {report['solved']}/{report['total']} ({suites}); valid programs "
-        f"{report['valid_rate']:.0%}, first try {report['first_try_valid']:.0%}; "
-        f"{report['mean_seconds']} s per task"
-    )
-
-
 def main(argv=None):
     args = arguments().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.CRITICAL)
@@ -190,10 +127,6 @@ def main(argv=None):
             print(f"Check OK: {len(commands)} command(s). Syntax and command ordering are valid.")
         elif args.command == "run":
             run_file(args)
-        elif args.command == "ask":
-            ask_file(args)
-        elif args.command == "bench":
-            bench_tasks(args)
         elif args.command == "repl":
             from vexa.repl import run_repl
 

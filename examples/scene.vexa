@@ -1,0 +1,11 @@
+# Describe a street scene: what, where, what colour, how far
+load "street.jpg"
+caption
+detect all
+colour all
+where all
+count person in left
+estimate depth
+rank all by distance
+draw boxes
+show image

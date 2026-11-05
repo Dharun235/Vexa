@@ -1,0 +1,6 @@
+# Cut the dog out of the photo as a transparent PNG
+load "dog-bicycle.jpg"
+detect dog
+segment detections
+remove background
+show image

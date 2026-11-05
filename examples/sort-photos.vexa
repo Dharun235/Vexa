@@ -1,0 +1,14 @@
+# Sort the photos/ folder: quality checks, a caption and people counts in one CSV
+for each image in "photos/"
+  check blur
+  check exposure
+  if image blurry
+    print "blurry: skip"
+  else
+    caption
+    record caption
+    detect person
+    record count person
+  end
+end
+save csv "photos.csv"

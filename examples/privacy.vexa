@@ -1,0 +1,6 @@
+# Blur every face before sharing a photo
+load "street.jpg"
+detect face
+count face
+blur face
+show image

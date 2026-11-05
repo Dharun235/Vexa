@@ -1,6 +1,6 @@
 # Vexa
 
-Vexa is a small terminal language for finding objects and reading text in images. It runs locally on CPU.
+Vexa is a small language for computer vision. Programs read like instructions to a person, and they run offline on an ordinary laptop CPU: no GPU, no cloud, no Python code.
 
 ```vexa
 load "street.jpg"
@@ -9,6 +9,27 @@ count person
 draw boxes
 show image
 ```
+
+## Why a language?
+
+Computer vision today means Python, PyTorch, model zoos and a GPU. Most real questions are simpler: *how many people are in each photo, is the car red, blur every face, which frame shows a dog*. Vexa makes those one-line commands.
+
+- **Readable:** `count colour red car`, `blur face`, `rank all by distance`, `count person left of car`.
+- **Checked before it runs:** a static checker catches mistakes such as counting cars after detecting only people, or reading text before running `ocr`, with no image and no model. Errors name the line and say how to fix it.
+- **Safe:** a program can only look at images and write the files it names, so it is safe to run programs from others.
+- **Small and offline:** every model is an ONNX file of 0.2 to 275 MB run on CPU; nothing leaves the machine.
+
+| Domain | Commands |
+| --- | --- |
+| Objects | `detect person`, `detect "sunglasses"` (any phrase), `locate "red tie"`, `count`, `draw boxes` |
+| Shapes and space | `segment detections`, `measure`, `where`, `count car in left`, `count person left of car` |
+| 3D and people | `estimate depth`, `rank all by distance`, `export points "scene.ply"`, `estimate poses`, `count pose sitting` |
+| Reading | `ocr`, `find text "TOTAL"`, `scan codes`, `caption` |
+| Look and quality | `colour car`, `check blur`, `check exposure`, `if image dark` |
+| Editing | `blur face`, `pixelate`, `remove background`, `style cartoon`, `translate horse to zebra`, `rotate`, `crop` |
+| Batches | `for each image in "photos/"`, `for each frame in "clip.mp4" every 1 second`, `record`, `save csv` |
+
+Try the showcase programs in [examples](examples/): [scene.vexa](examples/scene.vexa) (what, where, what colour, how far), [privacy.vexa](examples/privacy.vexa) (blur faces), [cutout.vexa](examples/cutout.vexa) (transparent cut-out) and [sort-photos.vexa](examples/sort-photos.vexa) (a folder to CSV). [How Vexa works](docs/architecture.md) explains the parser, checker and interpreter.
 
 ## Install
 
@@ -55,18 +76,6 @@ The same works on video with `for each frame in "clip.mp4" every 1 second`. Meas
 Restyle an image with `style cartoon`, `style sketch` or `style denoise`, or neural styles such as `style mosaic` after `vexa model download styles`. Change what an image shows with `translate horse to zebra`, `translate summer to winter` or `translate photo to monet` (CycleGAN, 45 MB per pair, NumPy on CPU, no PyTorch).
 
 Ask what is near and far with `estimate depth` and `rank all by distance`, or turn a photo into a 3D point cloud with `export points "scene.ply"` (Depth Anything V2 Small, `vexa model download depth`, 27 MB). Find body keypoints, joint angles and postures with `estimate poses` and `count pose sitting` (RTMPose-s, `vexa model download pose`, 20 MB). Anonymise photos with `detect face` and `blur face` or `pixelate face` (YuNet, `vexa model download faces`, 232 KB). Describe images with `caption` and find anything by description with `locate "red tie"` (Florence-2-base, `vexa model download florence`, about 275 MB). Name object colours with `colour car` and `count colour red car`, ask where things are with `where all`, `count car in left` and `count person left of car`, sort photos with `check exposure` and `if image dark`, and cut out subjects with `remove background` (U²-Net-p, `vexa model download background`, 4.6 MB).
-
-## Ask in plain English
-
-A local model can write the program for you. Install [Ollama](https://ollama.com), then:
-
-```sh
-ollama pull qwen3:4b-instruct
-vexa ask "How many people and buses are there?" --image street.jpg
-vexa ask "At which second does a dog appear?" --video clip.mp4
-```
-
-Vexa checks the program before running it and sends any error back to the model to fix. The answer comes with the program, which `--save` keeps for reuse without the model. `vexa bench` scores this on the [benchmark tasks](benchmarks/vision-qa/tasks.json).
 
 ## Any object, not only 80 labels
 

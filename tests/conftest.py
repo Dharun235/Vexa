@@ -63,3 +63,29 @@ def fake_segmenter():
             ]
 
     return Segmenter()
+
+
+@pytest.fixture
+def offline_models(monkeypatch, tmp_path, image):
+    """Stand-ins for optional models, and a photos/ folder in a temporary working directory."""
+    import cv2
+
+    from vexa.vision import Detection
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("vexa.depth.estimate", lambda img: np.zeros(img.shape[:2], np.float32))
+    monkeypatch.setattr("vexa.florence.caption", lambda img, detailed=False: "A dog.")
+    monkeypatch.setattr("vexa.florence.locate", lambda img, phrase: [])
+    monkeypatch.setattr(
+        "vexa.pose.estimate", lambda img, boxes: [np.zeros((17, 3), np.float32) for _ in boxes]
+    )
+    monkeypatch.setattr(
+        "vexa.privacy.detect_faces",
+        lambda img, confidence=None: [Detection("face", 0.9, (1, 1, 9, 9))],
+    )
+    monkeypatch.setattr(
+        "vexa.background.foreground", lambda img: np.full(img.shape[:2], 255, np.uint8)
+    )
+    (tmp_path / "photos").mkdir()
+    cv2.imwrite(str(tmp_path / "photos" / "one.png"), image)
+    return tmp_path
