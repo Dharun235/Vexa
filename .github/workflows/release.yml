@@ -1,20 +1,61 @@
 # Publish a GitHub release to PyPI as vexa-language.
 #
-# It uploads the exact files attached to the release (built and tested by
-# scripts/build-release.sh), after checking them against the release's SHA256SUMS.
-# PyPI trusts this workflow (trusted publishing, environment pypi), so no token is stored.
+# 1. verify: install the release's wheel on Linux and run the examples with the real models.
+# 2. pypi:   upload the exact files attached to the release, after checking them against the
+#            release's SHA256SUMS. PyPI trusts this workflow (trusted publishing, environment
+#            pypi), so no token is stored.
+# Run it by hand ("Run workflow", with a tag) to repeat only the Linux check.
 name: Release
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to check, e.g. v0.7.1
+        required: true
 
 permissions:
   contents: read
 
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
 jobs:
+  verify:
+    name: Check the wheel on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: astral-sh/setup-uv@v5
+      - name: Download the release's files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern '*.whl' --pattern '*.tar.gz' --pattern SHA256SUMS
+          cd dist && grep -E '\.(whl|tar\.gz)$' SHA256SUMS | sha256sum --check
+      - name: Install the wheel
+        run: |
+          uv tool install --python 3.12 dist/*.whl
+          vexa --version
+      - name: Run the examples with the real models
+        working-directory: examples
+        run: |
+          vexa check street-report.vexa
+          vexa run street-report.vexa --image street.jpg --output "$RUNNER_TEMP/report.png"
+          vexa test checks.vexa --image street.jpg
+          vexa compile street-report.vexa -o "$RUNNER_TEMP/report.py"
+          "$(uv tool dir)/vexa-language/bin/python" "$RUNNER_TEMP/report.py" --image street.jpg \
+            --output "$RUNNER_TEMP/compiled.png"
+
   pypi:
     name: PyPI
+    needs: verify
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -24,7 +65,6 @@ jobs:
       - name: Download the release's Python files
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
         run: |
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
             --pattern '*.whl' --pattern '*.tar.gz' --pattern SHA256SUMS

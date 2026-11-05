@@ -4,18 +4,28 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vexa-language"  # the PyPI name; the command and the Python package are both vexa
-version = "0.7.0"
-description = "A small interpreted language for computer vision on CPU"
+version = "0.7.1"
+description = "A small language for computer vision: checked before it runs, offline on CPU"
 readme = "README.md"
 license = "MIT AND AGPL-3.0-only AND Apache-2.0"
 license-files = ["LICENSE", "LICENSES/*.txt"]
 authors = [{name = "Dharunkumar Senthilkumar"}]
 requires-python = ">=3.12,<3.13"
+keywords = ["computer vision", "domain-specific language", "programming language", "object detection", "OCR", "ONNX", "interpreter", "compiler"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Image Recognition",
+  "Topic :: Software Development :: Compilers",
+  "Topic :: Software Development :: Interpreters",
 ]
 dependencies = [
   "lark>=1.2,<2",
@@ -31,9 +41,11 @@ dependencies = [
 vexa = "vexa.cli:main"
 
 [project.urls]
-Repository = "https://github.com/Dharun235/Vexa"
+Homepage = "https://github.com/Dharun235/Vexa"
 Documentation = "https://github.com/Dharun235/Vexa/blob/main/docs/README.md"
+Repository = "https://github.com/Dharun235/Vexa"
 Issues = "https://github.com/Dharun235/Vexa/issues"
+Changelog = "https://github.com/Dharun235/Vexa/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 export = ["ultralytics>=8.3,<9", "onnx>=1.17,<2"]

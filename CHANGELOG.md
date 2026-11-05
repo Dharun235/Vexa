@@ -2,6 +2,13 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
+## 0.7.1
+
+- Exact package details on PyPI: a summary that matches what Vexa is (checked, interpreted or compiled, offline), classifiers for platforms, audience and topics, keywords, and Homepage and Changelog links.
+- Linux is checked on every release: the release workflow installs the wheel on Ubuntu and runs the examples with the real models before anything is uploaded to PyPI.
+
+The language and commands are unchanged.
+
 ## 0.7.0
 
 - The package is published on PyPI as `vexa-language` (the name `vexa` was taken there). The command is still `vexa` and the Python package is still `vexa`.
