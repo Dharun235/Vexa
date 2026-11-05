@@ -8,7 +8,9 @@ from pathlib import Path
 def prepare_assets(root: Path):
     dist = root / "dist"
     project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
-    stem = f"{project['name'].replace('-', '_')}-{project['version']}"  # vexa-lang → vexa_lang
+    stem = (
+        f"{project['name'].replace('-', '_')}-{project['version']}"  # vexa-language → vexa_language
+    )
     names = [f"{stem}-py3-none-any.whl", f"{stem}.tar.gz"]
     names += [path.name for path in dist.glob("*.vsix")]
     (dist / "SHA256SUMS").write_text(

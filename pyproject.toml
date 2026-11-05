@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vexa-lang"  # the PyPI name; the command and the Python package are both vexa
+name = "vexa-language"  # the PyPI name; the command and the Python package are both vexa
 version = "0.7.0a1"
 description = "A small interpreted language for computer vision on CPU"
 readme = "README.md"

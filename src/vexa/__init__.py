@@ -2,4 +2,4 @@
 
 from importlib.metadata import version
 
-__version__ = version("vexa-lang")
+__version__ = version("vexa-language")

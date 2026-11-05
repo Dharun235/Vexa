@@ -1126,7 +1126,7 @@ wheels = [
 ]
 
 [[package]]
-name = "vexa-lang"
+name = "vexa-language"
 version = "0.7.0a1"
 source = { editable = "." }
 dependencies = [
