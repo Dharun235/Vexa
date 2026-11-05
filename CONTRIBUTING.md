@@ -45,14 +45,14 @@ The same rules, with a step-by-step workflow for coding agents, are in [AGENTS.m
 ```sh
 ./scripts/build-release.sh                       # tests, then the wheel and source archive in dist/
 (cd editors/vscode && npx @vscode/vsce package --out ../../dist/)
-uv run python scripts/prepare-assets.py          # dist/SHA256SUMS
+uv run python scripts/prepare-assets.py          # dist/SHA256SUMS for the wheel, archive and .vsix
 ```
 
 Bump the version in `pyproject.toml` (run `uv lock`), move the changelog's unreleased section under the new version, and update `docs/notes/release-notes.md`. Install the wheel in a fresh environment and run the examples before publishing. Releases are GitHub prereleases built from the tested commit:
 
 ```sh
-gh release create vX.Y.Z dist/vexa-X.Y.Z-py3-none-any.whl dist/vexa-X.Y.Z.tar.gz dist/vexa-*.vsix dist/SHA256SUMS \
+gh release create vX.Y.Z dist/vexa_lang-X.Y.Z-py3-none-any.whl dist/vexa_lang-X.Y.Z.tar.gz dist/vexa-*.vsix dist/SHA256SUMS \
   --target COMMIT_SHA --prerelease --title "Vexa X.Y.Z" --notes-file docs/notes/release-notes.md
 ```
 
-Never reuse a version number. During 0.x, a change in what existing programs mean needs a new minor version and a migration note in the changelog. Keep [LICENSE](LICENSE), the [LICENSES](LICENSES/README.md) folder and the [model notices](docs/notes/model-notice.md) with every release.
+Publishing the GitHub release starts `.github/workflows/release.yml`, which checks the files against `SHA256SUMS` and uploads them to PyPI (`vexa-lang`, trusted publishing), the VS Code Marketplace (secret `VSCE_PAT`) and Open VSX (secret `OVSX_PAT`). Bump the extension's version in `editors/vscode/package.json` when it changes, since the stores refuse a version twice. Never reuse a version number. During 0.x, a change in what existing programs mean needs a new minor version and a migration note in the changelog. Keep [LICENSE](LICENSE), the [LICENSES](LICENSES/README.md) folder and the [model notices](docs/notes/model-notice.md) with every release.

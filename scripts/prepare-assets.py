@@ -1,4 +1,4 @@
-"""Checksum only the distributions published for the current package version."""
+"""Checksum only the files published for the current version: wheel, source archive, .vsix."""
 
 import hashlib
 import tomllib
@@ -7,8 +7,10 @@ from pathlib import Path
 
 def prepare_assets(root: Path):
     dist = root / "dist"
-    version = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
-    names = [f"vexa-{version}-py3-none-any.whl", f"vexa-{version}.tar.gz"]
+    project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
+    stem = f"{project['name'].replace('-', '_')}-{project['version']}"  # vexa-lang → vexa_lang
+    names = [f"{stem}-py3-none-any.whl", f"{stem}.tar.gz"]
+    names += [path.name for path in dist.glob("*.vsix")]
     (dist / "SHA256SUMS").write_text(
         "".join(
             f"{hashlib.sha256((dist / name).read_bytes()).hexdigest()}  {name}\n"

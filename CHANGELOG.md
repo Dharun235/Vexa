@@ -2,6 +2,14 @@
 
 User-visible changes to the Vexa language and local runner are recorded here. Alpha distributions are published as GitHub prereleases; see each release for tested assets and platform coverage.
 
+## Unreleased
+
+- The package is published on PyPI as `vexa-lang` (the name `vexa` was taken there). The command is still `vexa` and the Python package is still `vexa`.
+- Releases publish automatically to PyPI, the VS Code Marketplace and Open VSX (`.github/workflows/release.yml`).
+- The VS Code extension is listed as **Vexa Language**, with an icon (version 0.2.1).
+
+Migration: if you installed an earlier release with `uv tool install`, run `uv tool uninstall vexa` before installing `vexa-lang`.
+
 ## 0.7.0a1 — language 0.8
 
 - Maps with text keys: `{car: 2, "traffic light": 1}`, `m.car`, `m["car"]`, `+`, `keys`, `values`, `get`, `put`, `for each key in m`; lists of maps.

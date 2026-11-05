@@ -1,11 +1,27 @@
 {
   "name": "vexa",
-  "displayName": "Vexa",
-  "description": "Vexa computer-vision language: highlighting, live checking, completion, hover, go to definition, references, rename, outline, signature help and formatting",
-  "version": "0.2.0",
+  "displayName": "Vexa Language",
+  "description": "Language support for Vexa, a small language for computer vision: highlighting, live errors and warnings, completion, hover, go to definition, rename, outline and formatting",
+  "version": "0.2.1",
   "publisher": "dharun235",
   "license": "MIT",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e30",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/Dharun235/Vexa#readme",
   "repository": "https://github.com/Dharun235/Vexa",
+  "bugs": {
+    "url": "https://github.com/Dharun235/Vexa/issues"
+  },
+  "keywords": [
+    "vexa",
+    "computer vision",
+    "dsl",
+    "language server",
+    "image"
+  ],
   "engines": {
     "vscode": "^1.75.0"
   },
