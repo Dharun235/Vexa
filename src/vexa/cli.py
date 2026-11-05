@@ -36,6 +36,22 @@ def arguments():
     run.add_argument(
         "--json", type=Path, dest="json_output", help="Also save logs, counts and boxes as JSON"
     )
+    compile_command = commands.add_parser(
+        "compile", help="Compile a .vexa file to a standalone Python script"
+    )
+    compile_command.add_argument("program", type=Path)
+    compile_command.add_argument(
+        "-o", "--output", type=Path, help="Python file to write (default: next to the program)"
+    )
+    compile_command.add_argument(
+        "--emit",
+        choices=["python", "ast"],
+        default="python",
+        help="python: write the script; ast: print the optimised syntax tree",
+    )
+    compile_command.add_argument(
+        "--no-optimize", action="store_true", help="Skip constant folding and dead-code removal"
+    )
     repl = commands.add_parser("repl", help="Start an interactive image session")
     repl.add_argument("--image", required=True, type=Path)
     repl.add_argument("--model", type=Path)
@@ -99,19 +115,43 @@ def run_file(args):
     outputs = [args.output] + ([args.json_output] if args.json_output else [])
     protect_inputs([args.program] + ([args.image] if args.image else []), outputs)
     result = execute_commands(commands, image, Vision(args.model))
+    write_outputs(result, args.output, args.json_output)
+
+
+def compile_file(args):
+    from vexa.compiler import compile_source, describe, optimise
+
+    source = read_source(args.program)
+    if args.emit == "ast":
+        commands = check_source(source)
+        if not args.no_optimize:
+            commands, stats = optimise(commands)
+            print(f"# {stats.summary()}")
+        print("\n".join(describe(commands)))
+        return
+    output = args.output or args.program.with_suffix(".py")
+    protect_inputs([args.program], [output])
+    code, stats = compile_source(source, args.program.name, optimize=not args.no_optimize)
+    output.write_text(code, encoding="utf-8")
+    print(f"Compiled {args.program} → {output} ({stats.summary()}).")
+    print(f"Run it with: python {output} --image photo.jpg")
+
+
+def write_outputs(result, output, json_output=None):
+    """Print the logs, save the shown image as PNG, and optionally the result as JSON."""
     image_data = result.pop("image")
     result["image_path"] = None
     if image_data:
-        save_image(image_data, args.output)
-        result["image_path"] = str(args.output)
-    if args.json_output:
-        args.json_output.write_text(
+        save_image(image_data, output)
+        result["image_path"] = str(output)
+    if json_output:
+        json_output.write_text(
             json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
     for line in result["logs"]:
         print(line)
     if image_data:
-        print(f"Saved {args.output}")
+        print(f"Saved {output}")
 
 
 def main(argv=None):
@@ -127,6 +167,8 @@ def main(argv=None):
             print(f"Check OK: {len(commands)} command(s). Syntax and command ordering are valid.")
         elif args.command == "run":
             run_file(args)
+        elif args.command == "compile":
+            compile_file(args)
         elif args.command == "repl":
             from vexa.repl import run_repl
 

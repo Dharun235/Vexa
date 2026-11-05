@@ -141,7 +141,7 @@ class Session:
                 elif kind == "for_objects":
                     name, source = target
                     for item in list(self.evaluate(source)):
-                        self.assign(name, item, local=True)
+                        self.assign(name, item)
                         self._run(command.body, logs)
                 elif kind == "draw_objects":
                     self.image = draw_boxes(self.image, [d for _, d in self._named(target)])
@@ -500,17 +500,11 @@ class Session:
     # Variables, expressions and functions ------------------------------------------
 
     def lookup(self, name):
-        for scope in (self.scopes[-1], self.scopes[0]):
-            if name in scope:
-                return scope[name]
-        return _MISSING
+        """A variable of the running function, or of the program at the top level."""
+        return self.scopes[-1].get(name, _MISSING)
 
-    def assign(self, name, value, local=False):
-        """let updates an existing variable where it lives, otherwise creates it here."""
-        scope = self.scopes[-1]
-        if not local and name not in scope and name in self.scopes[0]:
-            scope = self.scopes[0]
-        scope[name] = value
+    def assign(self, name, value):
+        self.scopes[-1][name] = value
 
     def variable_types(self):
         """Types of the program's variables, for checking later REPL input."""
@@ -706,6 +700,11 @@ class Session:
             capture.release()
 
     def _loop(self, items, body, logs):
+        for _ in self.iterate(items, logs):
+            self._run(body, logs)
+
+    def iterate(self, items, logs):
+        """Make each (name, image, message) the current image in turn; one CSV row each."""
         outer = self.source_image  # load inside the loop reloads the loop's image
         try:
             for name, image, message in items:
@@ -714,7 +713,7 @@ class Session:
                 self.row = {"image": name}
                 self.rows.append(self.row)
                 logs.append(message)
-                self._run(body, logs)
+                yield name
         finally:
             self.source_image = outer
         self.reset()
