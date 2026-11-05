@@ -5,8 +5,8 @@ User-visible changes to the Vexa language and local runner are recorded here. Al
 ## Unreleased
 
 - The package is published on PyPI as `vexa-language` (the name `vexa` was taken there). The command is still `vexa` and the Python package is still `vexa`.
-- Releases publish automatically to PyPI, the VS Code Marketplace and Open VSX (`.github/workflows/release.yml`).
-- The VS Code extension is listed as **Vexa Language**, with an icon (version 0.2.1).
+- Publishing a GitHub release uploads it to PyPI automatically (`.github/workflows/release.yml`).
+- The VS Code extension is named **Vexa Language** and has an icon (version 0.2.1); it is still installed from the `.vsix` on each release.
 
 Migration: if you installed an earlier release with `uv tool install`, run `uv tool uninstall vexa` before installing `vexa-language`.
 

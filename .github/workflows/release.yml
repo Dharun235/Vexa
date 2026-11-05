@@ -1,14 +1,8 @@
-# Publish a GitHub release to PyPI, the VS Code Marketplace and Open VSX.
+# Publish a GitHub release to PyPI as vexa-language.
 #
 # It uploads the exact files attached to the release (built and tested by
 # scripts/build-release.sh), after checking them against the release's SHA256SUMS.
-#
-# One-time setup:
-#   PyPI: a trusted publisher for project vexa-language, workflow release.yml,
-#         environment pypi (no token needed).
-#   VS Code Marketplace: repository secret VSCE_PAT.
-#   Open VSX: repository secret OVSX_PAT.
-# A store whose secret is missing is skipped, so the others still publish.
+# PyPI trusts this workflow (trusted publishing, environment pypi), so no token is stored.
 name: Release
 
 on:
@@ -38,32 +32,3 @@ jobs:
           grep -E '\.(whl|tar\.gz)$' SHA256SUMS | sha256sum --check
           rm SHA256SUMS
       - uses: pypa/gh-action-pypi-publish@v1.12.4
-
-  extension:
-    name: VS Code Marketplace and Open VSX
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Download the release's extension
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
-            --pattern '*.vsix' --pattern SHA256SUMS
-          cd dist
-          grep -E '\.vsix$' SHA256SUMS | sha256sum --check
-      - name: Publish to the VS Code Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: |
-          if [ -z "$VSCE_PAT" ]; then echo "VSCE_PAT is not set; skipping."; exit 0; fi
-          npx --yes @vscode/vsce@3.2.1 publish --packagePath dist/*.vsix
-      - name: Publish to Open VSX
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: |
-          if [ -z "$OVSX_PAT" ]; then echo "OVSX_PAT is not set; skipping."; exit 0; fi
-          npx --yes ovsx@0.10.1 publish dist/*.vsix --pat "$OVSX_PAT"
