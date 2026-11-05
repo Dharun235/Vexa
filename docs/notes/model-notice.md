@@ -4,7 +4,7 @@ Starting in 0.1.0a2, the Vexa wheel includes `data/yolo11n.onnx`, an ONNX export
 
 - Original weights: [Ultralytics assets, yolo11n.pt](https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt).
 - Export implementation: [Ultralytics v8.4.198](https://github.com/ultralytics/ultralytics/tree/v8.4.198).
-- Reproduction recipe: [scripts/export_model.py](../scripts/export_model.py), with exact dependencies recorded in [uv.lock](../uv.lock).
+- Reproduction recipe: [scripts/export_model.py](../../scripts/export_model.py), with exact dependencies recorded in [uv.lock](../../uv.lock).
 - Export settings: CPU, opset 17, fixed 640×640 input, float32, no simplification, no embedded NMS.
 - Model terms: [Ultralytics licensing](https://www.ultralytics.com/license) and [upstream AGPL-3.0 license text](https://github.com/ultralytics/ultralytics/blob/v8.4.198/LICENSE).
 

@@ -2,7 +2,7 @@
 # Steps for the Syntax Summit demo video. Run from the repository root:
 #   scripts/record-demo.sh
 # Each step prints its command, waits for Enter, then runs it, so the
-# recording can follow the script in docs/syntax-summit.md.
+# recording can follow the script in docs/notes/syntax-summit.md.
 set -u
 cd "$(dirname "$0")/../examples"
 OUT="${TMPDIR:-/tmp}/vexa-demo"

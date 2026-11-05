@@ -1,8 +1,24 @@
 # Learn Vexa in 25 minutes
 
-[Documentation home](README.md) · [Language reference](language-reference.md) · [Specification](specification.md)
+[Documentation home](README.md) · [Reference](language-reference.md) · [Specification](specification.md)
 
-Each lesson is a complete program you can save as a `.vexa` file and run with `vexa run lesson.vexa --image street.jpg` (the photo is in [examples](../examples/)). Every example on this page is run by Vexa's test suite, so they all work.
+## 0. Install and run
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then Vexa and the example photos:
+
+```sh
+uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.7.0a1/vexa-0.7.0a1-py3-none-any.whl
+git clone --depth 1 https://github.com/Dharun235/Vexa && cd Vexa/examples
+```
+
+Save each lesson below as `lesson.vexa` in that folder and run it:
+
+```sh
+vexa check lesson.vexa                    # find mistakes, without an image or model
+vexa run lesson.vexa --image street.jpg   # run it; show image saves vexa-output.png
+```
+
+To try commands one at a time, start the console with `vexa repl --image street.jpg`; type `help` for commands and `exit` to leave. Every example on this page is run by the test suite, so they all work.
 
 ## 1. Commands
 
@@ -16,7 +32,7 @@ draw boxes
 show image
 ```
 
-`load` starts from the photo, `detect` finds people, `count` prints how many, `draw boxes` marks them and `show image` saves the result to `vexa-output.png`. Run `vexa check lesson.vexa` first: it checks the program without an image or a model, and points at mistakes such as `count car` after `detect person`.
+`load` starts from the photo, `detect` finds people, `count` prints how many, `draw boxes` marks them and `show image` saves the result to `vexa-output.png`. `vexa check` would point at mistakes such as `count car` after `detect person`.
 
 ## 2. Variables and text
 

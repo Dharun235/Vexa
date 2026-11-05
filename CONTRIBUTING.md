@@ -1,70 +1,54 @@
 # Working on Vexa
 
-[Architecture](docs/architecture.md) · [Language reference](docs/language-reference.md) · [Bug reports](docs/troubleshooting.md)
-
-Vexa is terminal-only. Keep one parser, shared validator, and session interpreter for file execution and the REPL. Keep changes small and favour CPU inference with low resource use.
+[How Vexa works](docs/architecture.md) · [Reference](docs/language-reference.md) · [Issues](https://github.com/Dharun235/Vexa/issues)
 
 ## Set up
 
-Use Python 3.12 and a feature branch:
+Python 3.12, [uv](https://docs.astral.sh/uv/), and a feature branch (never commit to `main`):
 
 ```sh
-git switch codex/installable-language
-git switch -c codex/describe-your-change
-UV_CACHE_DIR=.uv-cache UV_PYTHON_INSTALL_DIR=.uv-python uv sync --locked
+git switch -c feat/your-change
+uv sync --locked
+./scripts/setup-model.sh                         # only if src/vexa/data/yolo11n.onnx is missing
+uv run python scripts/setup-segmentation.py      # only if the EfficientSAM files are missing
 ```
 
-Source is in `src/vexa/`; tests are in `tests/`. The editable environment exposes changes through `uv run vexa`. Package versions come from `pyproject.toml` and installed metadata. No Node.js or web tooling is required.
+The model scripts export or download into `src/vexa/data/` in an isolated environment; PyTorch never enters the runtime.
 
-## Prepare a model
-
-If the bundled model is missing in a source checkout:
+## Check a change
 
 ```sh
-./scripts/setup-model.sh
+uv run pytest                 # all tests, offline
+uv run ruff check .           # lint, including docstrings
+uv run ruff format --check .  # layout
+uv run vexa check examples/street-report.vexa
 ```
 
-The script exports YOLO11n in an isolated environment and copies the ONNX model into `src/vexa/data/`. PyTorch and Ultralytics never enter the normal runtime environment. Exact export dependencies are in `uv.lock`; retain [model provenance](docs/model-notice.md), both license files, and the model notice.
+CI runs the same on Ubuntu and macOS, checks, formats and compiles every example, and tests the VS Code extension in VS Code.
 
-Source segmentation weights can be restored with `uv run python scripts/setup-segmentation.py`. The release build verifies their checksums before packaging. Retain `LICENSE-SEGMENTATION`, `LICENSE-THIRD-PARTY`, and the data notice.
+## Code style
 
-## Develop and verify
+- **Simple first.** Write the least code that solves the problem; no abstractions or options nobody asked for. Small modules, plain functions, standard library where it is enough.
+- **Surgical changes.** Touch only what the change needs and match the style around it. Remove what your change made unused; leave unrelated code alone.
+- **Verifiable.** Every fix or feature comes with a test that fails without it. Language changes update the reference, the specification and an example in the same commit.
+- **PEP 8**, enforced by `ruff format` (100 columns).
+- **Docstrings** follow [PEP 257](https://peps.python.org/pep-0257/) in the [Google style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings): every module and public function has one, starting with a one-line summary in the imperative ("Return the …"). Add `Args:` or `Returns:` only when the names do not already say it. Comments explain *why*, not *what*.
+- **Errors are for users.** A `VexaError` message says what is wrong and how to fix it, in plain words.
+- **Docs are tested.** Code blocks marked `vexa` in the README, tutorial and reference are run by the tests; mark templates and deliberately broken examples `text`.
+
+## Release
 
 ```sh
-uv run vexa check examples/demo.vexa
-uv run vexa run examples/demo.vexa --image examples/street.jpg --output /tmp/vexa-result.png
-uv run vexa repl --image examples/street.jpg
-uv run pytest
-uv run ruff check src tests scripts
-uv run ruff format --check src tests scripts
+./scripts/build-release.sh                       # tests, then the wheel and source archive in dist/
+(cd editors/vscode && npx @vscode/vsce package --out ../../dist/)
+uv run python scripts/prepare-assets.py          # dist/SHA256SUMS
 ```
 
-`./scripts/dev.sh` is a convenience wrapper accepting the same CLI arguments. With no arguments, it prints help.
-
-Real-image smoke tests run when the bundled ONNX model exists, otherwise they skip. Unit and console tests reuse deterministic detector and OCR fixtures. Real OCR and segmentation tests reject runtime downloads and check CPU providers. Fix bugs with focused regression tests. For command changes, update the reference and affected examples in the same commit. Runnable documentation blocks are labelled `vexa`; syntax templates and intentionally invalid programs use `text`.
-
-After verification, remove task-created temporary environments, output copies, old local distributions, and unused caches. Preserve active environments, user data/custom models, current release artifacts, and published history. Follow [AGENTS.md](AGENTS.md).
-
-## Build and publish
+Bump the version in `pyproject.toml` (run `uv lock`), move the changelog's unreleased section under the new version, and update `docs/notes/release-notes.md`. Install the wheel in a fresh environment and run the examples before publishing. Releases are GitHub prereleases built from the tested commit:
 
 ```sh
-./scripts/build-release.sh
-uv run python scripts/prepare-assets.py
+gh release create vX.Y.Z dist/vexa-X.Y.Z-py3-none-any.whl dist/vexa-X.Y.Z.tar.gz dist/vexa-*.vsix dist/SHA256SUMS \
+  --target COMMIT_SHA --prerelease --title "Vexa X.Y.Z" --notes-file docs/notes/release-notes.md
 ```
 
-The Python-only build runs tests/checks and creates a wheel plus source archive in `dist/`. Both include the CPU model and license/notice. The source archive includes example fixtures for reproducible tests; development caches are excluded. OCR models come from the pinned RapidOCR dependency, so do not copy them into Vexa. Before publishing, inspect the archives for obsolete assets and dependencies, install the wheel in a fresh environment outside the checkout, and verify `check`, `run`, and `repl` with real CPU inference.
-
-Push the feature branch and create a GitHub prerelease targeting the tested commit, not `main`:
-
-```sh
-git push origin codex/installable-language
-gh release create vX.Y.Z dist/vexa-X.Y.Z-py3-none-any.whl dist/vexa-X.Y.Z.tar.gz dist/SHA256SUMS dist/vexa-0.2.0.vsix --target COMMIT_SHA --prerelease --title 'Vexa X.Y.Z' --notes-file docs/release-notes.md
-```
-
-Build the VS Code extension into `dist/` first (`cd editors/vscode && npx @vscode/vsce package --out ../../dist/`). Replace `COMMIT_SHA` with the tested commit. Verify the public installation and checksums. Do not reuse a version for different distributions. Package-index publishing is not configured; no PyPI release is implied.
-
-## Compatibility
-
-Record user-visible changes in [CHANGELOG.md](CHANGELOG.md). Patch versions should preserve syntax and behaviour. During 0.x development, changed command meaning, removed interfaces, or changed output schemas need a new minor version and migration instructions.
-
-Model updates can alter counts independently of syntax. Record model/settings changes and rerun the real-image tests. Before tagging, update the package version, refresh `uv.lock`, and verify the docs and release artifacts.
+Never reuse a version number. During 0.x, a change in what existing programs mean needs a new minor version and a migration note in the changelog. Keep the licence files and the [model notices](docs/notes/model-notice.md) with every release.

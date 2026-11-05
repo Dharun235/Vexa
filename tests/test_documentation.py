@@ -10,7 +10,6 @@ from vexa.interpreter import execute
 
 GUIDES = [
     Path("README.md"),
-    Path("docs/getting-started.md"),
     Path("docs/language-reference.md"),
     Path("docs/tutorial.md"),
 ]

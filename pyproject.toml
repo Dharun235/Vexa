@@ -32,7 +32,7 @@ vexa = "vexa.cli:main"
 
 [project.urls]
 Repository = "https://github.com/Dharun235/Vexa"
-Documentation = "https://github.com/Dharun235/Vexa/blob/codex/installable-language/docs/README.md"
+Documentation = "https://github.com/Dharun235/Vexa/blob/main/docs/README.md"
 Issues = "https://github.com/Dharun235/Vexa/issues"
 
 [dependency-groups]
@@ -46,7 +46,7 @@ artifacts = ["src/vexa/data/*.onnx"]
 packages = ["src/vexa"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/vexa", "scripts", "tests", "examples", "docs/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSE-MODEL", "LICENSE-SEGMENTATION", "LICENSE-THIRD-PARTY", "pyproject.toml", "uv.lock"]
+include = ["src/vexa", "scripts", "tests", "examples", "docs/**/*.md", "README.md", "AGENTS.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "LICENSE-MODEL", "LICENSE-SEGMENTATION", "LICENSE-THIRD-PARTY", "pyproject.toml", "uv.lock"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

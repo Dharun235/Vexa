@@ -1,6 +1,6 @@
 # Vexa
 
-Vexa is a small language for computer vision. Programs read like instructions to a person, and they run offline on an ordinary laptop CPU: no GPU, no cloud, no Python code.
+A small language for computer vision. Programs read like the question you are asking, are checked before they run, and run offline on a laptop CPU.
 
 ```vexa
 load "street.jpg"
@@ -15,154 +15,44 @@ show image
   <img src="docs/images/report.svg" width="520" alt="Terminal output of examples/street-report.vexa: counts per label, people on the road, a busy-street verdict and a passed expect check">
 </p>
 
-**Try it in a minute** (needs [uv](https://docs.astral.sh/uv/getting-started/installation/); everything runs offline after this):
-
-```sh
-uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.7.0a1/vexa-0.7.0a1-py3-none-any.whl
-git clone --depth 1 https://github.com/Dharun235/Vexa && cd Vexa/examples
-vexa run street-report.vexa --image street.jpg --set busy=2
-```
-
-## Why a language?
-
-Computer vision today means Python, PyTorch, model zoos and a GPU. Most real questions are simpler: *how many people are in each photo, is the car red, blur every face, which frame shows a dog*. Vexa makes those one-line commands.
-
-- **Readable:** `count colour red car`, `blur face`, `rank all by distance`, `count person left of car`.
-- **A real language:** variables, arithmetic, `{…}` text placeholders, detected objects as values with properties (`car.colour`, `car.distance`), lists and maps, `where` filters and list building, loops with `break`/`continue`, functions with defaults and declared types, `try`/`else`, constants, settings from the command line and libraries.
-- **Checked before it runs:** a static type checker catches mistakes such as counting cars after detecting only people, `if count person` (a number, not true/false) or a misspelt `car.colr`, with no image and no model. It reports every mistake at once; errors name the line, underline the word and say how to fix it:
-
-  <img src="docs/images/check.svg" width="760" alt="vexa check mistakes.vexa reporting five errors at once: count car after detect person, a number used as true/false, a misspelt name with a suggestion, an unknown property with a suggestion, and a syntax error">
-
-- **Interpreted or compiled:** `vexa run` interprets (`--trace` shows each step); `vexa compile` turns a program into an optimised standalone Python script with identical results.
-- **Good tools:** every error at once, a formatter, `vexa test` for vision checks in CI, and a language server with go to definition, rename and signature help, tested in a real VS Code.
-- **Safe:** a program can only look at images and write the files it names, so it is safe to run programs from others.
-- **Small and offline:** every model is an ONNX file of 0.2 to 275 MB run on CPU; nothing leaves the machine.
-
-| Domain | Commands |
-| --- | --- |
-| Objects | `detect person`, `detect "sunglasses"` (any phrase), `locate "red tie"`, `count`, `draw boxes` |
-| Shapes and space | `segment detections`, `measure`, `where`, `count car in left`, `count person left of car` |
-| 3D and people | `estimate depth`, `rank all by distance`, `export points "scene.ply"`, `estimate poses`, `count pose sitting` |
-| Reading | `ocr`, `find text "TOTAL"`, `scan codes`, `caption` |
-| Look and quality | `colour car`, `check blur`, `check exposure`, `if image dark` |
-| Editing | `blur face`, `pixelate`, `remove background`, `style cartoon`, `translate horse to zebra`, `rotate`, `crop` |
-| Batches and video | `for each image in "photos/"`, `for each frame in "clip.mp4" every 1 second`, `track person`, `count tracks`, `zone door …`, `compare with "empty.jpg"`, `record`, `save csv` |
-| Programming | `let`, `const`, `param`, `+ - * / %`, `in`, `"{n} cars"`, `{car: 2}`, `[d.width for each d in detections]`, `detections where colour == "red"`, `nearest`, `try … else`, `define f(n: number = 2) -> text … end` |
-
-Try the showcase programs in [examples](examples/): [street-report.vexa](examples/street-report.vexa) (maps, zones, settings, a library, `try`), [language.vexa](examples/language.vexa) (variables, objects, functions), [scene.vexa](examples/scene.vexa) (what, where, what colour, how far), [privacy.vexa](examples/privacy.vexa) (blur faces), [cutout.vexa](examples/cutout.vexa) (transparent cut-out) and [sort-photos.vexa](examples/sort-photos.vexa) (a folder to CSV). [How Vexa works](docs/architecture.md) explains the parser, checker and interpreter.
-
-## A small, typed language
-
-```vexa
-define crowd_level(people: number)
-  if people >= 4
-    return "crowded"
-  end
-  return "quiet"
-end
-
-load "street.jpg"
-detect all
-let people = count person
-print "{people} people: {crowd_level(people)}"
-for each thing in detections where area > 20000
-  print "{thing.name} is {thing.colour}, {thing.position}"
-end
-let closest = nearest (detections where label == "person")
-blur closest
-show image
-```
-
-```sh
-vexa check street.vexa              # syntax, types and command order; no image needed
-vexa run street.vexa --image street.jpg
-vexa compile street.vexa            # → street.py, optimised standalone Python
-vexa fmt --write street.vexa        # standard layout
-vexa test street.vexa --image street.jpg   # report expect checks
-vexa run street.vexa --image street.jpg --set busy=2 --trace   # settings and a step trace
-```
-
-Lists and maps (`[1, 2, 3]`, `{car: 2}`, `"car" in counts`), list building (`[d.width for each d in detections if d.width > 100]`), about 35 built-in functions (`round`, `average`, `split`, `join`, `keys`, `read_csv` …), `repeat` and `while` loops with `break` and `continue`, `try … else` for errors, `const` and `param` settings, functions with default values and `-> type`, `expect` checks with `vexa test`, and libraries with `use "helpers.vexa" as h` round it out. Editors get live errors and warnings, completion, hover, go to definition, references, rename, an outline and signature help from `vexa lsp`; see the [VS Code extension](editors/vscode/README.md) and [other editors](docs/editors.md).
-
-Learn it in the [25-minute tutorial](docs/tutorial.md); the [language reference](docs/language-reference.md#programming-with-vexa) and the [specification](docs/specification.md) give the details.
-
-## Install
+## Try it
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
 uv tool install --python 3.12 https://github.com/Dharun235/Vexa/releases/download/v0.7.0a1/vexa-0.7.0a1-py3-none-any.whl
+git clone --depth 1 https://github.com/Dharun235/Vexa && cd Vexa/examples
+vexa run street-report.vexa --image street.jpg
 ```
 
-Add `--force` to upgrade an earlier version. The package includes the interpreter, the object-detection and segmentation models; its pinned OCR dependency includes the OCR models. No separate model setup is needed, and detection works offline from the first run. Optional models (depth, poses, faces, captions, background removal, styles) are downloaded once with `vexa model download NAME`; a program that needs one says which.
+The object detector, segmenter and OCR models are included. Other models download once with `vexa model download NAME`; a program that needs one tells you which.
 
-**VS Code:** download `vexa-0.2.0.vsix` from the [v0.7.0a1 release](https://github.com/Dharun235/Vexa/releases/tag/v0.7.0a1) and run **Extensions: Install from VSIX…**. Other editors: see [editor support](docs/editors.md).
+## Why a language?
 
-## Run a file or start the console
+- **Readable.** `count colour red car`, `blur face`, `count person in zone door`, `rank all by distance`.
+- **Checked before it runs.** Mistakes are found without an image or a model, all at once, with the fix:
 
-```sh
-vexa help
-vexa check demo.vexa
-vexa run demo.vexa --image street.jpg --output result.png
-vexa repl --image street.jpg
-```
+  <img src="docs/images/check.svg" width="760" alt="vexa check reporting five mistakes at once: count car after detect person, a number used as true/false, a misspelt name and property with suggestions, and a syntax error">
 
-The REPL retains the image and detections between commands. Use `help`, `help ocr`, `:reset`, or `exit` (the colon shortcuts still work). `show image` saves a PNG; it does not open a browser or desktop viewer.
+- **A real language.** Variables, lists and maps, objects with properties (`car.colour`, `car.distance`), loops, functions, `try`, settings with `param`, libraries.
+- **Interpreted or compiled.** `vexa run` interprets; `vexa compile` writes an optimised Python script with identical results.
+- **Offline and private.** Every model is a local ONNX file on CPU. A program can only read images and write the files it names.
 
-Segmentation: `detect dog`, `segment detections`, `count masks`, `draw masks`, then `show image`. Models are included and load on demand. See [the CPU model comparison](docs/segmentation-benchmark.md).
+## What it can do
 
-Try `vexa help scan` for QR/barcode reading, `vexa help find` for OCR search, and `vexa help check` for blur scoring. `inspect image` reports decoded image properties; `detect person confidence 0.7` selects stronger detections.
+| Task | Commands |
+| --- | --- |
+| Find | `detect person`, `detect "sunglasses"`, `locate "red tie"`, `segment detections`, `ocr`, `scan codes`, `caption` |
+| Measure | `count`, `measure`, `where`, `colour`, `estimate depth`, `estimate poses`, `check exposure` |
+| Change | `blur face`, `remove background`, `style cartoon`, `translate horse to zebra`, `rotate`, `crop` |
+| Batch and video | `for each image in "photos/"`, `for each frame in "clip.mp4"`, `zone`, `track`, `record`, `save csv` |
+| Tools | `vexa check`, `run`, `test`, `compile`, `fmt`, `repl`, and an editor server with a [VS Code extension](editors/vscode/README.md) |
 
-## Check a whole folder
+## Learn more
 
-```vexa
-for each image in "photos/"
-  detect person
-  record count person
-  if count person > 3
-    print "crowded"
-  end
-end
-save csv "people.csv"
-```
+- [Tutorial](docs/tutorial.md): install and learn the language in ten short lessons.
+- [Reference](docs/language-reference.md): every command and language feature, by task.
+- [Specification](docs/specification.md): grammar, types and rules, precisely.
+- [Editors](docs/editors.md), [How Vexa works](docs/architecture.md), [Examples](examples/), [Changelog](CHANGELOG.md), [Contributing](CONTRIBUTING.md).
 
-`vexa run people.vexa` needs no `--image` when all image work is inside the loop.
-
-The same works on video with `for each frame in "clip.mp4" every 1 second`. Measure objects with `measure bolt` or `measure gap between "bolt" and "nut"`, in pixels or, after `reference "coin" 23.25 mm`, in real units.
-
-Restyle an image with `style cartoon`, `style sketch` or `style denoise`, or neural styles such as `style mosaic` after `vexa model download styles`. Change what an image shows with `translate horse to zebra`, `translate summer to winter` or `translate photo to monet` (CycleGAN, 45 MB per pair, NumPy on CPU, no PyTorch).
-
-Ask what is near and far with `estimate depth` and `rank all by distance`, or turn a photo into a 3D point cloud with `export points "scene.ply"` (Depth Anything V2 Small, `vexa model download depth`, 27 MB). Find body keypoints, joint angles and postures with `estimate poses` and `count pose sitting` (RTMPose-s, `vexa model download pose`, 20 MB). Anonymise photos with `detect face` and `blur face` or `pixelate face` (YuNet, `vexa model download faces`, 232 KB). Describe images with `caption` and find anything by description with `locate "red tie"` (Florence-2-base, `vexa model download florence`, about 275 MB). Name object colours with `colour car` and `count colour red car`, ask where things are with `where all`, `count car in left` and `count person left of car`, sort photos with `check exposure` and `if image dark`, and cut out subjects with `remove background` (U²-Net-p, `vexa model download background`, 4.6 MB).
-
-## Any object, not only 80 labels
-
-```sh
-vexa model download   # once, about 175 MB; offline afterwards
-```
-
-Then `detect "sunglasses"` or `detect "screw"` uses open-vocabulary detection (YOLO-World v2-S) on CPU. The 80 built-in labels keep using the bundled detector.
-
-## Documentation
-
-- [Getting started](docs/getting-started.md): installation, file execution, and REPL.
-- [Language reference](docs/language-reference.md): commands, object names, and execution rules.
-- [Troubleshooting](docs/troubleshooting.md): errors and bug reports.
-- [Architecture](docs/architecture.md): parser, shared validator, session, and CPU runtime.
-- [Contributing](CONTRIBUTING.md): development, tests, packaging, and releases.
-
-See [examples](examples/), [changelog](CHANGELOG.md), and [package verification](docs/package-verification.md). This is a terminal-only alpha with Python 3.12 and a bundled model; no GPU, Node.js, or PyTorch is needed by installed users. Platform coverage is described in the verification notes.
-
-Vexa source is [MIT licensed](LICENSE). The bundled YOLO model carries [its upstream terms](docs/model-notice.md), included as [LICENSE-MODEL](LICENSE-MODEL). EfficientSAM weights use [Apache-2.0](LICENSE-SEGMENTATION); the adapted Osam routines retain [their MIT notice](LICENSE-THIRD-PARTY).
-
-## Read text
-
-```vexa
-load "receipt.png"
-ocr
-print text
-count text
-draw text
-show image
-```
-
-`ocr` reads text; `count text` counts recognized lines. `draw text` outlines and numbers those regions without downloading fonts. Text and region coordinates can also be saved with `--json`. Try the included [OCR example](examples/ocr.vexa) and [sample](examples/ocr_sample.png). Clear printed English is tested; complex layouts and low-quality text can produce mistakes.
+Vexa is [MIT licensed](LICENSE). Bundled and downloadable models keep their own licences; see [model notices](docs/notes/model-notice.md).

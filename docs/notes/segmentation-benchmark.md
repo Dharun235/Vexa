@@ -33,7 +33,7 @@ Times below are **image encoding / one box decoding**, milliseconds. Encoding is
 
 ## Reproduce
 
-The adapters and ONNX manifests were checked against [Osam commit 748ac296](https://github.com/wkentaro/osam/tree/748ac296612b2a1f86cd56a107ece705547d7d9c). Vexa ships only EfficientSAM. Its weights/hashes are in [the setup script](../scripts/setup-segmentation.py) and [model notice](model-notice.md).
+The adapters and ONNX manifests were checked against [Osam commit 748ac296](https://github.com/wkentaro/osam/tree/748ac296612b2a1f86cd56a107ece705547d7d9c). Vexa ships only EfficientSAM. Its weights/hashes are in [the setup script](../../scripts/setup-segmentation.py) and [model notice](model-notice.md).
 
 ```sh
 uv run python scripts/setup-segmentation.py
