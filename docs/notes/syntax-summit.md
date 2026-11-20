@@ -6,10 +6,9 @@ Notes for the [Syntax Summit](https://syntax-summit.devpost.com/) DSL hackathon.
 
 - [x] Eligibility: the project was created during the submission period (first commit 2 November 2026; submissions opened 19 July 2026). Entrants must be students: register on Devpost with a student account.
 - [x] Public repository with a README, documentation, examples, tests and CI.
-- [ ] Merge the feature branches into `main` and tag a release so the README install line and the CI `.vsix` point at the final version.
-- [ ] Download the optional models once before recording: `vexa model download florence`, `depth`, `faces`, `pose` and `background`.
-- [ ] Record the video with `scripts/record-demo.sh` (script below), upload it (YouTube unlisted or Vimeo), and paste the link into Devpost.
-- [ ] Paste the story below into the Devpost form; add screenshots of the street report, the VS Code extension and `vexa check` finding several mistakes.
+- [x] Merged into `main`; released as 0.7.1 on GitHub and on PyPI as `vexa-language`.
+- [x] Demo video: [youtu.be/MDBkoDuL4LE](https://youtu.be/MDBkoDuL4LE) (46 seconds, made from real runs of 0.7.1).
+- [x] Submitted: [Vexa on Devpost](https://devpost.com/software/vexa-a-language-for-computer-vision).
 
 ## How Vexa meets the judging criteria
 

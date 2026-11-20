@@ -2,6 +2,8 @@
 
 A small language for computer vision. Programs read like the question you are asking, are checked before they run, and run offline on a laptop CPU.
 
+**[▶ Watch the 46-second demo](https://youtu.be/MDBkoDuL4LE)** · Submitted to the [Syntax Summit](https://syntax-summit.devpost.com/) DSL hackathon: [Vexa on Devpost](https://devpost.com/software/vexa-a-language-for-computer-vision)
+
 ```vexa
 load "street.jpg"
 detect person
